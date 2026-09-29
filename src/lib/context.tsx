@@ -31,12 +31,12 @@ export function useApp() {
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  // Demo: kaprodi user with multiple roles
+  // Demo: kaprodi user with multiple roles to test the UI
   const [user, setUser] = useState<AuthUser>({
     id: 'u1',
     nama_lengkap: mockProfiles[0].nama_lengkap,
     email: mockProfiles[0].email,
-    roles: ['KAPRODI', 'DOSEN', 'KOORD_KP', 'GKM'],
+    roles: ['KAPRODI', 'GKM', 'KOORD_KP', 'KOORD_TA', 'KOORD_MAGANG', 'DOSEN', 'MAHASISWA', 'HIMPUNAN'],
     activeRole: 'KAPRODI',
   });
 
