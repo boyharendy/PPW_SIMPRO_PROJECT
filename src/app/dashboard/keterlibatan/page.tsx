@@ -5,7 +5,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
 import { mockInvolvements, mockActivities, mockStudents } from '@/lib/mock-data';
-import { Plus, Download, Users } from 'lucide-react';
+import { Plus, Download, Users, Microscope, UserCog } from 'lucide-react';
 import type { ActivityStudentInvolvement } from '@/lib/types';
 
 export default function KeterlibatanPage() {
@@ -25,22 +25,28 @@ export default function KeterlibatanPage() {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="glass-card p-5">
-          <p className="text-xs text-slate-500 mb-1">Total Mahasiswa Terlibat</p>
-          <div className="flex items-center gap-3">
-            <p className="text-3xl font-bold text-slate-800">{mockInvolvements.length}</p>
-            <Users size={20} className="text-indigo-400" />
+        <div className="glass-card p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-slate-500">Total Mahasiswa Terlibat</p>
+            <Users size={18} className="text-slate-400" />
           </div>
+          <p className="text-2xl font-bold text-slate-800">{mockInvolvements.length}</p>
         </div>
-        <div className="glass-card p-5">
-          <p className="text-xs text-slate-500 mb-1">Kegiatan Penelitian</p>
-          <p className="text-3xl font-bold text-emerald-400">
+        <div className="glass-card p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-slate-500">Kegiatan Penelitian</p>
+            <Microscope size={18} className="text-emerald-400/70" />
+          </div>
+          <p className="text-2xl font-bold text-emerald-400">
             {mockInvolvements.filter(i => mockActivities.find(a => a.id === i.kegiatan_id)?.jenis === 'PENELITIAN').length}
           </p>
         </div>
-        <div className="glass-card p-5">
-          <p className="text-xs text-slate-500 mb-1">Kegiatan PkM</p>
-          <p className="text-3xl font-bold text-amber-400">
+        <div className="glass-card p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-slate-500">Kegiatan PkM</p>
+            <UserCog size={18} className="text-amber-400/70" />
+          </div>
+          <p className="text-2xl font-bold text-amber-400">
             {mockInvolvements.filter(i => mockActivities.find(a => a.id === i.kegiatan_id)?.jenis === 'PKM').length}
           </p>
         </div>

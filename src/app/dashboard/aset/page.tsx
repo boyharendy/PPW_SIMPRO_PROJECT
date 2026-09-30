@@ -6,7 +6,7 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
 import { mockAssets } from '@/lib/mock-data';
-import { Plus, Download, Monitor, QrCode } from 'lucide-react';
+import { Plus, Download, Monitor, QrCode, CheckCircle, Wrench, AlertTriangle } from 'lucide-react';
 import type { Asset } from '@/lib/types';
 import { formatDateShort } from '@/lib/utils';
 
@@ -39,24 +39,33 @@ export default function AsetPage() {
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="glass-card p-4 flex flex-col justify-between">
-          <p className="text-xs text-slate-500 mb-1">Total Aset</p>
-          <div className="flex items-end justify-between">
-            <p className="text-3xl font-bold text-slate-800">{stats.total}</p>
-            <Monitor size={24} className="text-slate-600 mb-1" />
+        <div className="glass-card p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-slate-500">Total Aset</p>
+            <Monitor size={18} className="text-slate-400" />
           </div>
+          <p className="text-2xl font-bold text-slate-800">{stats.total}</p>
         </div>
         <div className="glass-card p-4 border-emerald-500/20 bg-emerald-500/5">
-          <p className="text-xs text-emerald-400/70 mb-1">Kondisi Baik</p>
-          <p className="text-3xl font-bold text-emerald-400">{stats.baik}</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-emerald-600/80">Kondisi Baik</p>
+            <CheckCircle size={18} className="text-emerald-500/70" />
+          </div>
+          <p className="text-2xl font-bold text-emerald-500">{stats.baik}</p>
         </div>
         <div className="glass-card p-4 border-amber-500/20 bg-amber-500/5">
-          <p className="text-xs text-amber-400/70 mb-1">Dalam Perbaikan</p>
-          <p className="text-3xl font-bold text-amber-400">{stats.perbaikan}</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-amber-600/80">Dalam Perbaikan</p>
+            <Wrench size={18} className="text-amber-500/70" />
+          </div>
+          <p className="text-2xl font-bold text-amber-500">{stats.perbaikan}</p>
         </div>
         <div className="glass-card p-4 border-red-500/20 bg-red-500/5">
-          <p className="text-xs text-red-400/70 mb-1">Kondisi Rusak</p>
-          <p className="text-3xl font-bold text-red-400">{stats.rusak}</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-red-600/80">Kondisi Rusak</p>
+            <AlertTriangle size={18} className="text-red-500/70" />
+          </div>
+          <p className="text-2xl font-bold text-red-500">{stats.rusak}</p>
         </div>
       </div>
 

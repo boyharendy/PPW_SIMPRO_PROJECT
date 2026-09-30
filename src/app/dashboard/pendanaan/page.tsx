@@ -5,14 +5,17 @@ import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
+import { useApp } from '@/lib/context';
 import { mockFunding, mockStudents } from '@/lib/mock-data';
 import { formatRupiah } from '@/lib/utils';
 import { Plus, Download, Wallet, Check, X, FileText } from 'lucide-react';
 import type { FundingRequest } from '@/lib/types';
 
 export default function PendanaanPage() {
+  const { user } = useApp();
   const [showForm, setShowForm] = useState(false);
   const [showApproval, setShowApproval] = useState<string | null>(null);
+  const [showCair, setShowCair] = useState<string | null>(null);
 
   const totalDiajukan = mockFunding.reduce((a, b) => a + (b.status === 'DIAJUKAN' ? b.estimasi_biaya : 0), 0);
   const totalDisetujui = mockFunding.reduce((a, b) => a + (b.jumlah_disetujui || 0), 0);
@@ -25,39 +28,41 @@ export default function PendanaanPage() {
         action={
           <div className="flex gap-2">
             <button className="btn-secondary"><Download size={16} /> Ekspor Laporan</button>
-            <button className="btn-primary" onClick={() => setShowForm(true)}><Plus size={16} /> Ajukan Dana</button>
+            {user.roles.includes('MAHASISWA') && (
+              <button className="btn-primary" onClick={() => setShowForm(true)}><Plus size={16} /> Ajukan Dana</button>
+            )}
           </div>
         }
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="glass-card p-4">
-          <div className="flex justify-between items-start mb-2">
-            <p className="text-xs text-slate-500">Total Pengajuan</p>
-            <Wallet size={16} className="text-slate-500" />
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-slate-500">Total Pengajuan</p>
+            <Wallet size={18} className="text-slate-400" />
           </div>
           <p className="text-2xl font-bold text-slate-800">{mockFunding.length}</p>
         </div>
         <div className="glass-card p-4">
-          <div className="flex justify-between items-start mb-2">
-            <p className="text-xs text-slate-500">Total Biaya Disetujui</p>
-            <Wallet size={16} className="text-emerald-400" />
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-slate-500">Total Disetujui</p>
+            <Wallet size={18} className="text-emerald-500/70" />
           </div>
-          <p className="text-2xl font-bold text-emerald-400">{formatRupiah(totalDisetujui)}</p>
+          <p className="text-2xl font-bold text-emerald-500">{formatRupiah(totalDisetujui)}</p>
         </div>
         <div className="glass-card p-4">
-          <div className="flex justify-between items-start mb-2">
-            <p className="text-xs text-slate-500">Menunggu Persetujuan</p>
-            <Wallet size={16} className="text-amber-400" />
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-slate-500">Menunggu Persetujuan</p>
+            <Wallet size={18} className="text-amber-500/70" />
           </div>
-          <p className="text-2xl font-bold text-amber-400">{formatRupiah(totalDiajukan)}</p>
+          <p className="text-2xl font-bold text-amber-500">{formatRupiah(totalDiajukan)}</p>
         </div>
         <div className="glass-card p-4">
-          <div className="flex justify-between items-start mb-2">
-            <p className="text-xs text-slate-500">Sisa Anggaran (Estimasi)</p>
-            <Wallet size={16} className="text-indigo-400" />
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-slate-500">Sisa Anggaran</p>
+            <Wallet size={18} className="text-indigo-500/70" />
           </div>
-          <p className="text-2xl font-bold text-indigo-400">{formatRupiah(50000000 - totalDisetujui)}</p>
+          <p className="text-2xl font-bold text-indigo-500">{formatRupiah(50000000 - totalDisetujui)}</p>
         </div>
       </div>
 
@@ -107,9 +112,14 @@ export default function PendanaanPage() {
           }},
           { key: 'aksi', header: '', render: (r) => {
             const f = r as unknown as FundingRequest;
-            if (f.status === 'DIAJUKAN') {
+            if (f.status === 'DIAJUKAN' && user.roles.includes('KAPRODI')) {
               return (
                 <button onClick={() => setShowApproval(f.id)} className="btn-secondary text-xs py-1.5 px-3">Verifikasi</button>
+              );
+            }
+            if (f.status === 'DISETUJUI' && user.roles.includes('KAPRODI')) {
+              return (
+                <button onClick={() => setShowCair(f.id)} className="btn-primary text-xs py-1.5 px-3 bg-emerald-500 hover:bg-emerald-600 text-white">Tandai Cair</button>
               );
             }
             return null;
@@ -117,6 +127,23 @@ export default function PendanaanPage() {
         ]}
         data={mockFunding as unknown as Record<string, unknown>[]}
       />
+
+      <Modal open={!!showCair} onClose={() => setShowCair(null)} title="Tandai Dana Cair">
+        <div className="space-y-4">
+          <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+            <p className="text-emerald-500 text-sm font-medium">Pencairan Dana (FR-13)</p>
+            <p className="text-xs text-slate-600 mt-1">Pastikan bendahara prodi telah mentransfer dana ke rekening mahasiswa di luar sistem sebelum menandai status menjadi CAIR.</p>
+          </div>
+          <div>
+            <label className="label">Tanggal Pencairan</label>
+            <input className="input-field" type="date" required />
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
+            <button className="btn-secondary py-2" onClick={() => setShowCair(null)}>Batal</button>
+            <button className="btn-primary bg-emerald-500 hover:bg-emerald-600 text-white py-2" onClick={() => setShowCair(null)}><Check size={16} className="mr-1" /> Konfirmasi Pencairan</button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal open={showForm} onClose={() => setShowForm(false)} title="Ajukan Pendanaan Lomba">
         <form className="space-y-4" onSubmit={e => { e.preventDefault(); setShowForm(false); }}>

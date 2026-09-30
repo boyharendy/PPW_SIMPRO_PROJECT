@@ -4,14 +4,18 @@ import { useState } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 import DataTable from '@/components/ui/DataTable';
+import Modal from '@/components/ui/Modal';
+import { useApp } from '@/lib/context';
 import { mockOfferings, mockArtifacts, mockPeriods } from '@/lib/mock-data';
-import { Download, Upload, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Download, Upload, CheckCircle, AlertTriangle, Book, CheckCircle2, AlertCircle, XCircle, Clock } from 'lucide-react';
 import type { CourseOffering } from '@/lib/types';
 
 const ARTIFACT_TYPES = ['RPS', 'BAHAN_AJAR', 'PRESENSI', 'SOAL_UJIAN'] as const;
 
 export default function ArtefakPage() {
+  const { user } = useApp();
   const [selectedPeriod, setSelectedPeriod] = useState('p3');
+  const [manageId, setManageId] = useState<string | null>(null);
 
   const offerings = mockOfferings.filter(o => o.periode_id === selectedPeriod);
 
@@ -33,6 +37,28 @@ export default function ArtefakPage() {
         }
       />
 
+      {/* Summary */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {[
+          { label: 'Total MK', value: summary.total, color: 'text-slate-800', icon: Book },
+          { label: 'Lengkap', value: summary.lengkap, color: 'text-emerald-500', icon: CheckCircle2 },
+          { label: 'Perlu Revisi', value: summary.perluRevisi, color: 'text-amber-500', icon: AlertCircle },
+          { label: 'Tidak Lengkap', value: summary.tidakLengkap, color: 'text-red-500', icon: XCircle },
+          { label: 'Belum Diperiksa', value: summary.belum, color: 'text-slate-500', icon: Clock },
+        ].map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <div key={i} className="glass-card p-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium text-slate-500">{s.label}</p>
+                <Icon size={18} className={`${s.color} opacity-80`} />
+              </div>
+              <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+            </div>
+          );
+        })}
+      </div>
+
       {/* Period filter */}
       <div className="flex items-center gap-3">
         <label className="text-sm text-slate-500">Periode:</label>
@@ -42,24 +68,8 @@ export default function ArtefakPage() {
           ))}
         </select>
         <div className="ml-auto text-xs text-slate-500">
-          Tenggat: <span className="text-amber-400">{mockPeriods.find(p => p.id === selectedPeriod)?.tenggat_unggah_artefak}</span>
+          Tenggat: <span className="text-amber-400 font-medium">{mockPeriods.find(p => p.id === selectedPeriod)?.tenggat_unggah_artefak}</span>
         </div>
-      </div>
-
-      {/* Summary */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        {[
-          { label: 'Total MK', value: summary.total, color: 'text-slate-800' },
-          { label: 'Lengkap', value: summary.lengkap, color: 'text-emerald-400' },
-          { label: 'Perlu Revisi', value: summary.perluRevisi, color: 'text-orange-400' },
-          { label: 'Tidak Lengkap', value: summary.tidakLengkap, color: 'text-red-400' },
-          { label: 'Belum Diperiksa', value: summary.belum, color: 'text-slate-500' },
-        ].map((s, i) => (
-          <div key={i} className="glass-card p-3 text-center">
-            <p className="text-xs text-slate-500">{s.label}</p>
-            <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
-          </div>
-        ))}
       </div>
 
       {/* Table */}
@@ -130,6 +140,24 @@ export default function ArtefakPage() {
               return <span className="text-xs text-slate-500">{o.catatan_gkm || '-'}</span>;
             },
           },
+          {
+            key: 'aksi',
+            header: '',
+            render: (r) => {
+              const o = r as unknown as CourseOffering;
+              if (user.roles.includes('DOSEN') || user.roles.includes('GKM')) {
+                return (
+                  <button 
+                    onClick={() => setManageId(o.id)} 
+                    className="btn-secondary text-xs py-1.5 px-3"
+                  >
+                    Kelola
+                  </button>
+                );
+              }
+              return null;
+            },
+          }
         ]}
         data={offerings as unknown as Record<string, unknown>[]}
       />
@@ -141,6 +169,48 @@ export default function ArtefakPage() {
         <div className="flex items-center gap-1.5"><AlertTriangle size={14} className="text-slate-600" /> Belum diunggah</div>
         <div className="ml-auto">Jenis artefak: RPS, Bahan Ajar, Presensi, Soal Ujian</div>
       </div>
+
+      <Modal open={!!manageId} onClose={() => setManageId(null)} title="Kelola Artefak Perkuliahan">
+        <div className="space-y-4">
+          {user.roles.includes('DOSEN') && (
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl mb-4">
+              <p className="text-sm font-medium text-slate-800">Dosen: Unggah Artefak (FR-03)</p>
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                {ARTIFACT_TYPES.map(t => (
+                  <div key={t}>
+                    <label className="text-xs text-slate-500 mb-1 block">{t.replace('_', ' ')}</label>
+                    <input type="file" className="input-field text-xs" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {user.roles.includes('GKM') && (
+            <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
+              <p className="text-sm font-medium text-slate-800">GKM: Verifikasi (FR-04)</p>
+              <div className="mt-3 space-y-3">
+                <div>
+                  <label className="text-xs text-slate-500 block mb-1">Status Pemeriksaan</label>
+                  <select className="select-field">
+                    <option value="BELUM_DIPERIKSA">Belum Diperiksa</option>
+                    <option value="LENGKAP">Lengkap</option>
+                    <option value="TIDAK_LENGKAP">Tidak Lengkap</option>
+                    <option value="PERLU_REVISI">Perlu Revisi</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 block mb-1">Catatan</label>
+                  <textarea className="textarea-field" placeholder="Catatan revisi..."></textarea>
+                </div>
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
+            <button className="btn-secondary" onClick={() => setManageId(null)}>Tutup</button>
+            <button className="btn-primary" onClick={() => setManageId(null)}>Simpan</button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

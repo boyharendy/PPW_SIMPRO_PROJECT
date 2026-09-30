@@ -5,6 +5,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
+import { useApp } from '@/lib/context';
 import { mockTracerResponses, mockStudents } from '@/lib/mock-data';
 import { Mail, Download, Clock, Briefcase, Link as LinkIcon, Send } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -24,6 +25,7 @@ const WAKTU_TUNGGU_DATA = [
 ];
 
 export default function TracerStudyPage() {
+  const { user } = useApp();
   const [showBroadcast, setShowBroadcast] = useState(false);
 
   return (
@@ -32,16 +34,18 @@ export default function TracerStudyPage() {
         title="Tracer Study Lulusan"
         description="FR-18, FR-19, FR-20, FR-21: Pengiriman token, kuesioner lulusan/pengguna, dan analitik waktu tunggu"
         action={
-          <div className="flex gap-2">
-            <button className="btn-secondary"><Download size={16} /> Ekspor IKU 1</button>
-            <button className="btn-primary" onClick={() => setShowBroadcast(true)}><Send size={16} /> Broadcast Kuesioner</button>
-          </div>
+          user.roles.includes('KAPRODI') ? (
+            <div className="flex gap-2">
+              <button className="btn-secondary"><Download size={16} /> Ekspor IKU 1</button>
+              <button className="btn-primary" onClick={() => setShowBroadcast(true)}><Send size={16} /> Broadcast Kuesioner</button>
+            </div>
+          ) : undefined
         }
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="glass-card p-5">
-          <h3 className="text-slate-800 font-semibold mb-1">Kesesuaian Bidang Kerja</h3>
+          <h3 className="text-lg font-semibold text-slate-800 mb-2">Kesesuaian Bidang Kerja</h3>
           <p className="text-xs text-slate-500 mb-6">Target IKU 1: Lulusan mendapat pekerjaan layak</p>
           <ResponsiveContainer width="100%" height={250}>
             <PieChart>
@@ -60,7 +64,7 @@ export default function TracerStudyPage() {
         <div className="glass-card p-5">
           <div className="flex justify-between items-start mb-6">
             <div>
-              <h3 className="text-slate-800 font-semibold mb-1">Waktu Tunggu Lulusan</h3>
+              <h3 className="text-lg font-semibold text-slate-800 mb-2">Waktu Tunggu Lulusan</h3>
               <p className="text-xs text-slate-500">Rata-rata lulusan mendapat pekerjaan pertama</p>
             </div>
             <div className="text-right">
@@ -82,7 +86,7 @@ export default function TracerStudyPage() {
         </div>
       </div>
 
-      <h3 className="text-slate-800 font-semibold pt-4">Status Pengisian Lulusan & Pengguna</h3>
+      <h3 className="text-lg font-semibold text-slate-800 pt-4">Status Pengisian Lulusan & Pengguna</h3>
       <DataTable
         columns={[
           { key: 'mahasiswa', header: 'Lulusan', render: (r) => {

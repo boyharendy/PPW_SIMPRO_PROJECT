@@ -48,10 +48,10 @@ export default function Sidebar() {
         `}
       >
         {/* Blue Header Section */}
-        <div className="flex flex-col items-center justify-center pt-6 pb-6 px-4 relative flex-shrink-0">
+        <div className="flex flex-col items-center justify-center pt-2 pb-6 px-4 relative flex-shrink-0">
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden absolute top-4 right-4 flex items-center justify-center w-8 h-8 rounded-full hover:bg-white/10 text-white transition-colors"
+            className="lg:hidden absolute top-3 right-3 flex items-center justify-center w-8 h-8 rounded-full hover:bg-white/10 text-white transition-colors"
           >
             <X size={18} />
           </button>
@@ -64,17 +64,19 @@ export default function Sidebar() {
 
           {sidebarOpen ? (
             <div className="flex flex-col items-center w-full relative">
-              <div className="w-32 h-32 -mb-2 relative z-10">
+              <div className="w-32 h-32 -mb-6 relative z-10">
                 <Image src={LogoImage} alt="SIMPRO Logo" className="w-full h-full object-contain drop-shadow-xl" />
               </div>
-              <h2 className="font-bold text-white text-2xl tracking-tight leading-tight relative z-20 drop-shadow-md">SIMPRO</h2>
-              <p className="text-[11px] text-blue-100 text-center mt-1 font-medium px-2 leading-snug relative z-20">
-                Sistem Informasi<br/>Manajemen Program Studi
+              <h2 className="font-bold text-white text-2xl tracking-tight leading-tight relative z-20">SIMPRO</h2>
+              <p className="text-[11px] text-blue-50 text-center mt-0.5 font-medium px-2 leading-snug relative z-20">
+                Sistem Informasi Manajemen<br/>Program Studi
               </p>
             </div>
           ) : (
-            <div className="w-14 h-14 relative z-10 mt-1">
-              <Image src={LogoImage} alt="SIMPRO Logo" className="w-full h-full object-contain drop-shadow-md" />
+            <div className="flex flex-col items-center justify-center w-full mt-2 relative z-10">
+              <div className="w-14 h-14 relative">
+                <Image src={LogoImage} alt="SIMPRO Logo" className="w-full h-full object-contain drop-shadow-md" />
+              </div>
             </div>
           )}
         </div>

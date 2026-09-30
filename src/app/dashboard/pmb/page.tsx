@@ -5,7 +5,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
 import { mockAdmissions, mockPeriods, mockTrenPMB } from '@/lib/mock-data';
-import { Plus, Download } from 'lucide-react';
+import { Plus, Download, Users, UserCheck, TrendingUp, RefreshCw } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 export default function PMBPage() {
@@ -42,19 +42,31 @@ export default function PMBPage() {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="glass-card p-4">
-          <p className="text-xs text-slate-500 mb-1">Total Pendaftar</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-slate-500">Total Pendaftar</p>
+            <Users size={18} className="text-slate-400" />
+          </div>
           <p className="text-2xl font-bold text-slate-800">{totalPendaftar.toLocaleString()}</p>
         </div>
         <div className="glass-card p-4">
-          <p className="text-xs text-slate-500 mb-1">Lulus Seleksi</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-slate-500">Lulus Seleksi</p>
+            <UserCheck size={18} className="text-slate-400" />
+          </div>
           <p className="text-2xl font-bold text-slate-800">{totalLulus.toLocaleString()}</p>
         </div>
         <div className="glass-card p-4">
-          <p className="text-xs text-slate-500 mb-1">Rasio Keketatan</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-slate-500">Rasio Keketatan</p>
+            <TrendingUp size={18} className="text-indigo-400/70" />
+          </div>
           <p className="text-2xl font-bold text-indigo-400">1:{rasio}</p>
         </div>
         <div className="glass-card p-4">
-          <p className="text-xs text-slate-500 mb-1">% Daftar Ulang</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-slate-500">% Daftar Ulang</p>
+            <RefreshCw size={18} className="text-emerald-400/70" />
+          </div>
           <p className="text-2xl font-bold text-emerald-400">{persenDU}%</p>
         </div>
       </div>
@@ -76,7 +88,7 @@ export default function PMBPage() {
 
       {/* Chart */}
       <div className="glass-card p-5">
-        <h3 className="text-slate-800 font-semibold mb-4">Grafik Tren PMB Antar Tahun</h3>
+        <h3 className="text-lg font-semibold text-slate-800 mb-4">Grafik Tren PMB Antar Tahun</h3>
         <ResponsiveContainer width="100%" height={320}>
           <BarChart data={mockTrenPMB} barGap={6} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
@@ -89,7 +101,7 @@ export default function PMBPage() {
               itemStyle={{ fontSize: 13, color: '#475569' }}
             />
             <Legend wrapperStyle={{ paddingTop: '20px' }} iconType="circle" />
-            <Bar dataKey="pendaftar" name="Pendaftar" fill="#6366f1" radius={[6, 6, 0, 0]} maxBarSize={45} />
+            <Bar dataKey="pendaftar" name="Pendaftar" fill="#2563eb" radius={[6, 6, 0, 0]} maxBarSize={45} />
             <Bar dataKey="lulus" name="Lulus Seleksi" fill="#0ea5e9" radius={[6, 6, 0, 0]} maxBarSize={45} />
             <Bar dataKey="daftar_ulang" name="Daftar Ulang" fill="#10b981" radius={[6, 6, 0, 0]} maxBarSize={45} />
           </BarChart>

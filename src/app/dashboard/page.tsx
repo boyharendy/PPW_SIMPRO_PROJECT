@@ -199,7 +199,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* PMB Trend */}
         <div className="card">
-          <h3 className="text-slate-800 font-semibold mb-1">Tren PMB Antar Tahun</h3>
+          <h3 className="text-lg font-semibold text-slate-800 mb-2">Tren PMB Antar Tahun</h3>
           <p className="text-xs text-slate-500 mb-4">FR-02: Rasio keketatan dan persentase daftar ulang</p>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={mockTrenPMB} barGap={4}>
@@ -212,7 +212,7 @@ export default function DashboardPage() {
                 labelStyle={{ color: '#1E293B', fontWeight: 'bold', marginBottom: '4px' }}
               />
               <Legend />
-              <Bar dataKey="pendaftar" name="Pendaftar" fill="#6366f1" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="pendaftar" name="Pendaftar" fill="#2563eb" radius={[4, 4, 0, 0]} />
               <Bar dataKey="lulus" name="Lulus Seleksi" fill="#22d3ee" radius={[4, 4, 0, 0]} />
               <Bar dataKey="daftar_ulang" name="Daftar Ulang" fill="#10b981" radius={[4, 4, 0, 0]} />
             </BarChart>
@@ -221,7 +221,7 @@ export default function DashboardPage() {
 
         {/* Kepuasan */}
         <div className="card">
-          <h3 className="text-slate-800 font-semibold mb-1">Indeks Kepuasan per Layanan</h3>
+          <h3 className="text-lg font-semibold text-slate-800 mb-2">Indeks Kepuasan per Layanan</h3>
           <p className="text-xs text-slate-500 mb-4">FR-15: Indeks kepuasan dan tren antar periode</p>
           <div className="space-y-4">
             {mockKepuasanPerLayanan.map((item, i) => {
@@ -261,7 +261,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Integrasi & Pemanfaatan Mitra */}
         <div className="card">
-          <h3 className="text-slate-800 font-semibold mb-4">Indikator Prodi Lainnya</h3>
+          <h3 className="text-lg font-semibold text-slate-800 mb-4">Indikator Prodi Lainnya</h3>
           <div className="space-y-5">
             <div>
               <div className="flex justify-between mb-1.5">
@@ -295,7 +295,7 @@ export default function DashboardPage() {
 
         {/* Recent Notifications */}
         <div className="lg:col-span-2 card">
-          <h3 className="text-slate-800 font-semibold mb-4">Aktivitas Terbaru</h3>
+          <h3 className="text-lg font-semibold text-slate-800 mb-4">Aktivitas Terbaru</h3>
           <div className="space-y-3">
             {mockNotifications.slice(0, 5).map(n => (
               <div

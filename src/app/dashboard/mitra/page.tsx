@@ -6,7 +6,7 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
 import { mockPartners } from '@/lib/mock-data';
-import { Plus, Download, Globe, MapPin, Search } from 'lucide-react';
+import { Plus, Download, Globe, MapPin, Search, Building2, Building } from 'lucide-react';
 import type { PartnerInstitution } from '@/lib/types';
 import { formatDateShort } from '@/lib/utils';
 
@@ -40,16 +40,25 @@ export default function MitraPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="glass-card p-4">
-          <p className="text-xs text-slate-500 mb-1">Mitra Aktif</p>
-          <p className="text-3xl font-bold text-slate-800">{stats.aktif}</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-slate-500">Mitra Aktif</p>
+            <Building2 size={18} className="text-slate-400" />
+          </div>
+          <p className="text-2xl font-bold text-slate-800">{stats.aktif}</p>
         </div>
         <div className="glass-card p-4">
-          <p className="text-xs text-slate-500 mb-1">Mitra Dalam Negeri</p>
-          <p className="text-3xl font-bold text-indigo-400">{stats.dalamNegeri}</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-slate-500">Mitra Dalam Negeri</p>
+            <Building size={18} className="text-indigo-400/70" />
+          </div>
+          <p className="text-2xl font-bold text-indigo-400">{stats.dalamNegeri}</p>
         </div>
         <div className="glass-card p-4">
-          <p className="text-xs text-slate-500 mb-1">Mitra Luar Negeri</p>
-          <p className="text-3xl font-bold text-emerald-400">{stats.luarNegeri}</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-slate-500">Mitra Luar Negeri</p>
+            <Globe size={18} className="text-emerald-400/70" />
+          </div>
+          <p className="text-2xl font-bold text-emerald-400">{stats.luarNegeri}</p>
         </div>
       </div>
 

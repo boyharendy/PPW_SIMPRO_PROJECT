@@ -35,13 +35,13 @@ export default function DataTable<T extends Record<string, unknown>>({
             {columns.map(col => (
               <th
                 key={col.key}
-                className={`px-4 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider ${col.className || ''}`}
+                className={`px-3 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider ${col.className || ''}`}
               >
                 {col.header}
               </th>
             ))}
             {hasActions && (
-              <th className="px-4 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider w-24">
+              <th className="px-3 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider w-24">
                 Aksi
               </th>
             )}
@@ -50,7 +50,7 @@ export default function DataTable<T extends Record<string, unknown>>({
         <tbody className="divide-y divide-slate-100">
           {data.length === 0 ? (
             <tr>
-              <td colSpan={columns.length + (hasActions ? 1 : 0)} className="px-4 py-16 text-center text-slate-500">
+              <td colSpan={columns.length + (hasActions ? 1 : 0)} className="px-3 py-16 text-center text-slate-500">
                 <div className="flex flex-col items-center justify-center">
                   <span className="text-4xl mb-3 opacity-20">📭</span>
                   <p>{emptyMessage}</p>
@@ -67,14 +67,14 @@ export default function DataTable<T extends Record<string, unknown>>({
                 }`}
               >
                 {columns.map(col => (
-                  <td key={col.key} className={`px-4 py-4 text-slate-700 ${col.className || ''}`}>
+                  <td key={col.key} className={`px-3 py-3 text-slate-700 ${col.className || ''}`}>
                     {col.render
                       ? col.render(row)
                       : (row[col.key] as ReactNode) ?? '-'}
                   </td>
                 ))}
                 {hasActions && (
-                  <td className="px-4 py-4 text-right">
+                  <td className="px-3 py-3 text-right">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       {onEdit && (
                         <button 

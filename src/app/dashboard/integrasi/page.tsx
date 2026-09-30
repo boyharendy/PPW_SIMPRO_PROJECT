@@ -28,7 +28,7 @@ export default function IntegrasiPage() {
         <div className="flex gap-3">
           <BookOpen size={24} className="text-blue-500 shrink-0" />
           <div>
-            <h3 className="text-slate-800 font-medium mb-1">Bukti Kinerja Tridarma Dosen</h3>
+            <h3 className="text-lg font-semibold text-slate-800 mb-2">Bukti Kinerja Tridarma Dosen</h3>
             <p className="text-sm text-slate-500">Modul ini melacak luaran penelitian dan pengabdian masyarakat (PkM) yang diintegrasikan kembali ke dalam pembelajaran (RPS / Bahan Ajar / Studi Kasus) sesuai standar akreditasi.</p>
           </div>
         </div>

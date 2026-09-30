@@ -4,6 +4,7 @@ import { useState } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
+import { useApp } from '@/lib/context';
 import { mockActivities, mockLecturers, mockPositions } from '@/lib/mock-data';
 import { Download, Plus, Briefcase, BookOpen, Award } from 'lucide-react';
 import type { LecturerActivity } from '@/lib/types';
@@ -17,6 +18,7 @@ const TABS = [
 ];
 
 export default function KinerjaDosen() {
+  const { user } = useApp();
   const [tab, setTab] = useState('all');
   const [showForm, setShowForm] = useState(false);
 
@@ -32,7 +34,12 @@ export default function KinerjaDosen() {
         action={
           <div className="flex gap-2">
             <button className="btn-secondary"><Download size={16} /> Ekspor Laporan</button>
-            <button className="btn-primary" onClick={() => setShowForm(true)}><Plus size={16} /> Tambah Kegiatan</button>
+            {(
+              (tab === 'jabatan' && user.roles.includes('KAPRODI')) || 
+              (tab !== 'jabatan' && user.roles.includes('DOSEN'))
+            ) && (
+              <button className="btn-primary" onClick={() => setShowForm(true)}><Plus size={16} /> {tab === 'jabatan' ? 'Tambah Jabatan' : 'Tambah Kegiatan'}</button>
+            )}
           </div>
         }
       />
@@ -48,7 +55,7 @@ export default function KinerjaDosen() {
 
       {tab === 'jabatan' ? (
         <>
-          <h3 className="text-slate-800 font-semibold">Riwayat Jabatan Struktural & Fungsional (FR-07)</h3>
+          <h3 className="text-lg font-semibold text-slate-800 mb-4">Riwayat Jabatan Struktural & Fungsional (FR-07)</h3>
           <DataTable
             columns={[
               { key: 'dosen', header: 'Dosen', render: (r) => {
@@ -86,7 +93,7 @@ export default function KinerjaDosen() {
 
       {/* Summary per dosen */}
       <div className="glass-card p-5">
-        <h3 className="text-slate-800 font-semibold mb-4">Rekap per Dosen (FR-08)</h3>
+        <h3 className="text-lg font-semibold text-slate-800 mb-4">Rekap per Dosen (FR-08)</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {mockLecturers.map(l => {
             const acts = mockActivities.filter(a => a.dosen_id === l.id);
@@ -109,34 +116,69 @@ export default function KinerjaDosen() {
       </div>
 
       {/* Form Modal */}
-      <Modal open={showForm} onClose={() => setShowForm(false)} title="Tambah Kegiatan Dosen">
+      <Modal open={showForm} onClose={() => setShowForm(false)} title={tab === 'jabatan' ? 'Tambah Riwayat Jabatan' : 'Tambah Kegiatan Dosen'}>
         <form className="space-y-4" onSubmit={e => { e.preventDefault(); setShowForm(false); }}>
-          <div>
-            <label className="label">Jenis Kegiatan</label>
-            <select className="select-field">
-              <option value="PENELITIAN">Penelitian</option>
-              <option value="PKM">PkM</option>
-              <option value="KEGIATAN_TAMBAHAN">Kegiatan Tambahan</option>
-            </select>
-          </div>
-          <div>
-            <label className="label">Judul</label>
-            <input className="input-field" placeholder="Judul kegiatan" />
-          </div>
-          <div>
-            <label className="label">Uraian</label>
-            <textarea className="textarea-field" placeholder="Peran, sumber dana, atau hasil"></textarea>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Tanggal</label>
-              <input className="input-field" type="date" />
-            </div>
-            <div>
-              <label className="label">Bukti (opsional)</label>
-              <input className="input-field" type="file" />
-            </div>
-          </div>
+          {tab === 'jabatan' ? (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Jenis Jabatan</label>
+                  <select className="select-field">
+                    <option value="STRUKTURAL">Struktural</option>
+                    <option value="FUNGSIONAL">Fungsional</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Nama Jabatan</label>
+                  <input className="input-field" placeholder="mis. Lektor Kepala" required />
+                </div>
+              </div>
+              <div>
+                <label className="label">Nomor SK</label>
+                <input className="input-field" placeholder="Nomor Surat Keputusan" required />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">TMT Mulai</label>
+                  <input className="input-field" type="date" required />
+                </div>
+                <div>
+                  <label className="label">TMT Selesai</label>
+                  <input className="input-field" type="date" />
+                  <p className="text-[10px] text-slate-500 mt-1">Kosongkan jika masih menjabat</p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <label className="label">Jenis Kegiatan</label>
+                <select className="select-field">
+                  <option value="PENELITIAN">Penelitian</option>
+                  <option value="PKM">PkM</option>
+                  <option value="KEGIATAN_TAMBAHAN">Kegiatan Tambahan</option>
+                </select>
+              </div>
+              <div>
+                <label className="label">Judul</label>
+                <input className="input-field" placeholder="Judul kegiatan" required />
+              </div>
+              <div>
+                <label className="label">Uraian</label>
+                <textarea className="textarea-field" placeholder="Peran, sumber dana, atau hasil"></textarea>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Tanggal</label>
+                  <input className="input-field" type="date" required />
+                </div>
+                <div>
+                  <label className="label">Bukti (opsional)</label>
+                  <input className="input-field" type="file" />
+                </div>
+              </div>
+            </>
+          )}
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
             <button type="button" className="btn-secondary" onClick={() => setShowForm(false)}>Batal</button>
             <button type="submit" className="btn-primary">Simpan</button>
