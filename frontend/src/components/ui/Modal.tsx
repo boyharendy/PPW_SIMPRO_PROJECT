@@ -2,15 +2,17 @@ import { ReactNode } from 'react';
 import { X } from 'lucide-react';
 
 interface ModalProps {
-  open: boolean;
+  open?: boolean;
+  isOpen?: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
   size?: 'sm' | 'md' | 'lg';
 }
 
-export default function Modal({ open, onClose, title, children, size = 'md' }: ModalProps) {
-  if (!open) return null;
+export default function Modal({ open, isOpen, onClose, title, children, size = 'md' }: ModalProps) {
+  const isModalOpen = open ?? isOpen ?? false;
+  if (!isModalOpen) return null;
 
   const sizeClass = {
     sm: 'max-w-md',

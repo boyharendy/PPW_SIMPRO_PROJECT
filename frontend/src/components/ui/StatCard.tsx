@@ -1,9 +1,21 @@
 import React, { ReactNode } from 'react';
+import {
+  Users, CheckCircle2, Clock, AlertTriangle, BookOpen, Award,
+  ShieldAlert, Compass, Trophy, FileText, Calendar, Wallet,
+  PieChart, FileBadge, FileCheck, SmilePlus, Building
+} from 'lucide-react';
+
+const stringIconMap: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+  Users, CheckCircle2, Clock, AlertTriangle, BookOpen, Award,
+  ShieldAlert, Compass, Trophy, FileText, Calendar, Wallet,
+  PieChart, FileBadge, FileCheck, SmilePlus, Building
+};
 
 interface StatCardProps {
   title: string;
   value: string | number;
   subtitle?: string;
+  description?: string;
   icon?: ReactNode;
   trend?: { value: number; label: string };
   gradient?: string;
@@ -14,11 +26,14 @@ export function StatCard({
   title,
   value,
   subtitle,
+  description,
   icon,
   trend,
   gradient = 'bg-slate-100 text-slate-700',
   color,
 }: StatCardProps) {
+  const descText = subtitle || description;
+
   // Normalize icon container colors to clean solid palette (No neon/gradient)
   let iconColor = 'bg-slate-100 text-slate-700 border-slate-200';
   if (color === 'blue' || gradient.includes('blue') || gradient.includes('indigo')) {
@@ -39,7 +54,9 @@ export function StatCard({
         <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{title}</p>
         {icon && (
           <div className={`w-9 h-9 rounded-lg border ${iconColor} flex items-center justify-center shrink-0`}>
-            {icon}
+            {typeof icon === 'string' && stringIconMap[icon]
+              ? React.createElement(stringIconMap[icon], { size: 18 })
+              : icon}
           </div>
         )}
       </div>
@@ -58,9 +75,9 @@ export function StatCard({
           )}
         </div>
 
-        {subtitle && (
+        {descText && (
           <p className="text-xs text-slate-500 mt-1 font-normal">
-            {subtitle}
+            {descText}
           </p>
         )}
         {trend && (

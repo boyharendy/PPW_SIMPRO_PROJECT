@@ -13,6 +13,7 @@ export interface DataTableProps<T = any> {
   data: any[];
   emptyMessage?: string;
   searchKey?: string;
+  searchPlaceholder?: string;
   className?: string;
   onRowClick?: (row: any) => void;
   onEdit?: (row: any) => void;
