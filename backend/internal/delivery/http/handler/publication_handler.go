@@ -105,6 +105,21 @@ func (h *PublicationHandler) SubmitPublication(c *gin.Context) {
 	response.Success(c, http.StatusOK, "Publikasi berhasil diajukan untuk verifikasi", nil)
 }
 
+func (h *PublicationHandler) AddStageLog(c *gin.Context) {
+	id := c.Param("id")
+	userID := c.GetString(middleware.CtxUserID)
+	var req model.PublicationStageLog
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Format log tahapan publikasi tidak valid", err.Error())
+		return
+	}
+	if err := h.usecase.AddStageLog(id, userID, &req); err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusCreated, "Log tahapan publikasi berhasil dicatat", nil)
+}
+
 func (h *PublicationHandler) VerifyPublication(c *gin.Context) {
 	id := c.Param("id")
 	userID := c.GetString(middleware.CtxUserID)

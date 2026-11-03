@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"simpro-backend/internal/delivery/http/middleware"
 	"simpro-backend/internal/model"
 	"simpro-backend/internal/usecase"
 	"simpro-backend/pkg/response"
@@ -86,6 +87,30 @@ func (h *SurveyHandler) CreateInvitation(c *gin.Context) {
 		return
 	}
 	response.Success(c, http.StatusCreated, "Undangan survei berhasil dibuat", inv)
+}
+
+func (h *SurveyHandler) GetInvitations(c *gin.Context) {
+	surveyID := c.Query("survey_id")
+	invs, err := h.usecase.GetInvitations(surveyID)
+	if err != nil {
+		response.InternalServerError(c, "Gagal mengambil daftar undangan: "+err.Error())
+		return
+	}
+	response.Success(c, http.StatusOK, "Daftar undangan survei mitra berhasil diambil", invs)
+}
+
+func (h *SurveyHandler) SubmitManualResponse(c *gin.Context) {
+	userID := c.GetString(middleware.CtxUserID)
+	var req model.ManualResponseSubmission
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Format input manual survei tidak valid", err.Error())
+		return
+	}
+	if err := h.usecase.SubmitManualResponse(userID, &req); err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusCreated, "Penilaian kepuasan mitra (input manual koordinator) berhasil disimpan", nil)
 }
 
 func (h *SurveyHandler) GetPublicSurvey(c *gin.Context) {

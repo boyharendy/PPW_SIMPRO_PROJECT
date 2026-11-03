@@ -7,6 +7,7 @@
 export const STORAGE_KEYS = {
   SURVEYS: 'simpro_surveys',
   SURVEY_INVITATIONS: 'simpro_survey_invitations',
+  SURVEY_RESPONSES: 'simpro_survey_responses',
   PUBLICATIONS: 'simpro_publications',
   TRIPS: 'simpro_trips',
   RKA_DOCUMENTS: 'simpro_rka_documents',
@@ -60,4 +61,3 @@ export const storageSync = {
     return updated;
   },
 };
-

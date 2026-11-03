@@ -132,9 +132,9 @@ func (h *TripHandler) SubmitReport(c *gin.Context) {
 	userID := c.GetString(middleware.CtxUserID)
 
 	var req struct {
-		RingkasanHasil  string  `json:"ringkasan_hasil" binding:"required"`
-		FileLaporanURL  string  `json:"file_laporan_url"`
-		TotalRealisasi  float64 `json:"total_realisasi"`
+		RingkasanHasil string  `json:"ringkasan_hasil" binding:"required"`
+		FileLaporanURL string  `json:"file_laporan_url"`
+		TotalRealisasi float64 `json:"total_realisasi"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "Format laporan tidak valid", err.Error())
@@ -146,6 +146,20 @@ func (h *TripHandler) SubmitReport(c *gin.Context) {
 		return
 	}
 	response.Success(c, http.StatusOK, "Laporan perjalanan dinas berhasil dikirim dan diverifikasi", nil)
+}
+
+func (h *TripHandler) AddProof(c *gin.Context) {
+	id := c.Param("id")
+	var req model.TravelProof
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Format bukti perjalanan tidak valid", err.Error())
+		return
+	}
+	if err := h.usecase.AddProof(id, &req); err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusCreated, "Bukti perjalanan dinas berhasil diunggah", nil)
 }
 
 func (h *TripHandler) GetRecap(c *gin.Context) {
