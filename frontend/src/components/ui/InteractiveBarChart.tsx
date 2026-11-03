@@ -6,7 +6,7 @@ export interface BarSeriesConfig {
   dataKey: string;
   name: string;
   fill: string;
-  /** Optional key in each data item to override bar color per row (like Recharts <Cell />) */
+  /** Optional key in each data item to override bar color per row */
   colorKey?: string;
 }
 
@@ -31,7 +31,10 @@ export default function InteractiveBarChart<T extends Record<string, any>>({
   tooltipFormatter = (val) => String(val),
   showLegend = true,
 }: InteractiveBarChartProps<T>) {
+  // Default highlight on the last or peak column for the LoopAI look
+  const defaultHighlight = data.length > 1 ? data.length - 1 : 0;
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const activeIdx = hoveredIdx !== null ? hoveredIdx : defaultHighlight;
 
   // Compute max value if domain is not explicitly provided
   const computedMax = React.useMemo(() => {
@@ -44,7 +47,6 @@ export default function InteractiveBarChart<T extends Record<string, any>>({
       }
     }
     if (max <= 0) return 10;
-    // Round up nicely
     const magnitude = Math.pow(10, Math.floor(Math.log10(max)));
     return Math.ceil(max / magnitude) * magnitude;
   }, [data, series, domain]);
@@ -66,7 +68,7 @@ export default function InteractiveBarChart<T extends Record<string, any>>({
       {/* Main Plot Area */}
       <div className="relative flex flex-1 min-h-0 w-full">
         {/* Y-Axis Labels */}
-        <div className="flex flex-col justify-between pr-3 pb-7 text-right text-[11px] text-slate-500 shrink-0">
+        <div className="flex flex-col justify-between pr-3 pb-8 text-right text-xs font-medium text-slate-400 shrink-0">
           {yTicks.map((t, idx) => (
             <span key={idx} className="leading-none">
               {yAxisFormatter(t)}
@@ -76,14 +78,14 @@ export default function InteractiveBarChart<T extends Record<string, any>>({
 
         {/* Chart Canvas */}
         <div className="relative flex-1 flex flex-col min-w-0">
-          {/* Plot Grid + Bars */}
-          <div className="relative flex-1 w-full border-b border-slate-200">
-            {/* Horizontal Dashed Grid Lines */}
+          {/* Plot Grid + LoopAI Bead/Capsule Columns */}
+          <div className="relative flex-1 w-full border-b border-slate-100">
+            {/* Horizontal Subtle Grid Lines */}
             <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
               {yTicks.map((_, idx) => (
                 <div
                   key={idx}
-                  className="w-full border-t border-dashed border-slate-200 first:border-t-slate-200/70 last:border-t-0"
+                  className="w-full border-t border-dashed border-slate-100 last:border-t-0"
                 />
               ))}
             </div>
@@ -91,46 +93,76 @@ export default function InteractiveBarChart<T extends Record<string, any>>({
             {/* Category Columns */}
             <div className="relative z-10 flex h-full w-full items-end justify-around px-2">
               {data.map((row, rowIdx) => {
+                const isActive = activeIdx === rowIdx;
                 const isHovered = hoveredIdx === rowIdx;
+                const primarySeries = series[0];
+                const primaryVal = primarySeries ? Number(row[primarySeries.dataKey]) || 0 : 0;
+
                 return (
                   <div
                     key={rowIdx}
                     onMouseEnter={() => setHoveredIdx(rowIdx)}
                     onMouseLeave={() => setHoveredIdx(null)}
-                    className={`relative flex h-full flex-1 items-end justify-center gap-1.5 sm:gap-2 px-1.5 sm:px-3 transition-colors rounded-t-lg cursor-pointer ${
-                      isHovered ? 'bg-slate-100/70' : ''
+                    className={`relative flex h-full flex-1 items-end justify-center gap-1.5 sm:gap-2 px-1.5 sm:px-3 transition-all rounded-2xl cursor-pointer ${
+                      isActive ? 'bg-indigo-50/40' : ''
                     }`}
                   >
-                    {series.map((s) => {
+                    {/* Active Highlight Pill Badge at Top of Column (LoopAI $220 style) */}
+                    {isActive && primarySeries && (
+                      <div className="pointer-events-none absolute top-1 left-1/2 -translate-x-1/2 z-20">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500 px-2.5 py-0.5 text-xs font-bold text-white shadow-xs whitespace-nowrap">
+                          {tooltipFormatter(primaryVal, primarySeries.name)}
+                        </span>
+                      </div>
+                    )}
+
+                    {series.map((s, sIdx) => {
                       const rawValue = Number(row[s.dataKey]) || 0;
                       const pct = Math.max(
-                        0,
+                        6,
                         Math.min(100, ((rawValue - minVal) / range) * 100)
                       );
-                      const barColor =
+                      // LoopAI signature colors: active column uses indigo/purple, others use mint/teal or configured color
+                      const baseColor =
                         (s.colorKey && row[s.colorKey]) || s.fill;
+                      const barColor =
+                        isActive && sIdx === 0
+                          ? '#6366F1'
+                          : sIdx === 0 && baseColor === '#2563EB'
+                          ? '#6EE7B7'
+                          : baseColor;
+
+                      // Number of visual beads based on percentage (up to 9 beads)
+                      const beadCount = Math.max(2, Math.round((pct / 100) * 8));
 
                       return (
                         <div
                           key={s.dataKey}
-                          className="h-full flex-1 max-w-9 flex items-end justify-center"
+                          className="h-full flex-1 max-w-8 flex flex-col items-center justify-end pb-1"
                         >
                           <div
-                            className="w-full rounded-t-[4px] transition-all duration-300"
+                            className="w-full rounded-full transition-all duration-300 flex flex-col justify-between items-center p-0.5 overflow-hidden shadow-2xs"
                             style={{
                               height: `${pct}%`,
-                              backgroundColor: barColor,
-                              opacity: isHovered ? 0.92 : 1,
+                              backgroundColor: isActive && sIdx === 0 ? '#6366F1' : barColor,
+                              opacity: isActive ? 1 : 0.85,
                             }}
-                          />
+                          >
+                            {Array.from({ length: beadCount }).map((_, bIdx) => (
+                              <span
+                                key={bIdx}
+                                className="w-2 h-2 rounded-full bg-white/35 shrink-0"
+                              />
+                            ))}
+                          </div>
                         </div>
                       );
                     })}
 
-                    {/* Floating Tooltip */}
+                    {/* Floating Detailed Tooltip on Hover */}
                     {isHovered && (
                       <div
-                        className={`pointer-events-none absolute bottom-full mb-2 z-30 min-w-[165px] rounded-xl border border-slate-200 bg-white p-3 text-xs shadow-lg ${
+                        className={`pointer-events-none absolute bottom-full mb-2 z-30 min-w-[175px] rounded-2xl border border-slate-200/90 bg-white p-3.5 text-xs shadow-xl ${
                           rowIdx === 0
                             ? 'left-0'
                             : rowIdx === data.length - 1
@@ -138,10 +170,10 @@ export default function InteractiveBarChart<T extends Record<string, any>>({
                             : 'left-1/2 -translate-x-1/2'
                         }`}
                       >
-                        <p className="mb-1.5 font-bold text-slate-800 border-b border-slate-100 pb-1">
+                        <p className="mb-1.5 font-bold text-slate-900 border-b border-slate-100 pb-1">
                           {String(row[xKey])}
                         </p>
-                        <div className="space-y-1">
+                        <div className="space-y-1.5">
                           {series.map((s) => {
                             const val = Number(row[s.dataKey]) || 0;
                             const barColor =
@@ -153,12 +185,12 @@ export default function InteractiveBarChart<T extends Record<string, any>>({
                               >
                                 <span className="flex items-center gap-1.5 text-slate-600">
                                   <span
-                                    className="h-2.5 w-2.5 rounded-xs shrink-0"
+                                    className="h-2.5 w-2.5 rounded-full shrink-0"
                                     style={{ backgroundColor: barColor }}
                                   />
                                   <span className="truncate">{s.name}</span>
                                 </span>
-                                <span className="font-bold text-slate-800 whitespace-nowrap">
+                                <span className="font-bold text-slate-900 whitespace-nowrap">
                                   {tooltipFormatter(val, s.name)}
                                 </span>
                               </div>
@@ -173,17 +205,28 @@ export default function InteractiveBarChart<T extends Record<string, any>>({
             </div>
           </div>
 
-          {/* X-Axis Labels */}
-          <div className="flex h-7 w-full items-center justify-around px-2 pt-1.5">
-            {data.map((row, rowIdx) => (
-              <div
-                key={rowIdx}
-                className="flex-1 text-center text-[11px] font-medium text-slate-500 truncate px-1"
-                title={String(row[xKey])}
-              >
-                {String(row[xKey])}
-              </div>
-            ))}
+          {/* X-Axis Labels (with LoopAI Indigo Pill on Active Column) */}
+          <div className="flex h-8 w-full items-center justify-around px-2 pt-1.5">
+            {data.map((row, rowIdx) => {
+              const isActive = activeIdx === rowIdx;
+              return (
+                <div
+                  key={rowIdx}
+                  className="flex-1 flex justify-center px-1 min-w-0"
+                  title={String(row[xKey])}
+                >
+                  <span
+                    className={`truncate text-xs transition-all ${
+                      isActive
+                        ? 'rounded-full bg-indigo-500 px-2.5 py-0.5 font-bold text-white shadow-2xs'
+                        : 'font-medium text-slate-500'
+                    }`}
+                  >
+                    {String(row[xKey])}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -191,13 +234,13 @@ export default function InteractiveBarChart<T extends Record<string, any>>({
       {/* Legend */}
       {showLegend && series.length > 0 && (
         <div className="flex flex-wrap items-center justify-center gap-4 pt-2.5 text-xs">
-          {series.map((s) => (
+          {series.map((s, idx) => (
             <div key={s.dataKey} className="flex items-center gap-1.5">
               <span
-                className="h-3 w-3 rounded-[3px] shrink-0"
-                style={{ backgroundColor: s.fill }}
+                className="h-2.5 w-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: idx === 0 && s.fill === '#2563EB' ? '#10B981' : s.fill }}
               />
-              <span className="font-medium text-slate-600">{s.name}</span>
+              <span className="font-semibold text-slate-600">{s.name}</span>
             </div>
           ))}
         </div>
@@ -205,4 +248,3 @@ export default function InteractiveBarChart<T extends Record<string, any>>({
     </div>
   );
 }
-

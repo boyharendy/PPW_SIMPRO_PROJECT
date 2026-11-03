@@ -5,36 +5,51 @@ import Link from 'next/link';
 import {
   MessageSquareHeart,
   Search,
-  Filter,
-  Clock,
   CheckCircle2,
-  AlertTriangle,
   ArrowRight,
   ShieldAlert,
   Send,
-  UserCheck,
   Calendar,
   X,
-  FileSpreadsheet,
+  Sparkles,
+  ChevronRight,
+  UserCheck,
+  ExternalLink,
+  BarChart3,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { DataTable } from '@/components/ui/DataTable';
+import { StatCard } from '@/components/ui/StatCard';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ExportMenu } from '@/components/ui/ExportMenu';
+import InteractiveBarChart, { BarSeriesConfig } from '@/components/ui/InteractiveBarChart';
 import { mockComplaints, mockProfiles } from '@/lib/mock-data';
 import { complaintService } from '@/lib/api/services/complaint.service';
 import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import { formatDate } from '@/lib/utils';
 import type { Complaint, ComplaintStatus } from '@/lib/types';
 
+const SLA_TREND_DATA = [
+  { bulan: 'Juni', Masuk: 4, Tuntas: 4 },
+  { bulan: 'Juli', Masuk: 3, Tuntas: 3 },
+  { bulan: 'Agustus', Masuk: 5, Tuntas: 4 },
+  { bulan: 'September', Masuk: 6, Tuntas: 5 },
+  { bulan: 'Oktober', Masuk: 4, Tuntas: 3 },
+];
+
+const SLA_SERIES: BarSeriesConfig[] = [
+  { dataKey: 'Tuntas', fill: '#6EE7B7', name: 'Aduan Tuntas SLA' },
+  { dataKey: 'Masuk', fill: '#818CF8', name: 'Total Aduan Masuk' },
+];
+
 export default function AntreanAduanPage() {
-  const [complaints, setComplaints] = useState<Complaint[]>(() => mockComplaints.filter((c) => !c.is_sensitif));
+  const [complaints, setComplaints] = useState<Complaint[]>(() =>
+    mockComplaints.filter((c) => !c.is_sensitif)
+  );
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('SEMUA');
   const [kategoriFilter, setKategoriFilter] = useState<string>('SEMUA');
 
   useEffect(() => {
-    // Sinkronisasi data lokal saat mount di client
     const local = storageSync.get<Complaint[]>(STORAGE_KEYS.COMPLAINTS, mockComplaints);
     if (local && local.length > 0) {
       setComplaints(local.filter((c) => !c.is_sensitif));
@@ -123,10 +138,15 @@ export default function AntreanAduanPage() {
     });
 
     setComplaints(updatedComplaints);
-    storageSync.update(STORAGE_KEYS.COMPLAINTS, selectedComplaint.id, {
-      status: 'DITINDAKLANJUTI',
-      dispositions: [...(selectedComplaint.dispositions || []), newDisposition],
-    }, mockComplaints);
+    storageSync.update(
+      STORAGE_KEYS.COMPLAINTS,
+      selectedComplaint.id,
+      {
+        status: 'DITINDAKLANJUTI',
+        dispositions: [...(selectedComplaint.dispositions || []), newDisposition],
+      },
+      mockComplaints
+    );
 
     try {
       await complaintService.createDisposition(selectedComplaint.id, {
@@ -143,244 +163,455 @@ export default function AntreanAduanPage() {
     setTimeout(() => setSuccessToast(null), 4000);
   };
 
-  const columns = [
-    {
-      key: 'nomor',
-      header: 'Nomor & Tiket',
-      render: (item: Complaint) => (
-        <div>
-          <span className="font-semibold text-slate-800 text-base">{item.nomor_aduan}</span>
-          <div className="font-mono text-xs text-slate-500">{item.kode_tiket}</div>
-        </div>
-      ),
-    },
-    {
-      key: 'tanggal',
-      header: 'Tgl Masuk',
-      render: (item: Complaint) => (
-        <span className="text-sm text-slate-600">{formatDate(item.tanggal_diterima)}</span>
-      ),
-    },
-    {
-      key: 'kategori',
-      header: 'Kategori',
-      render: (item: Complaint) => (
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700">
-          {item.kategori.replace('_', ' ')}
-        </span>
-      ),
-    },
-    {
-      key: 'judul',
-      header: 'Judul Aduan',
-      render: (item: Complaint) => (
-        <div className="max-w-md">
-          <p className="text-base font-medium text-slate-800 line-clamp-1">{item.judul}</p>
-          <p className="text-sm text-slate-500 line-clamp-1">{item.uraian}</p>
-        </div>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (item: Complaint) => <StatusBadge status={item.status} size="sm" />,
-    },
-    {
-      key: 'disposisi',
-      header: 'Penanggung Jawab',
-      render: (item: Complaint) => {
-        const lastDisp = item.dispositions?.[item.dispositions.length - 1];
-        if (!lastDisp) {
-          return <span className="text-sm italic text-amber-600">Belum didisposisi</span>;
-        }
-        const profile = mockProfiles.find((p) => p.id === lastDisp.penanggung_jawab_id);
-        return (
-          <div className="text-sm">
-            <span className="font-medium text-slate-800">{profile?.nama_lengkap || 'Petugas'}</span>
-            <div className="text-slate-500 text-xs">Tenggat: {formatDate(lastDisp.tenggat)}</div>
-          </div>
-        );
-      },
-    },
-    {
-      key: 'aksi',
-      header: 'Aksi',
-      className: 'text-right',
-      render: (item: Complaint) => (
-        <div className="flex items-center justify-end gap-1.5">
-          <button
-            onClick={() => handleOpenDisposisi(item)}
-            className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition-colors"
-          >
-            Disposisi
-          </button>
-          <Link
-            href={`/dashboard/kelola/aduan/${item.id}`}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors inline-flex items-center gap-1"
-          >
-            Detail
-            <ArrowRight className="h-3 w-3" />
-          </Link>
-        </div>
-      ),
-    },
+  const statusTabs = [
+    { key: 'SEMUA', label: 'Semua Aduan', count: complaints.length },
+    { key: 'DITERIMA', label: 'Baru Masuk', count: complaints.filter((c) => c.status === 'DITERIMA').length },
+    { key: 'DITINDAKLANJUTI', label: 'Ditindaklanjuti', count: complaints.filter((c) => c.status === 'DITINDAKLANJUTI').length },
+    { key: 'SELESAI', label: 'Selesai', count: totalSelesai },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
-        title="Antrean Aduan Mahasiswa"
-        subtitle="Kelola, verifikasi, dan tindak lanjuti laporan sarana, akademik, dan layanan administrasi prodi."
-        badge={
-          <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800">
-            Modul 13
-          </span>
-        }
+        title="Antrean & Disposisi Aduan Mahasiswa Anonim"
+        subtitle="Kelola, disposisi, dan tindak lanjuti laporan sarana, akademik, dan layanan administrasi secara terenkripsi."
         actions={
           <div className="flex items-center gap-2">
             <Link
               href="/dashboard/kelola/aduan/sensitif"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs sm:text-sm font-semibold text-rose-700 hover:bg-rose-100 transition-colors"
             >
-              <ShieldAlert className="h-4 w-4 text-red-600" />
-              Aduan Sensitif Satgas
+              <ShieldAlert className="h-4 w-4 text-rose-600" />
+              <span>Aduan Sensitif Satgas</span>
             </Link>
-            <ExportMenu filename="antrean-aduan-mahasiswa" title="Ekspor Data Aduan" />
+            <ExportMenu filename="antrean-aduan-mahasiswa" title="Ekspor Aduan" />
           </div>
         }
       />
 
       {successToast && (
-        <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 animate-in fade-in">
+        <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 animate-fade-in">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
             <span>{successToast}</span>
           </div>
-          <button onClick={() => setSuccessToast(null)} className="text-emerald-600 hover:text-emerald-800">
+          <button
+            onClick={() => setSuccessToast(null)}
+            className="text-emerald-600 hover:text-emerald-800"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
       )}
 
-      {/* Metric Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Aduan Aktif</p>
-              <p className="mt-1 text-3xl font-bold text-slate-800">{totalAktif}</p>
+      {/* Main LoopAI Bento Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* LEFT COLUMN (8 Cols) */}
+        <div className="lg:col-span-8 space-y-5">
+          {/* 1. Top KPI Row (3 Cards) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <StatCard
+              title="Tiket Aduan Aktif"
+              value={`${totalAktif} Tiket`}
+              badgeText="SLA Terkendali"
+              badgeTone="emerald"
+              subtitle="Dalam proses penyelesaian"
+            />
+            <StatCard
+              title="Belum Disposisi"
+              value={`${belumDisposisi} Tiket`}
+              badgeText={belumDisposisi > 0 ? 'Segera Tunjuk PIC' : 'Tuntas'}
+              badgeTone={belumDisposisi > 0 ? 'amber' : 'emerald'}
+              subtitle="Menunggu penugasan petugas"
+            />
+            <StatCard
+              title="Telah Diselesaikan"
+              value={`${totalSelesai} Tiket`}
+              badgeText="100% Terbalas"
+              badgeTone="indigo"
+              subtitle="Dilengkapi rating kepuasan"
+            />
+          </div>
+
+          {/* 2. Middle Analytics Card */}
+          <div className="rounded-[22px] border border-slate-200/80 bg-white p-5 sm:p-6 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Analitik Penyelesaian &amp; SLA Aduan</h2>
+                <p className="text-xs sm:text-sm text-slate-400">
+                  Perbandingan jumlah laporan masuk terhadap penyelesaian tepat waktu per bulan
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">
+                  <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                  5 Bulan Terakhir
+                </span>
+                <Link
+                  href="/dashboard/kelola/aduan/rekap"
+                  className="inline-flex items-center rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1.5 text-xs font-bold hover:bg-indigo-100 transition-colors"
+                >
+                  Analitik SLA →
+                </Link>
+              </div>
             </div>
-            <div className="rounded-lg bg-blue-50 p-2.5 text-blue-600">
-              <Clock className="h-5 w-5" />
+
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+              {/* Left Insight Box & CTA */}
+              <div className="md:col-span-4 space-y-4">
+                <div className="space-y-2 text-xs sm:text-sm">
+                  <div className="flex items-center gap-2 font-semibold text-slate-700">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                    <span>Aduan Tuntas Tepat Waktu</span>
+                  </div>
+                  <div className="flex items-center gap-2 font-semibold text-slate-500">
+                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
+                    <span>Total Laporan Masuk</span>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl bg-indigo-50/60 border border-indigo-100/80 p-4 space-y-2">
+                  <div className="flex items-center gap-1.5 text-indigo-700 font-bold text-xs uppercase tracking-wider">
+                    <Sparkles className="w-4 h-4" />
+                    <span>Jaminan Anonimitas NF-04</span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                    Sistem <strong>tidak menyimpan</strong> NIM, nama, maupun IP pelapor. Komunikasi 2 arah dilakukan melalui kode tiket terenkripsi.
+                  </p>
+                </div>
+
+                <Link
+                  href="/dashboard/kelola/aduan/tugas-saya"
+                  className="w-full rounded-full bg-gradient-to-r from-indigo-500 via-blue-600 to-indigo-600 text-white py-2.5 px-5 text-sm font-semibold shadow-sm hover:opacity-95 transition-all flex items-center justify-center gap-2"
+                >
+                  <UserCheck className="w-4 h-4" />
+                  <span>Buka Disposisi Saya</span>
+                </Link>
+              </div>
+
+              {/* Right Chart Canvas */}
+              <div className="md:col-span-8 h-64 w-full">
+                <InteractiveBarChart
+                  data={SLA_TREND_DATA}
+                  xKey="bulan"
+                  series={SLA_SERIES}
+                  domain={[0, 8]}
+                  ticks={[0, 2, 4, 6, 8]}
+                  tooltipFormatter={(val) => `${val} Tiket`}
+                  showLegend
+                />
+              </div>
             </div>
           </div>
-          <p className="mt-2 text-sm text-slate-500">Memerlukan penanganan atau tindak lanjut</p>
-        </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Belum Disposisi</p>
-              <p className="mt-1 text-3xl font-bold text-amber-600">{belumDisposisi}</p>
+          {/* 3. Bottom Manage Complaints Card */}
+          <div className="rounded-[22px] border border-slate-200/80 bg-white p-5 sm:p-6 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <h2 className="text-lg font-bold text-slate-900">Kelola Antrean Tiket Aduan</h2>
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                <select
+                  value={kategoriFilter}
+                  onChange={(e) => setKategoriFilter(e.target.value)}
+                  aria-label="Filter kategori aduan"
+                  className="select-field text-xs sm:text-sm py-1.5 w-44"
+                >
+                  <option value="SEMUA">Semua Kategori</option>
+                  <option value="FASILITAS">Fasilitas &amp; Lab</option>
+                  <option value="AKADEMIK">Akademik</option>
+                  <option value="LAYANAN_ADMINISTRASI">Layanan Admin</option>
+                  <option value="LAINNYA">Lainnya</option>
+                </select>
+                <div className="flex items-center gap-2 px-3.5 py-1.5 bg-slate-50 border border-slate-200/80 rounded-full w-full sm:w-64">
+                  <Search className="w-4 h-4 text-slate-400 shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Cari nomor atau judul..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="bg-transparent border-none outline-none text-xs sm:text-sm w-full text-slate-800 placeholder:text-slate-400"
+                  />
+                </div>
+              </div>
             </div>
-            <div className="rounded-lg bg-amber-50 p-2.5 text-amber-600">
-              <AlertTriangle className="h-5 w-5" />
+
+            {/* LoopAI Pill Filter Tabs */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              {statusTabs.map((tab) => {
+                const isActive = statusFilter === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setStatusFilter(tab.key)}
+                    className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs sm:text-sm transition-all cursor-pointer whitespace-nowrap ${
+                      isActive
+                        ? 'bg-indigo-50/60 text-slate-900 font-bold border border-indigo-900/25 shadow-2xs'
+                        : 'text-slate-500 font-medium hover:text-slate-800'
+                    }`}
+                  >
+                    <span>{tab.label}</span>
+                    <span
+                      className={`rounded-full px-2 py-0.2 text-xs font-bold ${
+                        isActive ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-600'
+                      }`}
+                    >
+                      {tab.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* LoopAI Avatar Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 text-xs sm:text-sm font-medium text-slate-400">
+                    <th className="py-3 px-3 text-left">Nomor &amp; Tiket</th>
+                    <th className="py-3 px-3 text-left">Pokok Aduan</th>
+                    <th className="py-3 px-3 text-left">Penanggung Jawab</th>
+                    <th className="py-3 px-3 text-left">Status</th>
+                    <th className="py-3 px-3 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100/80">
+                  {filtered.map((item, idx) => {
+                    const lastDisp = item.dispositions?.[item.dispositions.length - 1];
+                    const profile = lastDisp
+                      ? mockProfiles.find((p) => p.id === lastDisp.penanggung_jawab_id)
+                      : null;
+                    const avatarColors = [
+                      'bg-indigo-100 text-indigo-700',
+                      'bg-emerald-100 text-emerald-700',
+                      'bg-rose-100 text-rose-700',
+                      'bg-sky-100 text-sky-700',
+                    ];
+
+                    return (
+                      <tr key={item.id} className="hover:bg-indigo-50/25 transition-colors">
+                        <td className="py-3.5 px-3">
+                          <div className="flex items-center gap-3">
+                            <div className="relative shrink-0">
+                              <div
+                                className={`w-10 h-10 rounded-full font-extrabold text-xs flex items-center justify-center ${
+                                  avatarColors[idx % avatarColors.length]
+                                }`}
+                              >
+                                #{idx + 1}
+                              </div>
+                              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-500 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white">
+                                ✓
+                              </span>
+                            </div>
+                            <div>
+                              <p className="font-bold text-slate-900 text-sm">{item.nomor_aduan}</p>
+                              <p className="text-xs font-mono text-slate-400">
+                                {formatDate(item.tanggal_diterima)}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-3 max-w-xs">
+                          <span className="inline-block rounded-full bg-slate-100 text-slate-700 px-2.5 py-0.5 text-xs font-semibold mb-1">
+                            {item.kategori.replace(/_/g, ' ')}
+                          </span>
+                          <p className="font-bold text-slate-900 text-sm line-clamp-1">
+                            {item.judul}
+                          </p>
+                          <p className="text-xs text-slate-500 line-clamp-1">{item.uraian}</p>
+                        </td>
+                        <td className="py-3.5 px-3">
+                          {lastDisp ? (
+                            <div>
+                              <p className="font-semibold text-slate-800 text-sm">
+                                {profile?.nama_lengkap || 'Petugas Prodi'}
+                              </p>
+                              <p className="text-xs text-slate-400">
+                                Tenggat: {formatDate(lastDisp.tenggat)}
+                              </p>
+                            </div>
+                          ) : (
+                            <span className="text-xs font-semibold italic text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
+                              Belum didisposisi
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-3">
+                          <StatusBadge status={item.status} size="sm" />
+                        </td>
+                        <td className="py-3.5 px-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => handleOpenDisposisi(item)}
+                              className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition-colors cursor-pointer"
+                            >
+                              Disposisi
+                            </button>
+                            <Link
+                              href={`/dashboard/kelola/aduan/${item.id}`}
+                              className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1"
+                            >
+                              <span>Detail</span>
+                              <ArrowRight className="h-3 w-3" />
+                            </Link>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
-          <p className="mt-2 text-sm text-slate-500">Segera tunjuk penanggung jawab penyelesaian</p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Telah Selesai</p>
-              <p className="mt-1 text-3xl font-bold text-emerald-600">{totalSelesai}</p>
+        {/* RIGHT SIDEBAR COLUMN (4 Cols) */}
+        <div className="lg:col-span-4 space-y-5">
+          {/* 1. Top Right Card: Priority Tasks Style */}
+          <div className="rounded-[22px] border border-slate-200/80 bg-white p-5 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] space-y-3.5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-slate-900">Tiket Prioritas</h3>
+              <Link
+                href="/dashboard/kelola/aduan/tugas-saya"
+                className="text-xs sm:text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+              >
+                Lihat semua
+              </Link>
             </div>
-            <div className="rounded-lg bg-emerald-50 p-2.5 text-emerald-600">
-              <CheckCircle2 className="h-5 w-5" />
+
+            <div className="space-y-2">
+              {complaints.slice(0, 4).map((comp, idx) => (
+                <Link
+                  key={comp.id}
+                  href={`/dashboard/kelola/aduan/${comp.id}`}
+                  className={`block rounded-2xl p-3.5 transition-all ${
+                    idx === 0
+                      ? 'bg-indigo-50/60 border border-indigo-100/80'
+                      : 'hover:bg-slate-50 border border-transparent hover:border-slate-200/70'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-4 h-4 rounded-full border-2 border-indigo-600 border-t-transparent inline-block shrink-0" />
+                      <span className="font-bold text-slate-900 text-sm truncate">
+                        {comp.nomor_aduan} &bull; {comp.kategori.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-slate-500 mt-1 pl-6">
+                    <span>{formatDate(comp.tanggal_diterima)}</span>
+                    <span>&bull;</span>
+                    <span className="text-indigo-600 font-semibold">{comp.status}</span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1 pl-6 line-clamp-1 font-medium">
+                    {comp.judul}
+                  </p>
+                </Link>
+              ))}
             </div>
           </div>
-          <p className="mt-2 text-sm text-slate-500">Terselesaikan dengan feedback pelapor</p>
+
+          {/* 2. Bottom Right Card: Smart Action Hub */}
+          <div className="rounded-[22px] bg-gradient-to-b from-indigo-100/70 via-blue-50/50 to-slate-50/90 border border-indigo-100/90 p-5 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] space-y-4">
+            <div className="text-center space-y-1 pt-1">
+              <p className="text-xs sm:text-sm font-medium text-slate-600">
+                Penanganan Aspirasi &amp; Tiket Anonim 👋
+              </p>
+              <h3 className="text-lg sm:text-xl font-extrabold text-slate-900">
+                Pusat Kendali Aduan
+              </h3>
+            </div>
+
+            <div className="flex items-center justify-center gap-1.5 flex-wrap">
+              <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-bold text-indigo-700 shadow-2xs border border-indigo-100">
+                <Sparkles className="w-3 h-3" />
+                Enkripsi Tiket
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/70 px-3 py-1 text-xs font-medium text-slate-600">
+                Utas 2-Arah
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/70 px-3 py-1 text-xs font-medium text-slate-600">
+                FR-49 s/d FR-52
+              </span>
+            </div>
+
+            {/* 2x2 Grid Action Tiles */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <Link
+                href="/dashboard/kelola/aduan/tugas-saya"
+                className="bg-white rounded-2xl p-3.5 border border-slate-100 shadow-2xs hover:border-indigo-300 hover:shadow-xs transition-all flex flex-col justify-between h-24"
+              >
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <UserCheck className="w-4 h-4" />
+                </div>
+                <p className="text-xs sm:text-sm font-bold text-slate-800 leading-tight">
+                  Disposisi Saya
+                </p>
+              </Link>
+
+              <Link
+                href="/dashboard/kelola/aduan/sensitif"
+                className="bg-white rounded-2xl p-3.5 border border-slate-100 shadow-2xs hover:border-indigo-300 hover:shadow-xs transition-all flex flex-col justify-between h-24"
+              >
+                <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                  <ShieldAlert className="w-4 h-4" />
+                </div>
+                <p className="text-xs sm:text-sm font-bold text-slate-800 leading-tight">
+                  Ruang Satgas
+                </p>
+              </Link>
+
+              <Link
+                href="/dashboard/kelola/aduan/rekap"
+                className="bg-white rounded-2xl p-3.5 border border-slate-100 shadow-2xs hover:border-indigo-300 hover:shadow-xs transition-all flex flex-col justify-between h-24"
+              >
+                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <BarChart3 className="w-4 h-4" />
+                </div>
+                <p className="text-xs sm:text-sm font-bold text-slate-800 leading-tight">
+                  Rekap &amp; SLA
+                </p>
+              </Link>
+
+              <Link
+                href="/aduan/lacak"
+                target="_blank"
+                className="bg-white rounded-2xl p-3.5 border border-slate-100 shadow-2xs hover:border-indigo-300 hover:shadow-xs transition-all flex flex-col justify-between h-24"
+              >
+                <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                  <ExternalLink className="w-4 h-4" />
+                </div>
+                <p className="text-xs sm:text-sm font-bold text-slate-800 leading-tight">
+                  Portal Pelacak
+                </p>
+              </Link>
+            </div>
+
+            <Link
+              href="/dashboard/aduan"
+              className="flex items-center justify-between bg-white rounded-full px-4 py-2.5 border border-slate-200/80 text-xs sm:text-sm text-slate-500 hover:border-indigo-300 transition-colors shadow-2xs"
+            >
+              <span>Formulir pengiriman aduan anonim...</span>
+              <Sparkles className="w-4 h-4 text-indigo-500" />
+            </Link>
+          </div>
         </div>
       </div>
-
-      {/* Security Privacy Notice */}
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 flex items-start gap-2.5">
-        <div className="rounded p-1 bg-white border border-slate-200 text-slate-600 shrink-0">
-          <MessageSquareHeart className="h-4 w-4" />
-        </div>
-        <div>
-          <p className="font-semibold text-slate-800">Prinsip Anonimitas Mahasiswa (Bab 11 PRD)</p>
-          <p className="mt-0.5 text-slate-600">
-            Sistem tidak menampilkan NIM, nama, IP address, maupun akun mahasiswa pelapor. Komunikasi dilakukan
-            melalui kode tiket terenkripsi. Laporan terkait perundungan dan kekerasan seksual otomatis dipisahkan
-            ke ruang terbatas Satgas PPKPT.
-          </p>
-        </div>
-      </div>
-
-      {/* Filters and Search */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-        <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Cari nomor aduan, tiket, judul..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            aria-label="Filter status aduan"
-            className="px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 focus:border-blue-500 focus:outline-none"
-          >
-            <option value="SEMUA">Semua Status</option>
-            <option value="DITERIMA">Diterima / Baru</option>
-            <option value="DITINDAKLANJUTI">Ditindaklanjuti</option>
-            <option value="SELESAI">Selesai</option>
-            <option value="DITOLAK">Ditolak</option>
-          </select>
-
-          <select
-            value={kategoriFilter}
-            onChange={(e) => setKategoriFilter(e.target.value)}
-            aria-label="Filter kategori aduan"
-            className="px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 focus:border-blue-500 focus:outline-none"
-          >
-            <option value="SEMUA">Semua Kategori</option>
-            <option value="FASILITAS">Fasilitas</option>
-            <option value="AKADEMIK">Akademik</option>
-            <option value="LAYANAN_ADMINISTRASI">Layanan Administrasi</option>
-            <option value="LAINNYA">Lainnya</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Main Table */}
-      <DataTable
-        columns={columns}
-        data={filtered}
-        searchKey="judul"
-        emptyMessage="Tidak ada aduan mahasiswa yang cocok dengan kriteria filter."
-      />
 
       {/* Modal Disposisi Cepat */}
       {selectedComplaint && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-xl border border-slate-200 bg-white p-6 shadow-lg">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h3 className="text-base font-bold text-slate-900">Disposisi Aduan Mahasiswa</h3>
-                <p className="text-xs text-slate-500">{selectedComplaint.nomor_aduan} &bull; {selectedComplaint.judul}</p>
+                <p className="text-xs text-slate-500">
+                  {selectedComplaint.nomor_aduan} &bull; {selectedComplaint.judul}
+                </p>
               </div>
               <button
                 onClick={() => setSelectedComplaint(null)}
-                className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -389,7 +620,7 @@ export default function AntreanAduanPage() {
             <form onSubmit={handleSimpanDisposisi} className="mt-4 space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Pilih Penanggung Jawab Disposisi <span className="text-red-500">*</span>
+                  Pilih Penanggung Jawab Disposisi <span className="text-rose-500">*</span>
                 </label>
                 <select
                   value={disposisiForm.penanggung_jawab_id}
@@ -397,7 +628,7 @@ export default function AntreanAduanPage() {
                     setDisposisiForm({ ...disposisiForm, penanggung_jawab_id: e.target.value })
                   }
                   required
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  className="select-field text-sm rounded-xl"
                 >
                   {mockProfiles
                     .filter((p) => p.tipe_pengguna === 'DOSEN' || p.tipe_pengguna === 'TENDIK')
@@ -411,7 +642,7 @@ export default function AntreanAduanPage() {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Tenggat Waktu Penyelesaian <span className="text-red-500">*</span>
+                  Tenggat Waktu Penyelesaian <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="date"
@@ -420,7 +651,7 @@ export default function AntreanAduanPage() {
                     setDisposisiForm({ ...disposisiForm, tenggat: e.target.value })
                   }
                   required
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  className="input-field text-sm"
                 />
               </div>
 
@@ -435,7 +666,7 @@ export default function AntreanAduanPage() {
                     setDisposisiForm({ ...disposisiForm, catatan: e.target.value })
                   }
                   placeholder="Instruksi tindakan perbaikan yang perlu dilakukan oleh penanggung jawab..."
-                  className="w-full rounded-lg border border-slate-200 p-2.5 text-sm focus:border-blue-500 focus:outline-none"
+                  className="textarea-field text-sm"
                 />
               </div>
 
@@ -443,16 +674,13 @@ export default function AntreanAduanPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedComplaint(null)}
-                  className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  className="btn-secondary text-sm"
                 >
                   Batal
                 </button>
-                <button
-                  type="submit"
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors inline-flex items-center gap-1.5"
-                >
+                <button type="submit" className="btn-primary text-sm">
                   <Send className="h-4 w-4" />
-                  Kirim Disposisi
+                  <span>Kirim Disposisi</span>
                 </button>
               </div>
             </form>
@@ -462,4 +690,3 @@ export default function AntreanAduanPage() {
     </div>
   );
 }
-

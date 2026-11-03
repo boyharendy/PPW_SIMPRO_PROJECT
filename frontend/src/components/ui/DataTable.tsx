@@ -32,32 +32,32 @@ export function DataTable<T = any>({
   const safeData = Array.isArray(data) ? data.filter((row): row is T => row != null) : [];
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-xs bg-white">
-      <table className="w-full text-base">
+    <div className="overflow-x-auto rounded-2xl bg-white">
+      <table className="w-full text-sm sm:text-base">
         <thead>
-          <tr className="bg-slate-50 border-b border-slate-200">
+          <tr className="border-b border-slate-100">
             {columns.map((col) => (
               <th
                 key={col.key}
-                className={`px-4 py-3.5 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider ${col.className || ''}`}
+                className={`px-4 py-3 text-left text-xs sm:text-sm font-medium text-slate-400 tracking-wide ${col.className || ''}`}
               >
                 {col.header}
               </th>
             ))}
             {hasActions && (
-              <th className="px-4 py-3.5 text-right text-sm font-semibold text-slate-600 uppercase tracking-wider w-24">
+              <th className="px-4 py-3 text-right text-xs sm:text-sm font-medium text-slate-400 tracking-wide w-24">
                 Aksi
               </th>
             )}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100">
+        <tbody className="divide-y divide-slate-100/80">
           {safeData.length === 0 ? (
             <tr>
-              <td colSpan={columns.length + (hasActions ? 1 : 0)} className="px-4 py-16 text-center text-slate-500">
+              <td colSpan={columns.length + (hasActions ? 1 : 0)} className="px-4 py-14 text-center text-slate-500">
                 <div className="flex flex-col items-center justify-center">
-                  <span className="text-4xl mb-3 opacity-20">📭</span>
-                  <p>{emptyMessage}</p>
+                  <span className="text-4xl mb-3 opacity-25">📭</span>
+                  <p className="text-sm sm:text-base font-medium text-slate-500">{emptyMessage}</p>
                 </div>
               </td>
             </tr>
@@ -66,19 +66,19 @@ export function DataTable<T = any>({
               <tr
                 key={i}
                 onClick={() => onRowClick?.(row)}
-                className={`bg-white hover:bg-slate-50/80 transition-colors duration-150 group ${
+                className={`bg-white hover:bg-indigo-50/30 transition-colors duration-150 group ${
                   onRowClick ? 'cursor-pointer' : ''
                 }`}
               >
                 {columns.map((col) => (
-                  <td key={col.key} className={`px-4 py-3.5 text-slate-700 ${col.className || ''}`}>
+                  <td key={col.key} className={`px-4 py-3.5 text-slate-700 align-middle ${col.className || ''}`}>
                     {col.render
                       ? col.render(row)
                       : ((row as Record<string, unknown>)?.[col.key] as ReactNode) ?? '-'}
                   </td>
                 ))}
                 {hasActions && (
-                  <td className="px-4 py-3.5 text-right">
+                  <td className="px-4 py-3.5 text-right align-middle">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       {onEdit && (
                         <button
@@ -86,7 +86,7 @@ export function DataTable<T = any>({
                             e.stopPropagation();
                             onEdit(row);
                           }}
-                          className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                          className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-100 hover:text-indigo-700 transition-colors"
                           title="Edit Data"
                         >
                           <Edit2 size={14} />
@@ -98,7 +98,7 @@ export function DataTable<T = any>({
                             e.stopPropagation();
                             onDelete(row);
                           }}
-                          className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 hover:text-rose-700 transition-colors"
+                          className="w-8 h-8 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 hover:text-rose-700 transition-colors"
                           title="Hapus Data"
                         >
                           <Trash2 size={14} />
