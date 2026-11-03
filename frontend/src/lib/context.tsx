@@ -60,12 +60,19 @@ const DEFAULT_FALLBACK_USER: AuthUser = {
     'DOSEN',
     'KOORDINATOR_KP',
     'KOORDINATOR_PSI',
+    'KOORDINATOR_PDLK',
     'PENGELOLA_ADUAN',
     'PETUGAS_KEKERASAN',
     'MAHASISWA',
   ],
   activeRole: 'KAPRODI',
 };
+
+function sanitizeRoles(roles?: Role[]): Role[] {
+  if (!roles || roles.length === 0) return ['MAHASISWA'];
+  const unique = Array.from(new Set(roles));
+  return unique.length > 0 ? unique : ['MAHASISWA'];
+}
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser>(DEFAULT_FALLBACK_USER);
@@ -87,12 +94,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const res = await authService.getMe();
       if (res.data) {
         const u = res.data;
+        const cleanUserRoles = sanitizeRoles(u.roles);
         setUser({
           id: u.id,
           nama_lengkap: u.nama_lengkap,
           email: u.email,
-          roles: u.roles || ['MAHASISWA'],
-          activeRole: u.active_role || u.roles?.[0] || 'MAHASISWA',
+          roles: cleanUserRoles,
+          activeRole: u.active_role || cleanUserRoles[0] || 'MAHASISWA',
         });
         setIsAuthenticated(true);
       }
@@ -117,12 +125,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const res = await authService.getMe();
         if (isMounted && res.data) {
           const u = res.data;
+          const cleanUserRoles = sanitizeRoles(u.roles);
           setUser({
             id: u.id,
             nama_lengkap: u.nama_lengkap,
             email: u.email,
-            roles: u.roles || ['MAHASISWA'],
-            activeRole: u.active_role || u.roles?.[0] || 'MAHASISWA',
+            roles: cleanUserRoles,
+            activeRole: u.active_role || cleanUserRoles[0] || 'MAHASISWA',
           });
           setIsAuthenticated(true);
         }
@@ -155,12 +164,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const res = await authService.login(payload);
     if (res.data?.user) {
       const u = res.data.user;
+      const cleanUserRoles = sanitizeRoles(u.roles);
       setUser({
         id: u.id,
         nama_lengkap: u.nama_lengkap,
         email: u.email,
-        roles: u.roles || ['MAHASISWA'],
-        activeRole: u.active_role || u.roles?.[0] || 'MAHASISWA',
+        roles: cleanUserRoles,
+        activeRole: u.active_role || cleanUserRoles[0] || 'MAHASISWA',
       });
       setIsAuthenticated(true);
     }

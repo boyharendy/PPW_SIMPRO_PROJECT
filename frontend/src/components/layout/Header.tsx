@@ -6,7 +6,8 @@ import { useState, useRef, useEffect } from 'react';
 import type { Role } from '@/lib/types';
 import { formatDateTime } from '@/lib/utils';
 
-const ROLE_LABELS: Record<Role, string> = {
+export const ROLE_LABELS: Record<Role, string> = {
+  // 10 Peran Tetap (PRD Bab 8.1)
   KAPRODI: 'Kaprodi',
   GKM: 'GKM (Gugus Kendali Mutu)',
   ADMIN_PRODI: 'Admin Prodi',
@@ -15,13 +16,13 @@ const ROLE_LABELS: Record<Role, string> = {
   KOORDINATOR_PSI: 'Koordinator PSI',
   KOORDINATOR_PDLK: 'Koordinator PDLK',
   PENGELOLA_ADUAN: 'Pengelola Aduan',
-  PETUGAS_KEKERASAN: 'Petugas Khusus Kekerasan (Satgas)',
+  PETUGAS_KEKERASAN: 'Petugas Kekerasan (Satgas)',
   MAHASISWA: 'Mahasiswa',
-  DOSEN_VERIFIKATOR: 'Dosen Verifikator',
-  KOORD_KP: 'Koordinator KP',
-  KOORD_TA: 'Koordinator TA',
-  KOORD_MAGANG: 'Koordinator Magang',
-  HIMPUNAN: 'Himpunan Mahasiswa',
+  // Peran Kompatibilitas Data Induk (PRD Bab 6.A poin 2)
+  PENGURUS_HIMPUNAN: 'Pengurus Himpunan',
+  DOSEN_WALI: 'Dosen Wali',
+  DOSEN_PEMBINA: 'Dosen Pembina',
+  KETUA_KELAS: 'Ketua Kelas',
 };
 
 export default function Header() {
@@ -86,7 +87,7 @@ export default function Header() {
                 Ganti Peran Pengguna
               </p>
               <div className="max-h-72 overflow-y-auto">
-                {user.roles.map(role => (
+                {Array.from(new Set(user.roles)).map(role => (
                   <button
                     key={role}
                     onClick={() => { setActiveRole(role); setShowRoles(false); }}

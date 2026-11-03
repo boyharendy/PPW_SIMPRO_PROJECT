@@ -5,14 +5,23 @@ import "time"
 type Role string
 
 const (
-	RoleKaprodi     Role = "KAPRODI"
-	RoleGKM         Role = "GKM"
-	RoleKoordKP     Role = "KOORD_KP"
-	RoleKoordTA     Role = "KOORD_TA"
-	RoleKoordMagang Role = "KOORD_MAGANG"
-	RoleHimpunan    Role = "HIMPUNAN"
-	RoleDosen       Role = "DOSEN"
-	RoleMahasiswa   Role = "MAHASISWA"
+	// 10 Peran Tetap Utama (PRD Bab 8.1)
+	RoleKaprodi          Role = "KAPRODI"
+	RoleGKM              Role = "GKM"
+	RoleAdminProdi       Role = "ADMIN_PRODI"
+	RoleDosen            Role = "DOSEN"
+	RoleKoordKP          Role = "KOORDINATOR_KP"
+	RoleKoordPSI         Role = "KOORDINATOR_PSI"
+	RoleKoordPDLK        Role = "KOORDINATOR_PDLK"
+	RolePengelolaAduan   Role = "PENGELOLA_ADUAN"
+	RolePetugasKekerasan Role = "PETUGAS_KEKERASAN"
+	RoleMahasiswa        Role = "MAHASISWA"
+
+	// Peran Kompatibilitas Data Induk (PRD Bab 6.A poin 2)
+	RolePengurusHimpunan Role = "PENGURUS_HIMPUNAN"
+	RoleDosenWali        Role = "DOSEN_WALI"
+	RoleDosenPembina     Role = "DOSEN_PEMBINA"
+	RoleKetuaKelas       Role = "KETUA_KELAS"
 )
 
 type User struct {
