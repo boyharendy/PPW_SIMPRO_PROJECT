@@ -28,9 +28,9 @@ type Config struct {
 }
 
 func LoadConfig() *Config {
-	// 1. Try to load local backend .env first
+	// Try loading environment files in order of precedence:
+	_ = godotenv.Load(".env.local")
 	_ = godotenv.Load(".env")
-	// 2. Also try loading from frontend/.env.local if running in monorepo
 	_ = godotenv.Load("../frontend/.env.local")
 
 	port := getEnv("SERVER_PORT", "8080")

@@ -83,3 +83,4 @@ test('Deduplication helper ensures user roles are unique', () => {
   assert.deepEqual(cleanRoles, ['KAPRODI', 'DOSEN', 'KOORDINATOR_KP']);
   assert.equal(cleanRoles.length, 3);
 });
+
