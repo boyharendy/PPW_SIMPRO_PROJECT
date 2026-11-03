@@ -1,18 +1,37 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { mockCourseEvaluations, mockCourses, mockPeriods } from '@/lib/mock-data';
+import { evaluationService } from '@/lib/api/services/evaluation.service';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import type { CourseEvaluation } from '@/lib/types';
 import { GraduationCap, Eye, FileEdit, CheckCircle2, Search } from 'lucide-react';
 import Link from 'next/link';
 
 export default function EvaluasiPerkuliahanListPage() {
-  const [evaluations, setEvaluations] = useState<CourseEvaluation[]>(mockCourseEvaluations);
+  const [evaluations, setEvaluations] = useState<CourseEvaluation[]>(() =>
+    storageSync.get<CourseEvaluation[]>(STORAGE_KEYS.EVALUATIONS, mockCourseEvaluations)
+  );
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('period-2024-genap');
+
+  useEffect(() => {
+    let active = true;
+    evaluationService
+      .getEvaluations()
+      .then((res) => {
+        if (active && res.data && res.data.length > 0) {
+          setEvaluations(res.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const columns = [
     {

@@ -1,23 +1,42 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
 import StatusBadge from '@/components/ui/StatusBadge';
 import Modal from '@/components/ui/Modal';
 import { mockRkaDocuments } from '@/lib/mock-data';
+import { rkaService } from '@/lib/api/services/rka.service';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import type { RkaDocument } from '@/lib/types';
 import { Plus, Wallet, ArrowRight, Eye, Layers } from 'lucide-react';
 import Link from 'next/link';
 import { formatRupiah, calculateAbsorptionPercentage } from '@/lib/utils';
 
 export default function RkaListPage() {
-  const [rkaList, setRkaList] = useState<RkaDocument[]>(mockRkaDocuments);
+  const [rkaList, setRkaList] = useState<RkaDocument[]>(() =>
+    storageSync.get<RkaDocument[]>(STORAGE_KEYS.RKA_DOCUMENTS, mockRkaDocuments)
+  );
   const [modalOpen, setModalOpen] = useState(false);
   const [tahunBaru, setTahunBaru] = useState(new Date().getFullYear() + 1);
   const [judulBaru, setJudulBaru] = useState('');
 
-  const handleCreate = (e: React.FormEvent) => {
+  useEffect(() => {
+    let active = true;
+    rkaService
+      .getRkaList()
+      .then((res) => {
+        if (active && res.data && res.data.length > 0) {
+          setRkaList(res.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     const newDoc: RkaDocument = {
       id: `rka-${tahunBaru}`,
@@ -42,8 +61,15 @@ export default function RkaListPage() {
       ],
     };
 
-    setRkaList([newDoc, ...rkaList]);
+    const updated = storageSync.prepend(STORAGE_KEYS.RKA_DOCUMENTS, newDoc, rkaList);
+    setRkaList(updated);
     setModalOpen(false);
+
+    try {
+      await rkaService.createRka(newDoc);
+    } catch {
+      // Offline fallback
+    }
   };
 
   const columns = [

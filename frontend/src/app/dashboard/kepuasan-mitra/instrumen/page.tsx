@@ -1,59 +1,78 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
 import StatusBadge from '@/components/ui/StatusBadge';
 import Modal from '@/components/ui/Modal';
 import { mockSurveyTemplates } from '@/lib/mock-data';
+import { surveyService } from '@/lib/api/services/survey.service';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import type { PartnerSurveyTemplate, SurveyProgram } from '@/lib/types';
 import { Plus, Copy, ArrowRight, Settings2 } from 'lucide-react';
 import Link from 'next/link';
 import { formatDateShort } from '@/lib/utils';
 
 export default function InstrumenKepuasanPage() {
-  const [templates, setTemplates] = useState<PartnerSurveyTemplate[]>(mockSurveyTemplates);
+  const [templates, setTemplates] = useState<PartnerSurveyTemplate[]>(() =>
+    storageSync.get<PartnerSurveyTemplate[]>(STORAGE_KEYS.SURVEYS, mockSurveyTemplates)
+  );
   const [openModal, setOpenModal] = useState(false);
   const [formProgram, setFormProgram] = useState<SurveyProgram>('KP');
   const [formNama, setFormNama] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleCreate = (e: React.FormEvent) => {
+  // Muat data dari Backend / Supabase saat halaman dibuka
+  useEffect(() => {
+    let active = true;
+    surveyService
+      .getSurveys()
+      .then((res) => {
+        if (active && res.data && res.data.length > 0) {
+          setTemplates(res.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formNama.trim()) return;
 
-    const newTemplate: PartnerSurveyTemplate = {
-      id: `tmpl-${formProgram.toLowerCase()}-${Date.now()}`,
-      program: formProgram,
-      nama: formNama,
-      skala_maks: 5,
-      status: 'DRAF',
-      dibuat_oleh: 'u-koordinator',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      aspek: [
-        { id: `asp-${Date.now()}-1`, template_id: `tmpl-${Date.now()}`, nama_aspek: 'Integritas & Etika', bobot: 30, urutan: 1, is_active: true },
-        { id: `asp-${Date.now()}-2`, template_id: `tmpl-${Date.now()}`, nama_aspek: 'Kompetensi Keilmuan', bobot: 40, urutan: 2, is_active: true },
-        { id: `asp-${Date.now()}-3`, template_id: `tmpl-${Date.now()}`, nama_aspek: 'Komunikasi & Adaptasi', bobot: 30, urutan: 3, is_active: true },
-      ],
-      total_responden: 0,
-    };
+    setLoading(true);
+    try {
+      const res = await surveyService.createSurvey({
+        program: formProgram,
+        nama: formNama,
+        skala_maks: 5,
+        status: 'DRAF',
+      });
 
-    setTemplates([newTemplate, ...templates]);
-    setOpenModal(false);
-    setFormNama('');
+      if (res.data) {
+        setTemplates((prev) => [res.data, ...prev.filter((t) => t.id !== res.data.id)]);
+      }
+      setOpenModal(false);
+      setFormNama('');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDuplicate = (tmpl: PartnerSurveyTemplate) => {
-    const duplicated: PartnerSurveyTemplate = {
-      ...tmpl,
-      id: `${tmpl.id}-copy-${Date.now()}`,
+  const handleDuplicate = async (tmpl: PartnerSurveyTemplate) => {
+    const duplicated: Partial<PartnerSurveyTemplate> = {
+      program: tmpl.program,
       nama: `${tmpl.nama} (Salinan Baru)`,
+      skala_maks: tmpl.skala_maks,
       status: 'DRAF',
-      total_responden: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      aspek: tmpl.aspek,
     };
-    setTemplates([duplicated, ...templates]);
+    const res = await surveyService.createSurvey(duplicated);
+    if (res.data) {
+      setTemplates((prev) => [res.data, ...prev]);
+    }
   };
 
   const columns = [
@@ -79,11 +98,20 @@ export default function InstrumenKepuasanPage() {
       ),
     },
     {
-      key: 'aspek',
-      header: 'Jumlah Aspek',
+      key: 'aspek_count',
+      header: 'Aspek Penilaian',
+      render: (row: PartnerSurveyTemplate) => (
+        <span className="text-xs text-slate-600 font-medium">
+          {row.aspek?.length || 0} Aspek
+        </span>
+      ),
+    },
+    {
+      key: 'total_responden',
+      header: 'Responden',
       render: (row: PartnerSurveyTemplate) => (
         <span className="text-xs font-semibold text-slate-700">
-          {row.aspek?.length || 0} Butir Penilaian
+          {row.total_responden || 0} Mitra
         </span>
       ),
     },
@@ -97,22 +125,23 @@ export default function InstrumenKepuasanPage() {
       header: 'Aksi',
       className: 'text-right',
       render: (row: PartnerSurveyTemplate) => (
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end gap-1.5">
           <button
             type="button"
             onClick={() => handleDuplicate(row)}
-            className="btn-secondary text-xs py-1.5 px-2.5 flex items-center gap-1 text-slate-600 hover:text-blue-600"
-            title="Duplikasi Template"
+            className="btn-secondary text-xs py-1.5 px-2.5 flex items-center gap-1 text-slate-600"
+            title="Duplikasi Instrumen"
           >
             <Copy size={13} />
             <span className="hidden sm:inline">Duplikasi</span>
           </button>
+
           <Link
             href={`/dashboard/kepuasan-mitra/instrumen/${row.id}`}
-            className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1"
+            className="btn-primary text-xs py-1.5 px-2.5 flex items-center gap-1"
           >
             <Settings2 size={13} />
-            <span>Atur Aspek</span>
+            <span>Kelola</span>
           </Link>
         </div>
       ),
@@ -122,16 +151,16 @@ export default function InstrumenKepuasanPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Instrumen Kuesioner Kepuasan Mitra"
-        description="Kelola template kuesioner, bobot penilaian, dan aspek evaluasi per program (KP, PSI, PDLK)."
+        title="Instrumen Kepuasan Mitra"
+        description="Kelola kuesioner evaluasi mitra untuk program Kerja Praktik (KP), Proyek Sistem Informasi (PSI), dan Pembelajaran Di Luar Kampus (PDLK)."
         action={
           <button
             type="button"
             onClick={() => setOpenModal(true)}
-            className="btn-primary text-xs py-2 px-3.5 flex items-center gap-2"
+            className="btn-primary flex items-center gap-2"
           >
-            <Plus size={15} />
-            <span>Buat Template Baru</span>
+            <Plus size={16} />
+            <span>Tambah Instrumen</span>
           </button>
         }
       />
@@ -140,52 +169,57 @@ export default function InstrumenKepuasanPage() {
         <DataTable
           columns={columns}
           data={templates}
-          emptyMessage="Belum ada template instrumen kepuasan"
+          emptyMessage="Belum ada instrumen kepuasan mitra yang dibuat"
         />
       </div>
 
-      {/* Modal Buat Template */}
-      <Modal open={openModal} onClose={() => setOpenModal(false)} title="Buat Template Kuesioner Baru" size="md">
-        <form onSubmit={handleCreate} className="space-y-4">
+      {/* Modal Tambah Instrumen */}
+      <Modal open={openModal} onClose={() => setOpenModal(false)} title="Tambah Instrumen Kuesioner Baru" size="md">
+        <form onSubmit={handleCreate} className="space-y-4 text-xs">
           <div>
-            <label className="label">Program Akademik</label>
+            <label className="label">Program Terkait *</label>
             <select
+              className="input-field"
               value={formProgram}
               onChange={(e) => setFormProgram(e.target.value as SurveyProgram)}
-              className="select-field text-xs"
             >
               <option value="KP">Kerja Praktik (KP)</option>
               <option value="PSI">Proyek Sistem Informasi (PSI)</option>
-              <option value="PDLK">Pembelajaran di Luar Kampus (PDLK / Magang)</option>
+              <option value="PDLK">Pembelajaran Di Luar Kampus (PDLK)</option>
             </select>
           </div>
 
           <div>
-            <label className="label">Nama Template</label>
+            <label className="label">Nama Template Instrumen *</label>
             <input
               type="text"
-              required
+              className="input-field"
+              placeholder="Contoh: Evaluasi Kinerja Mahasiswa KP 2025/2026"
               value={formNama}
               onChange={(e) => setFormNama(e.target.value)}
-              placeholder="Contoh: Kuesioner Kepuasan Mitra KP 2025/2026"
-              className="input-field text-xs"
+              required
             />
           </div>
 
-          <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-800">
-            Aspek standar (Integritas, Kompetensi, Komunikasi) akan dibuat otomatis sebagai draf awal dan dapat disesuaikan pada halaman detail instrumen.
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 text-[11px] leading-relaxed">
+            Template baru akan dibuat dengan status <strong>DRAF</strong> beserta aspek standar (Integritas, Kompetensi, dan Komunikasi). Anda dapat menambahkan rincian butir pertanyaan pada menu Kelola setelah template dibuat.
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
             <button
               type="button"
               onClick={() => setOpenModal(false)}
-              className="btn-secondary text-xs"
+              className="btn-secondary"
+              disabled={loading}
             >
               Batal
             </button>
-            <button type="submit" className="btn-primary text-xs">
-              Simpan & Lanjutkan
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={loading || !formNama.trim()}
+            >
+              {loading ? 'Menyimpan...' : 'Simpan Template Kuesioner'}
             </button>
           </div>
         </form>
@@ -193,4 +227,3 @@ export default function InstrumenKepuasanPage() {
     </div>
   );
 }
-

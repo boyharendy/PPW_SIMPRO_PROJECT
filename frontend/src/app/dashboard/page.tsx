@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Building2,
@@ -32,9 +32,12 @@ import {
   mockNotifications,
   mockComplaints,
   mockTrips,
+  mockBusinessTrips,
   mockPublications,
   mockRpsSubmissions,
 } from '@/lib/mock-data';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
+import type { BusinessTrip, Publication, RpsSubmission, Complaint } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 
@@ -42,13 +45,34 @@ export default function DashboardPage() {
   const { user, currentRole } = useUser();
   const stats = mockDashboardStats;
 
+  const [trips, setTrips] = useState<BusinessTrip[]>(() =>
+    storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips)
+  );
+  const [publications, setPublications] = useState<Publication[]>(() =>
+    storageSync.get<Publication[]>(STORAGE_KEYS.PUBLICATIONS, mockPublications)
+  );
+  const [rpsList, setRpsList] = useState<RpsSubmission[]>(() =>
+    storageSync.get<RpsSubmission[]>(STORAGE_KEYS.RPS_SUBMISSIONS, mockRpsSubmissions)
+  );
+  const [complaints, setComplaints] = useState<Complaint[]>(() =>
+    storageSync.get<Complaint[]>(STORAGE_KEYS.COMPLAINTS, mockComplaints)
+  );
+
+  useEffect(() => {
+    // Re-check storageSync if another tab or navigation updated it
+    setTrips(storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips));
+    setPublications(storageSync.get<Publication[]>(STORAGE_KEYS.PUBLICATIONS, mockPublications));
+    setRpsList(storageSync.get<RpsSubmission[]>(STORAGE_KEYS.RPS_SUBMISSIONS, mockRpsSubmissions));
+    setComplaints(storageSync.get<Complaint[]>(STORAGE_KEYS.COMPLAINTS, mockComplaints));
+  }, []);
+
   // Urgent pending items
-  const pendingTrips = mockTrips.filter((t) => t.status === 'DIAJUKAN');
-  const pendingPublications = mockPublications.filter((p) => p.status_verifikasi === 'MENUNGGU');
-  const pendingRps = mockRpsSubmissions.filter(
+  const pendingTrips = trips.filter((t) => t.status === 'DIAJUKAN');
+  const pendingPublications = publications.filter((p) => p.status_verifikasi === 'MENUNGGU');
+  const pendingRps = rpsList.filter(
     (r) => r.status === 'DIAJUKAN' || r.status === 'DIREVIEW'
   );
-  const activeComplaints = mockComplaints.filter(
+  const activeComplaints = complaints.filter(
     (c) => c.status === 'DITERIMA' || c.status === 'DITINDAKLANJUTI'
   );
 

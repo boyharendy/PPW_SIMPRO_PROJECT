@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
@@ -28,6 +28,8 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { StatusStepper } from '@/components/ui/StatusStepper';
 import ThreadChat from '@/components/ui/ThreadChat';
 import { mockComplaints, mockProfiles } from '@/lib/mock-data';
+import { complaintService } from '@/lib/api/services/complaint.service';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import { formatDate, formatDateTime } from '@/lib/utils';
 import type { Complaint, ComplaintMessage, ComplaintStatus, Disposition } from '@/lib/types';
 
@@ -36,8 +38,25 @@ export default function DetailKelolaAduanPage() {
   const router = useRouter();
   const complaintId = params.id as string;
 
-  const foundComplaint = mockComplaints.find((c) => c.id === complaintId) || mockComplaints[0];
-  const [complaint, setComplaint] = useState<Complaint>(foundComplaint);
+  const [complaint, setComplaint] = useState<Complaint>(() => {
+    const list = storageSync.get<Complaint[]>(STORAGE_KEYS.COMPLAINTS, mockComplaints);
+    return list.find((c) => c.id === complaintId) || mockComplaints[0];
+  });
+
+  useEffect(() => {
+    let active = true;
+    complaintService
+      .getComplaintById(complaintId)
+      .then((res) => {
+        if (active && res.data) {
+          setComplaint(res.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [complaintId]);
 
   // Disposition form state
   const [showDisposisiModal, setShowDisposisiModal] = useState(false);
@@ -70,7 +89,7 @@ export default function DetailKelolaAduanPage() {
   }
 
   // Handle ThreadChat message
-  const handleSendMessage = (text: string, isInternal: boolean) => {
+  const handleSendMessage = async (text: string, isInternal: boolean) => {
     const newMessage: ComplaintMessage = {
       id: `cm-${Date.now()}`,
       complaint_id: complaint.id,
@@ -83,17 +102,29 @@ export default function DetailKelolaAduanPage() {
       tanggal: new Date().toISOString(),
     };
 
-    setComplaint((prev) => ({
-      ...prev,
-      messages: [...(prev.messages || []), newMessage],
-    }));
+    const updated = {
+      ...complaint,
+      messages: [...(complaint.messages || []), newMessage],
+    };
+
+    setComplaint(updated);
+    storageSync.update(STORAGE_KEYS.COMPLAINTS, complaint.id, updated, mockComplaints);
+
+    try {
+      await complaintService.replyComplaint(complaint.id, {
+        isi: text,
+        is_internal: isInternal,
+      });
+    } catch {
+      // Offline fallback
+    }
 
     setToastMessage(isInternal ? 'Catatan internal tersimpan.' : 'Pesan terkirim ke pelapor.');
     setTimeout(() => setToastMessage(null), 3000);
   };
 
   // Handle Add Disposition
-  const handleSaveDisposisi = (e: React.FormEvent) => {
+  const handleSaveDisposisi = async (e: React.FormEvent) => {
     e.preventDefault();
     const newDisp: Disposition = {
       id: `disp-${Date.now()}`,
@@ -106,11 +137,24 @@ export default function DetailKelolaAduanPage() {
       created_at: new Date().toISOString(),
     };
 
-    setComplaint((prev) => ({
-      ...prev,
-      status: 'DITINDAKLANJUTI',
-      dispositions: [...(prev.dispositions || []), newDisp],
-    }));
+    const updated = {
+      ...complaint,
+      status: 'DITINDAKLANJUTI' as const,
+      dispositions: [...(complaint.dispositions || []), newDisp],
+    };
+
+    setComplaint(updated);
+    storageSync.update(STORAGE_KEYS.COMPLAINTS, complaint.id, updated, mockComplaints);
+
+    try {
+      await complaintService.createDisposition(complaint.id, {
+        penanggung_jawab_id: disposisiForm.penanggung_jawab_id,
+        catatan: disposisiForm.catatan,
+        tenggat: disposisiForm.tenggat,
+      });
+    } catch {
+      // Offline fallback
+    }
 
     setShowDisposisiModal(false);
     setToastMessage('Disposisi baru berhasil ditetapkan.');
@@ -118,7 +162,7 @@ export default function DetailKelolaAduanPage() {
   };
 
   // Handle Complete Complaint
-  const handleResolveComplaint = (e: React.FormEvent) => {
+  const handleResolveComplaint = async (e: React.FormEvent) => {
     e.preventDefault();
     const completionMessage: ComplaintMessage = {
       id: `cm-res-${Date.now()}`,
@@ -132,12 +176,23 @@ export default function DetailKelolaAduanPage() {
       tanggal: new Date().toISOString(),
     };
 
-    setComplaint((prev) => ({
-      ...prev,
-      status: 'SELESAI',
+    const updated = {
+      ...complaint,
+      status: 'SELESAI' as const,
       tanggal_selesai: new Date().toISOString().split('T')[0],
-      messages: [...(prev.messages || []), completionMessage],
-    }));
+      messages: [...(complaint.messages || []), completionMessage],
+    };
+
+    setComplaint(updated);
+    storageSync.update(STORAGE_KEYS.COMPLAINTS, complaint.id, updated, mockComplaints);
+
+    try {
+      await complaintService.resolveComplaint(complaint.id, {
+        solusi: resolutionNote,
+      });
+    } catch {
+      // Offline fallback
+    }
 
     setShowResolveModal(false);
     setToastMessage('Aduan berhasil ditandai selesai.');

@@ -6,6 +6,8 @@ import PageHeader from '@/components/ui/PageHeader';
 import CurrencyInput from '@/components/ui/CurrencyInput';
 import FileUploader from '@/components/ui/FileUploader';
 import { mockBusinessTrips } from '@/lib/mock-data';
+import { tripService } from '@/lib/api/services/trip.service';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import type { BusinessTrip } from '@/lib/types';
 import { ArrowLeft, Send, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
@@ -16,8 +18,8 @@ export default function LaporanPerjalananPage() {
   const router = useRouter();
   const tripId = params.id as string;
 
-  const trip =
-    mockBusinessTrips.find((t) => t.id === tripId) || mockBusinessTrips[1];
+  const trips = storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips);
+  const trip = trips.find((t) => t.id === tripId) || mockBusinessTrips[1];
 
   const [realTransport, setRealTransport] = useState(
     trip.costs.find((c) => c.komponen === 'TRANSPORTASI')?.estimasi_biaya || 0
@@ -35,16 +37,37 @@ export default function LaporanPerjalananPage() {
   const totalEstimasi = trip.costs.reduce((s, c) => s + (c.estimasi_biaya || 0), 0);
   const isMelebihiEstimasi = totalRealisasi > totalEstimasi * 1.1;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!laporanHasil.trim()) {
       alert('Teks laporan hasil kegiatan wajib diisi.');
       return;
     }
 
-    trip.status = 'DILAPORKAN';
-    trip.laporan_hasil = laporanHasil;
-    trip.laporan_dikirim_at = new Date().toISOString();
+    const updatedPatch: Partial<BusinessTrip> = {
+      status: 'DILAPORKAN',
+      laporan_hasil: laporanHasil,
+      laporan_dikirim_at: new Date().toISOString(),
+      costs: trip.costs.map((c) => {
+        if (c.komponen === 'TRANSPORTASI') return { ...c, realisasi_biaya: realTransport };
+        if (c.komponen === 'AKOMODASI') return { ...c, realisasi_biaya: realAkomodasi };
+        if (c.komponen === 'UANG_HARIAN') return { ...c, realisasi_biaya: realUangHarian };
+        if (c.komponen === 'LAINNYA') return { ...c, realisasi_biaya: realLainnya };
+        return c;
+      }),
+    };
+
+    storageSync.update(STORAGE_KEYS.TRIPS, trip.id, updatedPatch, mockBusinessTrips);
+
+    try {
+      await tripService.submitReport(trip.id, {
+        ringkasan_hasil: laporanHasil,
+        realisasi_biaya: totalRealisasi,
+        catatan: isMelebihiEstimasi ? 'Realisasi melebihi estimasi > 10%' : undefined,
+      });
+    } catch {
+      // Offline fallback
+    }
 
     router.push(`/dashboard/perjalanan-dinas/${trip.id}`);
   };

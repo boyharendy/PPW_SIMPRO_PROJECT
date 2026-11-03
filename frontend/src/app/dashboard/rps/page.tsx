@@ -1,18 +1,37 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { mockRpsSubmissions, mockCourses } from '@/lib/mock-data';
+import { rpsService } from '@/lib/api/services/rps.service';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import type { RpsSubmission } from '@/lib/types';
 import { Plus, BookCheck, Eye, Search, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 
 export default function RpsListPage() {
-  const [submissions, setSubmissions] = useState<RpsSubmission[]>(mockRpsSubmissions);
+  const [submissions, setSubmissions] = useState<RpsSubmission[]>(() =>
+    storageSync.get<RpsSubmission[]>(STORAGE_KEYS.RPS_SUBMISSIONS, mockRpsSubmissions)
+  );
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+
+  useEffect(() => {
+    let active = true;
+    rpsService
+      .getSubmissions()
+      .then((res) => {
+        if (active && res.data && res.data.length > 0) {
+          setSubmissions(res.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const filtered = submissions.filter((s) => {
     const matchSearch =

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
 import StatusBadge from '@/components/ui/StatusBadge';
@@ -11,8 +11,11 @@ import {
   mockSurveyTemplates,
   mockPartners,
 } from '@/lib/mock-data';
+import { surveyService } from '@/lib/api/services/survey.service';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import type {
   PartnerSurveyInvitation,
+  PartnerSurveyTemplate,
   SurveyDeliveryChannel,
 } from '@/lib/types';
 import {
@@ -28,7 +31,9 @@ import {
 import { formatDateShort, copyToClipboard } from '@/lib/utils';
 
 export default function PengirimanMitraPage() {
-  const [invitations, setInvitations] = useState<PartnerSurveyInvitation[]>(mockSurveyInvitations);
+  const [invitations, setInvitations] = useState<PartnerSurveyInvitation[]>(() =>
+    storageSync.get<PartnerSurveyInvitation[]>(STORAGE_KEYS.SURVEY_INVITATIONS, mockSurveyInvitations)
+  );
   const [selectedPlacementId, setSelectedPlacementId] = useState<string>('');
   const [modalKirimOpen, setModalKirimOpen] = useState(false);
   const [modalManualOpen, setModalManualOpen] = useState(false);
@@ -46,13 +51,29 @@ export default function PengirimanMitraPage() {
     asp4: 4,
   });
 
-  const activeTemplate = mockSurveyTemplates[0];
+  const availableTemplates = storageSync.get<PartnerSurveyTemplate[]>(STORAGE_KEYS.SURVEYS, mockSurveyTemplates);
+  const activeTemplate = availableTemplates[0] || mockSurveyTemplates[0];
 
-  const handleKirimTautan = (placementId: string) => {
+  useEffect(() => {
+    let active = true;
+    surveyService
+      .getInvitations()
+      .then((res) => {
+        if (active && res.data && res.data.length > 0) {
+          setInvitations(res.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleKirimTautan = async (placementId: string) => {
     setSelectedPlacementId(placementId);
     const placement = mockPlacements.find((p) => p.id === placementId);
     const randomToken = `token-${placement?.program?.toLowerCase() || 'survey'}-${Date.now().toString(36)}`;
-    const fullUrl = `${window.location.origin}/mitra/isi/${randomToken}`;
+    const fullUrl = typeof window !== 'undefined' ? `${window.location.origin}/mitra/isi/${randomToken}` : '';
 
     const newInv: PartnerSurveyInvitation = {
       id: `inv-${Date.now()}`,
@@ -71,14 +92,21 @@ export default function PengirimanMitraPage() {
       template: activeTemplate,
     };
 
-    setInvitations([newInv, ...invitations.filter((i) => i.placement_id !== placementId)]);
+    const updated = storageSync.prepend(STORAGE_KEYS.SURVEY_INVITATIONS, newInv, invitations);
+    setInvitations(updated);
     setGeneratedLink(fullUrl);
     setModalKirimOpen(true);
+
+    try {
+      await surveyService.createInvitation(newInv);
+    } catch {
+      // Offline fallback
+    }
   };
 
-  const handleCopyLink = () => {
+  const handleCopyLink = async () => {
     if (generatedLink) {
-      navigator.clipboard.writeText(generatedLink);
+      await copyToClipboard(generatedLink);
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
     }
@@ -92,7 +120,7 @@ export default function PengirimanMitraPage() {
     setModalManualOpen(true);
   };
 
-  const handleSaveManual = (e: React.FormEvent) => {
+  const handleSaveManual = async (e: React.FormEvent) => {
     e.preventDefault();
     const placement = mockPlacements.find((p) => p.id === selectedPlacementId);
 
@@ -112,8 +140,15 @@ export default function PengirimanMitraPage() {
       template: activeTemplate,
     };
 
-    setInvitations([updatedInv, ...invitations.filter((i) => i.placement_id !== selectedPlacementId)]);
+    const updated = storageSync.prepend(STORAGE_KEYS.SURVEY_INVITATIONS, updatedInv, invitations);
+    setInvitations(updated);
     setModalManualOpen(false);
+
+    try {
+      await surveyService.createInvitation(updatedInv);
+    } catch {
+      // Offline fallback
+    }
   };
 
   const columns = [

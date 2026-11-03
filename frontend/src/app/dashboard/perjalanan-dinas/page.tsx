@@ -1,19 +1,38 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { mockBusinessTrips } from '@/lib/mock-data';
+import { tripService } from '@/lib/api/services/trip.service';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import type { BusinessTrip } from '@/lib/types';
 import { Plus, Plane, Search, Eye, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { formatDateShort, formatRupiah } from '@/lib/utils';
 
 export default function PerjalananDinasListPage() {
-  const [trips, setTrips] = useState<BusinessTrip[]>(mockBusinessTrips);
+  const [trips, setTrips] = useState<BusinessTrip[]>(() =>
+    storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips)
+  );
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+
+  useEffect(() => {
+    let active = true;
+    tripService
+      .getTrips()
+      .then((res) => {
+        if (active && res.data && res.data.length > 0) {
+          setTrips(res.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const filtered = trips.filter((t) => {
     const matchSearch =

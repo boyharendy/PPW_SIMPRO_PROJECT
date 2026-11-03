@@ -111,8 +111,10 @@ export const API_ENDPOINTS = {
   // Modul 13: Layanan Aduan Mahasiswa
   COMPLAINTS: {
     LIST: '/complaints',
+    CREATE: '/complaints',
     RECAP: '/complaints/recap',
     DETAIL: (id: string) => `/complaints/${id}`,
+    UPDATE: (id: string) => `/complaints/${id}`,
     STATUS: (id: string) => `/complaints/${id}/status`,
     MESSAGES: (id: string) => `/complaints/${id}/messages`,
     DISPOSITIONS: (id: string) => `/complaints/${id}/dispositions`,
