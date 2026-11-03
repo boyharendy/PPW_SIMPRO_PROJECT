@@ -1,32 +1,80 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import PublicShell from '@/components/layout/PublicShell';
-import { mockSurveyTemplates, mockPlacements } from '@/lib/mock-data';
-import { CheckCircle2, Star, Building2, User, BookOpen, Send, ShieldCheck } from 'lucide-react';
+import { mockSurveyTemplates, mockPlacements, mockSurveyInvitations } from '@/lib/mock-data';
+import { surveyService } from '@/lib/api/services/survey.service';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
+import type { PartnerSurveyInvitation, PartnerSurveyResponse } from '@/lib/types';
+import { CheckCircle2, Building2, User, BookOpen, Send, ShieldCheck } from 'lucide-react';
 
 export default function PublicMitraSurveyPage() {
   const params = useParams();
   const token = params.token as string;
 
-  // Placement info
-  const placement = mockPlacements[0];
-  const template = mockSurveyTemplates[0];
-
+  const [invitation, setInvitation] = useState<PartnerSurveyInvitation | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [namaPengisi, setNamaPengisi] = useState('');
   const [jabatanPengisi, setJabatanPengisi] = useState('');
   const [komentar, setKomentar] = useState('');
   const [answers, setAnswers] = useState<Record<string, number>>({});
 
+  useEffect(() => {
+    const localInvs = storageSync.get<PartnerSurveyInvitation[]>(
+      STORAGE_KEYS.SURVEY_INVITATIONS,
+      mockSurveyInvitations
+    );
+    const matched = localInvs.find((i) => i.token_plain === token || i.id === token);
+    if (matched) {
+      setInvitation(matched);
+      if (matched.status === 'DIISI') {
+        setSubmitted(true);
+      }
+    }
+  }, [token]);
+
+  const placement = invitation?.placement || mockPlacements[0];
+  const template = invitation?.template || mockSurveyTemplates[0];
+
   const handleScoreChange = (aspectId: string, score: number) => {
     setAnswers((prev) => ({ ...prev, [aspectId]: score }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!namaPengisi.trim()) return;
+
+    const respId = `resp-mitra-${Date.now()}`;
+    const newResp: PartnerSurveyResponse = {
+      id: respId,
+      invitation_id: invitation?.id || `inv-${token}`,
+      template_id: template.id,
+      placement_id: placement.id,
+      nama_pengisi: namaPengisi,
+      jabatan_pengisi: jabatanPengisi,
+      komentar: komentar || undefined,
+      sumber: 'TAUTAN_MITRA',
+      submitted_at: new Date().toISOString(),
+      placement,
+      answers: (template.aspek || []).map((asp, i) => ({
+        id: `ans-${Date.now()}-${i}`,
+        response_id: respId,
+        aspect_id: asp.id,
+        skor: answers[asp.id] || 5,
+      })),
+    };
+
+    surveyService.saveResponseLocal(newResp);
+    if (invitation?.id) {
+      storageSync.update<PartnerSurveyInvitation>(
+        STORAGE_KEYS.SURVEY_INVITATIONS,
+        invitation.id,
+        { status: 'DIISI' },
+        mockSurveyInvitations
+      );
+    }
+    await surveyService.submitPublicResponse(token, newResp);
     setSubmitted(true);
   };
 
@@ -82,7 +130,7 @@ export default function PublicMitraSurveyPage() {
               <BookOpen size={16} className="text-slate-400 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-slate-400 text-[10px]">Program Akademik</p>
-                <p className="font-semibold text-blue-700">Kerja Praktik (KP) 2025/2026</p>
+                <p className="font-semibold text-blue-700">{placement.program || 'KP'} 2025/2026</p>
               </div>
             </div>
           </div>
@@ -193,4 +241,3 @@ export default function PublicMitraSurveyPage() {
     </PublicShell>
   );
 }
-
