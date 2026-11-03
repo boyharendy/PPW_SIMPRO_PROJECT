@@ -6,7 +6,7 @@ import { ArrowRight, BarChart3, Shield, Clock, BookOpen, Building2, CheckCircle2
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col justify-between">
-      {/* Header */}
+     {/* Header */}
       <header className="flex items-center justify-between px-6 lg:px-12 py-4 bg-white border-b border-slate-200">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center">

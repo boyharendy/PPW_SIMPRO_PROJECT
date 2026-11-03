@@ -12,14 +12,17 @@ export const ROLE_LABELS: Record<Role, string> = {
   GKM: 'GKM (Gugus Kendali Mutu)',
   ADMIN_PRODI: 'Admin Prodi',
   DOSEN: 'Dosen',
+  DOSEN_VERIFIKATOR: 'Dosen Verifikator',
   KOORDINATOR_KP: 'Koordinator KP',
   KOORDINATOR_PSI: 'Koordinator PSI',
   KOORDINATOR_PDLK: 'Koordinator PDLK',
   PENGELOLA_ADUAN: 'Pengelola Aduan',
   PETUGAS_KEKERASAN: 'Petugas Kekerasan (Satgas)',
   MAHASISWA: 'Mahasiswa',
+
   // Peran Kompatibilitas Data Induk (PRD Bab 6.A poin 2)
   PENGURUS_HIMPUNAN: 'Pengurus Himpunan',
+  HIMPUNAN: 'Himpunan Mahasiswa',
   DOSEN_WALI: 'Dosen Wali',
   DOSEN_PEMBINA: 'Dosen Pembina',
   KETUA_KELAS: 'Ketua Kelas',

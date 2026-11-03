@@ -80,7 +80,7 @@ export function getStatusColor(status: string): string {
   if ([
     'DISETUJUI', 'TERBIT', 'SELESAI', 'AKTIF', 'LULUS', 'DISAHKAN', 
     'SESUAI', 'TERCAPAI', 'TERVERIFIKASI', 'TERLAKSANA', 'DIISI',
-    'LAYAK_DIAJUKAN', 'DITERAPKAN'
+    'LAYAK_DIAJUKAN', 'DITERAPKAN', 'RINGAN'
   ].includes(s)) {
     return 'bg-emerald-50 text-emerald-700 border-emerald-200';
   }
@@ -89,7 +89,7 @@ export function getStatusColor(status: string): string {
   if ([
     'DIAJUKAN', 'MENUNGGU', 'DALAM_REVIEW', 'BERJALAN', 'DILAPORKAN',
     'DIREVIEW', 'SEBAGIAN', 'PERLU_PERBAIKAN', 'PERLU_REVISI', 'TERKIRIM',
-    'DITUGASKAN', 'DITERUSKAN', 'DIVERIFIKASI', 'DITINDAKLANJUTI', 'DITINJAU'
+    'DITUGASKAN', 'DITERUSKAN', 'DIVERIFIKASI', 'DITINDAKLANJUTI', 'DITINJAU', 'SEDANG', 'DALAM_PROSES', 'SEGERA_KEDALUWARSA'
   ].includes(s)) {
     return 'bg-amber-50 text-amber-700 border-amber-200';
   }
@@ -97,7 +97,7 @@ export function getStatusColor(status: string): string {
   // Rose / Red / Danger
   if ([
     'DITOLAK', 'TIDAK_SESUAI', 'TIDAK_LULUS', 'RUSAK', 'TIDAK_TERCAPAI',
-    'KEDALUWARSA', 'DIESKALASI', 'TIDAK_DITERAPKAN', 'VOID', 'OVER_REALISASI'
+    'KEDALUWARSA', 'DIESKALASI', 'TIDAK_DITERAPKAN', 'VOID', 'OVER_REALISASI', 'BERAT', 'DICABUT'
   ].includes(s)) {
     return 'bg-rose-50 text-rose-700 border-rose-200';
   }
@@ -105,7 +105,7 @@ export function getStatusColor(status: string): string {
   // Blue / Info
   if ([
     'REVIEW_INTERNAL', 'DITERIMA', 'PROPOSAL_DIAJUKAN', 'BIMBINGAN',
-    'SIAP_SIDANG', 'DIJADWALKAN', 'DOK_AKTIF'
+    'SIAP_SIDANG', 'DIJADWALKAN', 'DOK_AKTIF', 'DISETUJUI_PEMBINA', 'PROPOSAL_DISETUJUI', 'LPJ_DIAJUKAN'
   ].includes(s)) {
     return 'bg-blue-50 text-blue-700 border-blue-200';
   }
@@ -210,6 +210,34 @@ export function getStatusLabel(status: string): string {
     FASILITAS: 'Fasilitas & Sarana',
     DOSEN_TENDIK: 'Dosen / Tenaga Kependidikan',
     PERUNDUNGAN_KEKERASAN: 'Perundungan / Kekerasan Seksual',
+    // Modul 1-6
+    BELUM: 'Belum Mengisi',
+    RINGAN: 'Ringan',
+    SEDANG: 'Sedang',
+    BERAT: 'Berat',
+    DICABUT: 'Dicabut',
+    BELUM_DIMULAI: 'Belum Dimulai',
+    DALAM_PROSES: 'Dalam Proses',
+    DISETUJUI_PEMBINA: 'Disetujui Pembina',
+    TERDAFTAR: 'Terdaftar',
+    PROPOSAL_DISETUJUI: 'Proposal Disetujui',
+    LPJ_DIAJUKAN: 'LPJ Diajukan',
+    SEGERA_KEDALUWARSA: 'Segera Kedaluwarsa',
+    BAHASA: 'Bahasa Asing',
+    PROFESI_KOMPETENSI: 'Profesi / Kompetensi',
+    AWAL_SEMESTER: 'Awal Semester',
+    TENGAH_SEMESTER: 'Tengah Semester',
+    AKHIR_SEMESTER: 'Akhir Semester',
+    ASISTENSI_LAB: 'Asistensi Laboratorium',
+    ADMINISTRASI_PRODI: 'Administrasi Prodi',
+    KEPANITIAAN_ACARA: 'Kepanitiaan Acara',
+    BANTUAN_RISET: 'Bantuan Riset Dosen',
+    OLAHRAGA: 'Olahraga',
+    SENI: 'Seni & Budaya',
+    KEAGAMAAN: 'Keagamaan',
+    PENALARAN: 'Penalaran & Riset',
+    SOSIAL: 'Sosial & Lingkungan',
+    KHUSUS: 'Khusus',
   };
 
   return map[status] || status;

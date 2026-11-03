@@ -120,8 +120,7 @@ export default function PengirimanMitraPage() {
     {
       key: 'mitra',
       header: 'Mitra & Program',
-      render: (row: Record<string, unknown>) => {
-        const p = row as unknown as typeof mockPlacements[0];
+      render: (p: typeof mockPlacements[0]) => {
         return (
           <div>
             <p className="font-semibold text-slate-800 text-xs sm:text-sm">{p.partner?.nama_mitra}</p>
@@ -136,8 +135,7 @@ export default function PengirimanMitraPage() {
     {
       key: 'mahasiswa',
       header: 'Mahasiswa Penempatan',
-      render: (row: Record<string, unknown>) => {
-        const p = row as unknown as typeof mockPlacements[0];
+      render: (p: typeof mockPlacements[0]) => {
         return (
           <div>
             <p className="font-medium text-slate-800 text-xs">{p.student?.nama_lengkap}</p>
@@ -149,8 +147,7 @@ export default function PengirimanMitraPage() {
     {
       key: 'status',
       header: 'Status Survei',
-      render: (row: Record<string, unknown>) => {
-        const p = row as unknown as typeof mockPlacements[0];
+      render: (p: typeof mockPlacements[0]) => {
         const inv = invitations.find((i) => i.placement_id === p.id);
         const status = inv ? inv.status : 'DIBUAT';
         return (
@@ -169,8 +166,7 @@ export default function PengirimanMitraPage() {
       key: 'actions',
       header: 'Aksi Pengiriman',
       className: 'text-right',
-      render: (row: Record<string, unknown>) => {
-        const p = row as unknown as typeof mockPlacements[0];
+      render: (p: typeof mockPlacements[0]) => {
         const inv = invitations.find((i) => i.placement_id === p.id);
         const isFilled = inv?.status === 'DIISI';
 
@@ -238,7 +234,7 @@ export default function PengirimanMitraPage() {
       <div className="card">
         <DataTable
           columns={columns}
-          data={mockPlacements as unknown as Record<string, unknown>[]}
+          data={mockPlacements}
           emptyMessage="Belum ada penempatan mahasiswa pada periode aktif"
         />
       </div>

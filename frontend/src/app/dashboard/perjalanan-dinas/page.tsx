@@ -159,7 +159,7 @@ export default function PerjalananDinasListPage() {
       <div className="card">
         <DataTable
           columns={columns}
-          data={filtered as unknown as Record<string, unknown>[]}
+          data={filtered}
           emptyMessage="Tidak ada data perjalanan dinas yang cocok."
         />
       </div>

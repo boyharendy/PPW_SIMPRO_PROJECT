@@ -15,7 +15,11 @@ Buka [http://localhost:3000](http://localhost:3000) di browser.
 
 ## Perintah Tersedia
 
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+=======
 - `npm run dev` - menjalankan server pengembangan.
 - `npm run lint` - memeriksa kode dengan ESLint.
 - `npm run build` - membuat build produksi.
 - `npm run start` - menjalankan build produksi.
+

@@ -134,7 +134,7 @@ export default function RkaListPage() {
       <div className="card">
         <DataTable
           columns={columns}
-          data={rkaList as unknown as Record<string, unknown>[]}
+          data={rkaList}
           emptyMessage="Belum ada dokumen RKA terdaftar."
         />
       </div>
