@@ -45,11 +45,11 @@ export default function EvaluasiPerkuliahanListPage() {
         <div className="space-y-0.5">
           <Link
             href={`/dashboard/evaluasi-perkuliahan/${row.course_class_id}`}
-            className="font-bold text-slate-800 hover:text-blue-600 text-xs sm:text-sm line-clamp-1"
+            className="font-bold text-slate-800 hover:text-blue-600 text-sm sm:text-base line-clamp-1"
           >
             {row.course_class?.course?.nama_mk}
           </Link>
-          <p className="text-[11px] text-slate-500">
+          <p className="text-xs text-slate-500">
             Kelas: <strong className="text-blue-700">{row.course_class?.kode_kelas}</strong> • Peserta: {row.course_class?.jumlah_mahasiswa} Mahasiswa
           </p>
         </div>
@@ -64,7 +64,7 @@ export default function EvaluasiPerkuliahanListPage() {
         const pct = Math.round((tercapai / total) * 100);
 
         return (
-          <div className="text-xs space-y-1">
+          <div className="text-sm space-y-1">
             <span className="font-bold text-slate-800">
               {tercapai} dari {total} CPMK ({pct}%)
             </span>
@@ -84,11 +84,11 @@ export default function EvaluasiPerkuliahanListPage() {
       key: 'umpan_balik',
       header: 'Umpan Balik Mahasiswa',
       render: (row: CourseEvaluation) => (
-        <div className="text-xs">
+        <div className="text-sm">
           <span className="font-extrabold text-blue-700">
             {row.feedback_summary?.skor_rata_rata.toFixed(2)} / 5.0
           </span>
-          <p className="text-[10px] text-slate-400">
+          <p className="text-xs text-slate-400">
             {row.feedback_summary?.jumlah_responden} Responden
           </p>
         </div>
@@ -106,7 +106,7 @@ export default function EvaluasiPerkuliahanListPage() {
       render: (row: CourseEvaluation) => (
         <Link
           href={`/dashboard/evaluasi-perkuliahan/${row.course_class_id}`}
-          className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1 font-semibold text-slate-600 hover:text-blue-600"
+          className="btn-secondary text-sm py-1.5 px-3.5 inline-flex items-center gap-1 font-semibold text-slate-600 hover:text-blue-600"
         >
           <Eye size={13} />
           <span>Lihat Evaluasi</span>
@@ -130,16 +130,16 @@ export default function EvaluasiPerkuliahanListPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Cari mata kuliah..."
-            className="bg-transparent border-none outline-none text-xs w-full text-slate-800 placeholder:text-slate-400"
+            className="bg-transparent border-none outline-none text-sm w-full text-slate-800 placeholder:text-slate-400"
           />
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <span className="text-xs text-slate-500 font-medium">Semester:</span>
+          <span className="text-sm text-slate-500 font-medium">Semester:</span>
           <select
             value={selectedSemester}
             onChange={(e) => setSelectedSemester(e.target.value)}
-            className="select-field text-xs py-1.5 w-48"
+            className="select-field text-sm py-2 w-48"
           >
             <option value="period-2024-genap">2024/2025 Semester Genap</option>
             <option value="period-2025-ganjil">2025/2026 Semester Ganjil</option>

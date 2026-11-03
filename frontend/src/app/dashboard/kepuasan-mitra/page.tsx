@@ -122,7 +122,7 @@ export default function KepuasanMitraDashboard() {
             <select
               value={selectedProgram}
               onChange={(e) => setSelectedProgram(e.target.value)}
-              className="select-field text-xs py-2 w-44"
+              className="select-field text-sm py-2 w-44"
             >
               <option value="ALL">Semua Program</option>
               <option value="KP">Kerja Praktik (KP)</option>
@@ -176,12 +176,12 @@ export default function KepuasanMitraDashboard() {
         <div className="lg:col-span-2 card space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
-              <h3 className="text-sm font-bold text-slate-800">Tren Indeks Kepuasan per Periode</h3>
-              <p className="text-xs text-slate-500">
+              <h3 className="text-base font-bold text-slate-800">Tren Indeks Kepuasan per Periode</h3>
+              <p className="text-sm text-slate-500">
                 Perbandingan rata-rata skor kepuasan antar semester (Skala 1–5)
               </p>
             </div>
-            <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+            <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
               Target Mutu: ≥ 4.00
             </span>
           </div>
@@ -202,7 +202,7 @@ export default function KepuasanMitraDashboard() {
         {/* Aspect Scores Breakdown */}
         <div className="card space-y-4">
           <div className="border-b border-slate-100 pb-3">
-            <h3 className="text-sm font-bold text-slate-800">Indeks per Aspek Penilaian</h3>
+            <h3 className="text-base font-bold text-slate-800">Indeks per Aspek Penilaian</h3>
             <p className="text-xs text-slate-500">
               Berdasarkan {templateKP?.aspek?.length || 4} aspek utama instrumen
             </p>
@@ -213,7 +213,7 @@ export default function KepuasanMitraDashboard() {
               const pct = (item.skor / item.skala) * 100;
               return (
                 <div key={idx} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center justify-between text-sm">
                     <span className="font-semibold text-slate-700">{item.aspek}</span>
                     <span className="font-bold text-blue-600">{item.skor.toFixed(2)} / 5.0</span>
                   </div>
@@ -228,9 +228,9 @@ export default function KepuasanMitraDashboard() {
             })}
           </div>
 
-          <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100 text-xs text-slate-600 space-y-1">
+          <div className="p-3.5 bg-blue-50/50 rounded-xl border border-blue-100 text-sm text-slate-600 space-y-1">
             <p className="font-semibold text-blue-900">Catatan Mutu (GKM):</p>
-            <p className="text-[11px] leading-relaxed">
+            <p className="text-xs leading-relaxed">
               Aspek koordinasi prodi terus meningkat, namun kemitraan teknis pada penguasaan tools
               backend modern perlu diselaraskan dengan silabus praktikum.
             </p>
@@ -243,7 +243,7 @@ export default function KepuasanMitraDashboard() {
         {/* Per Jenis Program */}
         <div className="card space-y-4">
           <div className="border-b border-slate-100 pb-3">
-            <h3 className="text-sm font-bold text-slate-800">Indeks per Jenis Program</h3>
+            <h3 className="text-base font-bold text-slate-800">Indeks per Jenis Program</h3>
             <p className="text-xs text-slate-500">
               Rata-rata kepuasan & tingkat respons per program akademik
             </p>
@@ -255,7 +255,7 @@ export default function KepuasanMitraDashboard() {
               return (
                 <div
                   key={prog.program}
-                  className="p-3 rounded-xl border border-slate-200 bg-slate-50/60 space-y-1.5 text-xs"
+                  className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-1.5 text-sm"
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-slate-800">{prog.label}</span>
@@ -263,7 +263,7 @@ export default function KepuasanMitraDashboard() {
                       {prog.skor.toFixed(2)} / 5.0
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-[11px] text-slate-500">
+                  <div className="flex items-center justify-between text-xs text-slate-500">
                     <span>
                       Respons: {prog.responden}/{prog.terkirim} mitra ({respPct}%)
                     </span>
@@ -281,8 +281,8 @@ export default function KepuasanMitraDashboard() {
             <div className="flex items-center gap-2">
               <Building2 size={16} className="text-blue-600" />
               <div>
-                <h3 className="text-sm font-bold text-slate-800">Indeks Kepuasan per Mitra</h3>
-                <p className="text-xs text-slate-500">
+                <h3 className="text-base font-bold text-slate-800">Indeks Kepuasan per Mitra</h3>
+                <p className="text-sm text-slate-500">
                   Rekapitulasi rata-rata penilaian berdasarkan organisasi mitra kerja sama
                 </p>
               </div>
@@ -290,7 +290,7 @@ export default function KepuasanMitraDashboard() {
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-slate-200">
-            <table className="w-full text-xs">
+            <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase">
                 <tr>
                   <th className="px-3 py-2.5 text-left">Nama Organisasi Mitra</th>
@@ -305,7 +305,7 @@ export default function KepuasanMitraDashboard() {
                     <td className="px-3 py-2.5 font-semibold text-slate-800">{m.nama_mitra}</td>
                     <td className="px-3 py-2.5 text-slate-600">{m.bidang_usaha}</td>
                     <td className="px-3 py-2.5">
-                      <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold text-[11px]">
+                      <span className="px-2.5 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold text-xs">
                         {m.program}
                       </span>
                     </td>
@@ -324,7 +324,7 @@ export default function KepuasanMitraDashboard() {
       <div className="card space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div>
-            <h3 className="text-sm font-bold text-slate-800">Respons Terbaru dari Mitra</h3>
+            <h3 className="text-base font-bold text-slate-800">Respons Terbaru dari Mitra</h3>
             <p className="text-xs text-slate-500">
               Daftar umpan balik yang telah diisi langsung oleh mitra maupun diinput koordinator (
               {invitations.filter((i) => i.status === 'DIISI').length} terisi)
@@ -332,7 +332,7 @@ export default function KepuasanMitraDashboard() {
           </div>
         </div>
 
-        <div className="divide-y divide-slate-100 text-xs">
+        <div className="divide-y divide-slate-100 text-sm">
           {filteredResponses.map((resp) => {
             const avg =
               resp.answers && resp.answers.length > 0
@@ -347,14 +347,14 @@ export default function KepuasanMitraDashboard() {
               >
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-800 text-sm">
+                    <span className="font-bold text-slate-800 text-base">
                       {resp.placement?.partner?.nama_mitra}
                     </span>
-                    <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
+                    <span className="text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full">
                       {resp.sumber === 'TAUTAN_MITRA' ? 'Diisi oleh Mitra' : 'Input Koordinator'}
                     </span>
                   </div>
-                  <p className="text-slate-500 text-[11px]">
+                  <p className="text-slate-500 text-xs">
                     Pengisi: <strong className="text-slate-700">{resp.nama_pengisi}</strong> (
                     {resp.jabatan_pengisi}) • Mahasiswa:{' '}
                     <span className="text-blue-600 font-medium">
@@ -369,8 +369,8 @@ export default function KepuasanMitraDashboard() {
                 </div>
 
                 <div className="text-right flex-shrink-0">
-                  <p className="text-[10px] text-slate-400">Rata-rata Skor</p>
-                  <p className="text-base font-extrabold text-emerald-600">{avg} / 5.0</p>
+                  <p className="text-xs text-slate-400">Rata-rata Skor</p>
+                  <p className="text-lg font-extrabold text-emerald-600">{avg} / 5.0</p>
                 </div>
               </div>
             );

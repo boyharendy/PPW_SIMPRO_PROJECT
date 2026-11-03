@@ -93,7 +93,7 @@ export function ExportMenu({ onExport, title = 'Ekspor Laporan', filename = 'rek
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="btn-secondary text-xs px-3.5 py-2 flex items-center gap-2"
+        className="btn-secondary text-sm px-4 py-2 flex items-center gap-2"
       >
         <Download size={14} className="text-slate-500" />
         <span className="font-semibold">{title}</span>
@@ -105,7 +105,7 @@ export function ExportMenu({ onExport, title = 'Ekspor Laporan', filename = 'rek
           <button
             type="button"
             onClick={() => handleExport('xlsx')}
-            className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center justify-between transition-colors"
+            className="w-full text-left px-3.5 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center justify-between transition-colors"
           >
             <div className="flex items-center gap-2.5">
               <FileSpreadsheet size={16} className="text-emerald-700" />
@@ -117,7 +117,7 @@ export function ExportMenu({ onExport, title = 'Ekspor Laporan', filename = 'rek
           <button
             type="button"
             onClick={() => handleExport('pdf')}
-            className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center justify-between transition-colors"
+            className="w-full text-left px-3.5 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center justify-between transition-colors"
           >
             <div className="flex items-center gap-2.5">
               <FileText size={16} className="text-rose-700" />

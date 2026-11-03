@@ -53,11 +53,11 @@ export default function RpsListPage() {
         <div className="space-y-0.5">
           <Link
             href={`/dashboard/rps/${row.id}`}
-            className="font-bold text-slate-800 hover:text-blue-600 text-xs sm:text-sm line-clamp-1"
+            className="font-bold text-slate-800 hover:text-blue-600 text-sm sm:text-base line-clamp-1"
           >
             {row.course?.nama_mk}
           </Link>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-xs text-slate-400">
             <span className="font-mono text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded font-bold mr-2">
               {row.course?.kode_mk}
             </span>
@@ -70,7 +70,7 @@ export default function RpsListPage() {
       key: 'versi',
       header: 'Versi Terkini',
       render: (row: RpsSubmission) => (
-        <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-md">
+        <span className="text-sm font-bold text-slate-700 bg-slate-100 px-3 py-1 rounded-md">
           Versi {row.versi_terbaru}
         </span>
       ),
@@ -82,7 +82,7 @@ export default function RpsListPage() {
         <div className="space-y-1">
           <StatusBadge status={row.status} size="sm" />
           {row.status === 'DISAHKAN' && (
-            <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+            <p className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
               <CheckCircle size={11} /> Sah Berlaku
             </p>
           )}
@@ -96,7 +96,7 @@ export default function RpsListPage() {
       render: (row: RpsSubmission) => (
         <Link
           href={`/dashboard/rps/${row.id}`}
-          className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1 text-slate-600 hover:text-blue-600 font-semibold"
+          className="btn-secondary text-sm py-1.5 px-3.5 inline-flex items-center gap-1 text-slate-600 hover:text-blue-600 font-semibold"
         >
           <Eye size={13} />
           <span>Detail</span>
@@ -113,7 +113,7 @@ export default function RpsListPage() {
         action={
           <Link
             href="/dashboard/rps/ajukan"
-            className="btn-primary text-xs py-2 px-3.5 flex items-center gap-2"
+            className="btn-primary text-sm py-2 px-4 flex items-center gap-2"
           >
             <Plus size={15} />
             <span>Ajukan RPS Baru</span>
@@ -130,16 +130,16 @@ export default function RpsListPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Cari kode atau nama mata kuliah..."
-            className="bg-transparent border-none outline-none text-xs w-full text-slate-800 placeholder:text-slate-400"
+            className="bg-transparent border-none outline-none text-sm w-full text-slate-800 placeholder:text-slate-400"
           />
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <span className="text-xs text-slate-500 font-medium">Status:</span>
+          <span className="text-sm text-slate-500 font-medium">Status:</span>
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="select-field text-xs py-1.5 w-44"
+            className="select-field text-sm py-2 w-44"
           >
             <option value="ALL">Semua Status</option>
             <option value="DRAF">Draf</option>

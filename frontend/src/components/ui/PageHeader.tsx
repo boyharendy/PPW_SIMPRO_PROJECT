@@ -24,11 +24,11 @@ export function PageHeader({
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
       <div className="space-y-1">
         <div className="flex items-center gap-2.5 flex-wrap">
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{title}</h1>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{title}</h1>
           {badge}
         </div>
         {descText && (
-          <p className="text-sm text-slate-500 max-w-3xl leading-relaxed">{descText}</p>
+          <p className="text-base text-slate-600 max-w-3xl leading-relaxed">{descText}</p>
         )}
       </div>
       {actionContent && <div className="flex-shrink-0 flex items-center gap-2.5">{actionContent}</div>}

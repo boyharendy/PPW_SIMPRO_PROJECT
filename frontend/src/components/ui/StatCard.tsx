@@ -53,12 +53,12 @@ export function StatCard({
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{title}</p>
+        <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">{title}</p>
         {icon && (
-          <div className={`w-9 h-9 rounded-lg border ${iconColor} flex items-center justify-center shrink-0`}>
+          <div className={`w-10 h-10 rounded-lg border ${iconColor} flex items-center justify-center shrink-0`}>
             {typeof icon === 'string'
               ? stringIconMap[icon]
-                ? React.createElement(stringIconMap[icon], { size: 18 })
+                ? React.createElement(stringIconMap[icon], { size: 20 })
                 : null
               : icon}
           </div>
@@ -67,10 +67,10 @@ export function StatCard({
 
       <div className="mt-3">
         <div className="flex items-baseline gap-2">
-          <h3 className="text-2xl font-bold text-slate-900 tracking-tight">{value}</h3>
+          <h3 className="text-3xl font-bold text-slate-900 tracking-tight">{value}</h3>
           {trend && (
             <span
-              className={`text-xs font-semibold ${
+              className={`text-sm font-semibold ${
                 trend.value >= 0 ? 'text-emerald-700' : 'text-rose-700'
               }`}
             >
@@ -80,12 +80,12 @@ export function StatCard({
         </div>
 
         {descText && (
-          <p className="text-xs text-slate-500 mt-1 font-normal">
+          <p className="text-sm text-slate-600 mt-1 font-normal">
             {descText}
           </p>
         )}
         {trend && (
-          <p className="text-[11px] text-slate-400 mt-0.5">{trend.label}</p>
+          <p className="text-xs text-slate-400 mt-0.5">{trend.label}</p>
         )}
       </div>
     </div>

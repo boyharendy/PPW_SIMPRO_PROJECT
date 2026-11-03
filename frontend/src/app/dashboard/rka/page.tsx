@@ -84,11 +84,11 @@ export default function RkaListPage() {
         <div className="space-y-1">
           <Link
             href={`/dashboard/rka/${row.tahun_anggaran}`}
-            className="font-bold text-slate-800 hover:text-blue-600 text-xs sm:text-sm line-clamp-1"
+            className="font-bold text-slate-800 hover:text-blue-600 text-sm sm:text-base line-clamp-1"
           >
             {row.judul}
           </Link>
-          <p className="text-[11px] text-slate-500">
+          <p className="text-xs text-slate-500">
             Tahun Anggaran: <strong className="text-blue-700">{row.tahun_anggaran}</strong>
           </p>
         </div>
@@ -98,9 +98,9 @@ export default function RkaListPage() {
       key: 'anggaran',
       header: 'Pagu Anggaran',
       render: (row: RkaDocument) => (
-        <div className="text-xs space-y-0.5">
+        <div className="text-sm space-y-0.5">
           <p className="font-bold text-slate-800">{formatRupiah(row.total_anggaran)}</p>
-          <p className="text-[11px] text-slate-500">
+          <p className="text-xs text-slate-500">
             Realisasi: {formatRupiah(row.total_realisasi || 0)}
           </p>
         </div>
@@ -112,7 +112,7 @@ export default function RkaListPage() {
       render: (row: RkaDocument) => {
         const pct = calculateAbsorptionPercentage(row.total_realisasi || 0, row.total_anggaran);
         return (
-          <div className="text-xs space-y-1 w-32">
+          <div className="text-sm space-y-1 w-32">
             <div className="flex items-center justify-between font-bold">
               <span className="text-blue-700">{pct}%</span>
             </div>
@@ -135,7 +135,7 @@ export default function RkaListPage() {
       render: (row: RkaDocument) => (
         <Link
           href={`/dashboard/rka/${row.tahun_anggaran}`}
-          className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1 font-semibold text-slate-600 hover:text-blue-600"
+          className="btn-secondary text-sm py-1.5 px-3.5 inline-flex items-center gap-1 font-semibold text-slate-600 hover:text-blue-600"
         >
           <Eye size={13} />
           <span>Buka RKA</span>
@@ -153,7 +153,7 @@ export default function RkaListPage() {
           <button
             type="button"
             onClick={() => setModalOpen(true)}
-            className="btn-primary text-xs py-2 px-3.5 flex items-center gap-2"
+            className="btn-primary text-sm py-2 px-4 flex items-center gap-2"
           >
             <Plus size={15} />
             <span>Buat RKA Tahun Anggaran</span>
@@ -171,7 +171,7 @@ export default function RkaListPage() {
 
       {/* Modal Buat RKA Baru */}
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Buat RKA Tahun Anggaran Baru" size="md">
-        <form onSubmit={handleCreate} className="space-y-4 text-xs">
+        <form onSubmit={handleCreate} className="space-y-4 text-sm">
           <div>
             <label className="label">Tahun Anggaran</label>
             <input
@@ -181,7 +181,7 @@ export default function RkaListPage() {
               required
               value={tahunBaru}
               onChange={(e) => setTahunBaru(Number(e.target.value) || 2026)}
-              className="input-field text-xs"
+              className="input-field text-sm"
             />
           </div>
 
@@ -193,19 +193,19 @@ export default function RkaListPage() {
               value={judulBaru}
               onChange={(e) => setJudulBaru(e.target.value)}
               placeholder={`Rencana Kerja dan Anggaran (RKA) Prodi SI Tahun ${tahunBaru}`}
-              className="input-field text-xs"
+              className="input-field text-sm"
             />
           </div>
 
-          <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-800 leading-relaxed">
+          <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-sm text-blue-800 leading-relaxed">
             Sistem akan secara otomatis menerbitkan dokumen RKA berstatus <strong>DRAF</strong> beserta <strong>Versi Kerja Nomor 1</strong> yang siap diisi dengan daftar kegiatan dan pos anggaran.
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary text-xs">
+            <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary text-sm">
               Batal
             </button>
-            <button type="submit" className="btn-primary text-xs">
+            <button type="submit" className="btn-primary text-sm">
               Buat Dokumen RKA
             </button>
           </div>

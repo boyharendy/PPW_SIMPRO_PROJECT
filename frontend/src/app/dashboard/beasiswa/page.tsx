@@ -74,8 +74,8 @@ export default function BeasiswaListPage() {
       header: 'Mahasiswa Penerima',
       render: (row: ScholarshipRecipient) => (
         <div className="space-y-0.5">
-          <span className="font-bold text-slate-800 text-xs sm:text-sm">{row.mahasiswa_nama}</span>
-          <p className="text-[11px] text-slate-500">NIM: {row.mahasiswa_nim} • Angkatan {row.angkatan}</p>
+          <span className="font-bold text-slate-800 text-sm sm:text-base">{row.mahasiswa_nama}</span>
+          <p className="text-xs text-slate-500">NIM: {row.mahasiswa_nim} • Angkatan {row.angkatan}</p>
         </div>
       ),
     },
@@ -84,8 +84,8 @@ export default function BeasiswaListPage() {
       header: 'Jenis & Pemberi Beasiswa',
       render: (row: ScholarshipRecipient) => (
         <div className="space-y-0.5">
-          <span className="font-semibold text-blue-700 text-xs">{row.jenis_beasiswa}</span>
-          <p className="text-[11px] text-slate-500">{row.pemberi_beasiswa}</p>
+          <span className="font-semibold text-blue-700 text-sm">{row.jenis_beasiswa}</span>
+          <p className="text-xs text-slate-500">{row.pemberi_beasiswa}</p>
         </div>
       ),
     },
@@ -94,8 +94,8 @@ export default function BeasiswaListPage() {
       header: 'Periode & Dosen Wali/Verifikator',
       render: (row: ScholarshipRecipient) => (
         <div className="space-y-0.5">
-          <span className="text-xs font-medium text-slate-700">{row.periode}</span>
-          <p className="text-[11px] text-slate-500">Verifikator: {row.dosen_verifikator_nama}</p>
+          <span className="text-sm font-medium text-slate-700">{row.periode}</span>
+          <p className="text-xs text-slate-500">Verifikator: {row.dosen_verifikator_nama}</p>
         </div>
       ),
     },
@@ -106,7 +106,7 @@ export default function BeasiswaListPage() {
         const percent = Math.min(100, Math.round((row.jam_terverifikasi / row.kewajiban_jam) * 100));
         return (
           <div className="space-y-1.5 min-w-[150px]">
-            <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center justify-between text-sm">
               <span className="font-bold text-slate-800">
                 {row.jam_terverifikasi} / {row.kewajiban_jam} Jam
               </span>
@@ -123,7 +123,7 @@ export default function BeasiswaListPage() {
               />
             </div>
             {row.is_berisiko && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
+              <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
                 <AlertTriangle className="h-3 w-3" />
                 Risiko Tidak Terpenuhi
               </span>

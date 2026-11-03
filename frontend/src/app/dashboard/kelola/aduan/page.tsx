@@ -149,7 +149,7 @@ export default function AntreanAduanPage() {
       header: 'Nomor & Tiket',
       render: (item: Complaint) => (
         <div>
-          <span className="font-semibold text-slate-800 text-sm">{item.nomor_aduan}</span>
+          <span className="font-semibold text-slate-800 text-base">{item.nomor_aduan}</span>
           <div className="font-mono text-xs text-slate-500">{item.kode_tiket}</div>
         </div>
       ),
@@ -158,7 +158,7 @@ export default function AntreanAduanPage() {
       key: 'tanggal',
       header: 'Tgl Masuk',
       render: (item: Complaint) => (
-        <span className="text-xs text-slate-600">{formatDate(item.tanggal_diterima)}</span>
+        <span className="text-sm text-slate-600">{formatDate(item.tanggal_diterima)}</span>
       ),
     },
     {
@@ -175,8 +175,8 @@ export default function AntreanAduanPage() {
       header: 'Judul Aduan',
       render: (item: Complaint) => (
         <div className="max-w-md">
-          <p className="text-sm font-medium text-slate-800 line-clamp-1">{item.judul}</p>
-          <p className="text-xs text-slate-500 line-clamp-1">{item.uraian}</p>
+          <p className="text-base font-medium text-slate-800 line-clamp-1">{item.judul}</p>
+          <p className="text-sm text-slate-500 line-clamp-1">{item.uraian}</p>
         </div>
       ),
     },
@@ -191,13 +191,13 @@ export default function AntreanAduanPage() {
       render: (item: Complaint) => {
         const lastDisp = item.dispositions?.[item.dispositions.length - 1];
         if (!lastDisp) {
-          return <span className="text-xs italic text-amber-600">Belum didisposisi</span>;
+          return <span className="text-sm italic text-amber-600">Belum didisposisi</span>;
         }
         const profile = mockProfiles.find((p) => p.id === lastDisp.penanggung_jawab_id);
         return (
-          <div className="text-xs">
+          <div className="text-sm">
             <span className="font-medium text-slate-800">{profile?.nama_lengkap || 'Petugas'}</span>
-            <div className="text-slate-500 text-[11px]">Tenggat: {formatDate(lastDisp.tenggat)}</div>
+            <div className="text-slate-500 text-xs">Tenggat: {formatDate(lastDisp.tenggat)}</div>
           </div>
         );
       },
@@ -210,13 +210,13 @@ export default function AntreanAduanPage() {
         <div className="flex items-center justify-end gap-1.5">
           <button
             onClick={() => handleOpenDisposisi(item)}
-            className="rounded border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors"
+            className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition-colors"
           >
             Disposisi
           </button>
           <Link
             href={`/dashboard/kelola/aduan/${item.id}`}
-            className="rounded border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors inline-flex items-center gap-1"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors inline-flex items-center gap-1"
           >
             Detail
             <ArrowRight className="h-3 w-3" />
@@ -240,7 +240,7 @@ export default function AntreanAduanPage() {
           <div className="flex items-center gap-2">
             <Link
               href="/dashboard/kelola/aduan/sensitif"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 hover:bg-red-100 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 transition-colors"
             >
               <ShieldAlert className="h-4 w-4 text-red-600" />
               Aduan Sensitif Satgas
@@ -267,45 +267,45 @@ export default function AntreanAduanPage() {
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Aduan Aktif</p>
-              <p className="mt-1 text-2xl font-bold text-slate-800">{totalAktif}</p>
+              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Aduan Aktif</p>
+              <p className="mt-1 text-3xl font-bold text-slate-800">{totalAktif}</p>
             </div>
             <div className="rounded-lg bg-blue-50 p-2.5 text-blue-600">
               <Clock className="h-5 w-5" />
             </div>
           </div>
-          <p className="mt-2 text-xs text-slate-500">Memerlukan penanganan atau tindak lanjut</p>
+          <p className="mt-2 text-sm text-slate-500">Memerlukan penanganan atau tindak lanjut</p>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Belum Disposisi</p>
-              <p className="mt-1 text-2xl font-bold text-amber-600">{belumDisposisi}</p>
+              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Belum Disposisi</p>
+              <p className="mt-1 text-3xl font-bold text-amber-600">{belumDisposisi}</p>
             </div>
             <div className="rounded-lg bg-amber-50 p-2.5 text-amber-600">
               <AlertTriangle className="h-5 w-5" />
             </div>
           </div>
-          <p className="mt-2 text-xs text-slate-500">Segera tunjuk penanggung jawab penyelesaian</p>
+          <p className="mt-2 text-sm text-slate-500">Segera tunjuk penanggung jawab penyelesaian</p>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Telah Selesai</p>
-              <p className="mt-1 text-2xl font-bold text-emerald-600">{totalSelesai}</p>
+              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Telah Selesai</p>
+              <p className="mt-1 text-3xl font-bold text-emerald-600">{totalSelesai}</p>
             </div>
             <div className="rounded-lg bg-emerald-50 p-2.5 text-emerald-600">
               <CheckCircle2 className="h-5 w-5" />
             </div>
           </div>
-          <p className="mt-2 text-xs text-slate-500">Terselesaikan dengan feedback pelapor</p>
+          <p className="mt-2 text-sm text-slate-500">Terselesaikan dengan feedback pelapor</p>
         </div>
       </div>
 
       {/* Security Privacy Notice */}
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3.5 text-xs text-slate-600 flex items-start gap-2.5">
+      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 flex items-start gap-2.5">
         <div className="rounded p-1 bg-white border border-slate-200 text-slate-600 shrink-0">
           <MessageSquareHeart className="h-4 w-4" />
         </div>

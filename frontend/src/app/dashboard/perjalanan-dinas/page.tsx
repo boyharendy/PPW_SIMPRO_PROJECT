@@ -55,13 +55,13 @@ export default function PerjalananDinasListPage() {
         <div className="space-y-1">
           <Link
             href={`/dashboard/perjalanan-dinas/${row.id}`}
-            className="font-bold text-slate-800 hover:text-blue-600 text-xs sm:text-sm line-clamp-1"
+            className="font-bold text-slate-800 hover:text-blue-600 text-sm sm:text-base line-clamp-1"
           >
             {row.tujuan}
           </Link>
-          <p className="text-[11px] text-slate-500 line-clamp-2">{row.maksud_kegiatan}</p>
+          <p className="text-xs text-slate-500 line-clamp-2">{row.maksud_kegiatan}</p>
           {row.nomor_surat_tugas && (
-            <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+            <span className="text-xs font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
               ST: {row.nomor_surat_tugas}
             </span>
           )}
@@ -72,9 +72,9 @@ export default function PerjalananDinasListPage() {
       key: 'pelaksana',
       header: 'Pelaksana & Jadwal',
       render: (row: BusinessTrip) => (
-        <div className="space-y-0.5 text-xs">
+        <div className="space-y-0.5 text-sm">
           <p className="font-semibold text-slate-700">{row.pengaju?.nama_lengkap}</p>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-xs text-slate-400">
             {formatDateShort(row.tanggal_berangkat)} – {formatDateShort(row.tanggal_kembali)}
           </p>
         </div>
@@ -87,14 +87,14 @@ export default function PerjalananDinasListPage() {
         const totalEstimasi = row.costs.reduce((s, c) => s + (c.estimasi_biaya || 0), 0);
         const totalRealisasi = row.costs.reduce((s, c) => s + (c.realisasi_biaya || 0), 0);
         return (
-          <div className="text-xs space-y-0.5">
+          <div className="text-sm space-y-0.5">
             <p className="font-bold text-slate-800">{formatRupiah(totalEstimasi)}</p>
             {totalRealisasi > 0 && (
-              <p className="text-[10px] text-emerald-600 font-medium">
+              <p className="text-xs text-emerald-600 font-medium">
                 Realisasi: {formatRupiah(totalRealisasi)}
               </p>
             )}
-            <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded font-semibold">
+            <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-semibold">
               {row.sumber_dana.replace('_', ' ')}
             </span>
           </div>
@@ -110,7 +110,7 @@ export default function PerjalananDinasListPage() {
           {row.status === 'DISETUJUI' && (
             <Link
               href={`/dashboard/perjalanan-dinas/${row.id}/laporan`}
-              className="text-[10px] font-semibold text-blue-600 hover:underline block"
+              className="text-xs font-semibold text-blue-600 hover:underline block"
             >
               + Unggah Laporan
             </Link>
@@ -125,7 +125,7 @@ export default function PerjalananDinasListPage() {
       render: (row: BusinessTrip) => (
         <Link
           href={`/dashboard/perjalanan-dinas/${row.id}`}
-          className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1 text-slate-600 hover:text-blue-600 font-semibold"
+          className="btn-secondary text-sm py-1.5 px-3.5 inline-flex items-center gap-1 text-slate-600 hover:text-blue-600 font-semibold"
         >
           <Eye size={13} />
           <span>Detail</span>
@@ -142,7 +142,7 @@ export default function PerjalananDinasListPage() {
         action={
           <Link
             href="/dashboard/perjalanan-dinas/baru"
-            className="btn-primary text-xs py-2 px-3.5 flex items-center gap-2"
+            className="btn-primary text-sm py-2 px-4 flex items-center gap-2"
           >
             <Plus size={15} />
             <span>Ajukan Perjalanan Baru</span>
@@ -158,16 +158,16 @@ export default function PerjalananDinasListPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Cari tujuan atau nama dosen..."
-            className="bg-transparent border-none outline-none text-xs w-full text-slate-800 placeholder:text-slate-400"
+            className="bg-transparent border-none outline-none text-sm w-full text-slate-800 placeholder:text-slate-400"
           />
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <span className="text-xs text-slate-500 font-medium">Status:</span>
+          <span className="text-sm text-slate-500 font-medium">Status:</span>
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="select-field text-xs py-1.5 w-40"
+            className="select-field text-sm py-2 w-40"
           >
             <option value="ALL">Semua Status</option>
             <option value="DIAJUKAN">Diajukan</option>

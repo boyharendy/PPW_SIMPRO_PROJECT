@@ -33,19 +33,19 @@ export function DataTable<T = any>({
 
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-xs bg-white">
-      <table className="w-full text-sm">
+      <table className="w-full text-base">
         <thead>
           <tr className="bg-slate-50 border-b border-slate-200">
             {columns.map((col) => (
               <th
                 key={col.key}
-                className={`px-4 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider ${col.className || ''}`}
+                className={`px-4 py-3.5 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider ${col.className || ''}`}
               >
                 {col.header}
               </th>
             ))}
             {hasActions && (
-              <th className="px-4 py-3.5 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider w-24">
+              <th className="px-4 py-3.5 text-right text-sm font-semibold text-slate-600 uppercase tracking-wider w-24">
                 Aksi
               </th>
             )}

@@ -70,7 +70,7 @@
     padding: 8px 16px;
     border-radius: 8px;
     font-weight: 500;
-    font-size: 14px;
+    font-size: 15px;
     border: 1px solid #1D4ED8;
     cursor: pointer;
     transition: background-color 0.15s ease;
@@ -89,7 +89,7 @@
     padding: 8px 16px;
     border-radius: 8px;
     font-weight: 500;
-    font-size: 14px;
+    font-size: 15px;
     border: 1px solid #E2E8F0;
     cursor: pointer;
     transition: background-color 0.15s ease, border-color 0.15s ease;
@@ -110,7 +110,7 @@
     padding: 8px 16px;
     border-radius: 8px;
     font-weight: 500;
-    font-size: 14px;
+    font-size: 15px;
     border: 1px solid #B91C1C;
     cursor: pointer;
     transition: background-color 0.15s ease;
@@ -129,7 +129,7 @@
     padding: 8px 16px;
     border-radius: 8px;
     font-weight: 500;
-    font-size: 14px;
+    font-size: 15px;
     border: 1px solid #047857;
     cursor: pointer;
     transition: background-color 0.15s ease;
@@ -150,7 +150,7 @@
     border: 1px solid #CBD5E1;
     border-radius: 8px;
     color: #1E293B;
-    font-size: 14px;
+    font-size: 15px;
     transition: border-color 0.15s ease;
     outline: none;
   }
@@ -171,7 +171,7 @@
     border: 1px solid #CBD5E1;
     border-radius: 8px;
     color: #1E293B;
-    font-size: 14px;
+    font-size: 15px;
     transition: border-color 0.15s ease;
     outline: none;
     appearance: none;
@@ -196,7 +196,7 @@
     border: 1px solid #CBD5E1;
     border-radius: 8px;
     color: #1E293B;
-    font-size: 14px;
+    font-size: 15px;
     transition: border-color 0.15s ease;
     outline: none;
     resize: vertical;
@@ -211,7 +211,7 @@
   /* Label */
   .label {
     display: block;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
     color: #475569;
     margin-bottom: 6px;
@@ -238,7 +238,7 @@
   .tab-item {
     padding: 8px 16px;
     border-radius: 10px;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
     color: #64748B;
     cursor: pointer;
@@ -259,11 +259,11 @@
   /* Recharts custom styling */
   .recharts-cartesian-axis-tick-value {
     fill: #64748B !important;
-    font-size: 11px !important;
+    font-size: 13px !important;
   }
   .recharts-legend-item-text {
     color: #475569 !important;
-    font-size: 12px !important;
+    font-size: 13px !important;
   }
 
   /* Line clamp */
