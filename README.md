@@ -8,6 +8,7 @@ Pastikan Node.js dan npm sudah terpasang, lalu jalankan:
 
 ```bash
 npm install
+npm install animejs
 npm run dev
 ```
 
