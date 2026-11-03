@@ -10,6 +10,7 @@ const (
 	ComplaintStatusDidisposisikan  ComplaintStatus = "DIDISPOSISIKAN"
 	ComplaintStatusDitindaklanjuti ComplaintStatus = "DITINDAKLANJUTI"
 	ComplaintStatusSelesai         ComplaintStatus = "SELESAI"
+	ComplaintStatusDitutup         ComplaintStatus = "DITUTUP"
 	ComplaintStatusDitolak         ComplaintStatus = "DITOLAK"
 )
 
@@ -17,20 +18,22 @@ type ComplaintCategory string
 
 const (
 	ComplaintCatAkademik             ComplaintCategory = "AKADEMIK"
+	ComplaintCatLayananAdministrasi  ComplaintCategory = "LAYANAN_ADMINISTRASI"
+	ComplaintCatKeuangan             ComplaintCategory = "KEUANGAN_ADMINISTRASI"
 	ComplaintCatFasilitas            ComplaintCategory = "FASILITAS"
 	ComplaintCatDosenTendik          ComplaintCategory = "DOSEN_TENDIK"
 	ComplaintCatPerundunganKekerasan ComplaintCategory = "PERUNDUNGAN_KEKERASAN"
-	ComplaintCatKeuangan             ComplaintCategory = "KEUANGAN_ADMINISTRASI"
 	ComplaintCatLainnya              ComplaintCategory = "LAINNYA"
 )
 
 type ComplaintMessage struct {
-	ID          string    `json:"id"`
-	ComplaintID string    `json:"complaint_id"`
-	SenderType  string    `json:"sender_type"` // PELAPOR, PETUGAS, SISTEM
-	SenderID    string    `json:"sender_id,omitempty"`
-	Pesan       string    `json:"pesan"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID                string    `json:"id"`
+	ComplaintID       string    `json:"complaint_id"`
+	SenderType        string    `json:"sender_type"` // PELAPOR, PETUGAS, SISTEM
+	SenderID          string    `json:"sender_id,omitempty"`
+	IsCatatanInternal bool      `json:"is_catatan_internal"`
+	Pesan             string    `json:"pesan"`
+	CreatedAt         time.Time `json:"created_at"`
 }
 
 type ComplaintDisposition struct {
@@ -40,36 +43,54 @@ type ComplaintDisposition struct {
 	KepadaPetugasID      string     `json:"kepada_petugas_id"`
 	CatatanDisposisi     string     `json:"catatan_disposisi"`
 	DeadlineTindakLanjut *time.Time `json:"deadline_tindak_lanjut,omitempty"`
+	Status               string     `json:"status,omitempty"` // AKTIF | SELESAI | TERESKALASI
 	CreatedAt            time.Time  `json:"created_at"`
 }
 
 type Complaint struct {
-	ID               string                  `json:"id"`
-	KodeTiket        string                  `json:"kode_tiket"`
-	Kategori         ComplaintCategory       `json:"kategori"`
-	Judul            string                  `json:"judul"`
-	IsiAduan         string                  `json:"isi_aduan"`
-	Status           ComplaintStatus         `json:"status"`
-	IsSensitif       bool                    `json:"is_sensitif"`
-	PetugasID        string                  `json:"petugas_id,omitempty"`
-	TanggalPengaduan string                  `json:"tanggal_pengaduan"`
-	Messages         []*ComplaintMessage     `json:"messages,omitempty"`
-	Dispositions     []*ComplaintDisposition `json:"dispositions,omitempty"`
-	CreatedAt        time.Time               `json:"created_at"`
-	UpdatedAt        time.Time               `json:"updated_at"`
+	ID                        string                  `json:"id"`
+	NomorAduan                string                  `json:"nomor_aduan,omitempty"`
+	KodeTiket                 string                  `json:"kode_tiket"`
+	Kategori                  ComplaintCategory       `json:"kategori"`
+	Judul                     string                  `json:"judul"`
+	IsiAduan                  string                  `json:"isi_aduan"`
+	LampiranURL               string                  `json:"lampiran_url,omitempty"`
+	Status                    ComplaintStatus         `json:"status"`
+	IsSensitif                bool                    `json:"is_sensitif"`
+	KontakSukarela            string                  `json:"kontak_sukarela,omitempty"`
+	DiteruskanKeSatgasTanggal string                  `json:"diteruskan_ke_satgas_tanggal,omitempty"`
+	NomorReferensiSatgas      string                  `json:"nomor_referensi_satgas,omitempty"`
+	PetugasSatgas             string                  `json:"petugas_satgas,omitempty"`
+	IsEscalatedKaprodi        bool                    `json:"is_escalated_kaprodi"`
+	EscalatedAt               *time.Time              `json:"escalated_at,omitempty"`
+	PetugasID                 string                  `json:"petugas_id,omitempty"`
+	TanggalPengaduan          string                  `json:"tanggal_pengaduan"`
+	TanggalSelesai            string                  `json:"tanggal_selesai,omitempty"`
+	RatingKepuasan            int                     `json:"rating_kepuasan,omitempty"`
+	KomentarKepuasan          string                  `json:"komentar_kepuasan,omitempty"`
+	Messages                  []*ComplaintMessage     `json:"messages,omitempty"`
+	Dispositions              []*ComplaintDisposition `json:"dispositions,omitempty"`
+	CreatedAt                 time.Time               `json:"created_at"`
+	UpdatedAt                 time.Time               `json:"updated_at"`
 }
 
 type PublicComplaintRequest struct {
-	Kategori   ComplaintCategory `json:"kategori" binding:"required"`
-	Judul      string            `json:"judul" binding:"required"`
-	IsiAduan   string            `json:"isi_aduan" binding:"required"`
-	IsSensitif bool              `json:"is_sensitif"`
+	Kategori       ComplaintCategory `json:"kategori" binding:"required"`
+	Judul          string            `json:"judul" binding:"required"`
+	IsiAduan       string            `json:"isi_aduan" binding:"required"`
+	LampiranURL    string            `json:"lampiran_url,omitempty"`
+	KontakSukarela string            `json:"kontak_sukarela,omitempty"`
+	IsSensitif     bool              `json:"is_sensitif"`
 }
 
 type ComplaintRecap struct {
-	TotalAduan       int                    `json:"total_aduan"`
-	TotalSelesai     int                    `json:"total_selesai"`
-	TotalSensitif    int                    `json:"total_sensitif"`
-	StatusDistribusi map[string]int         `json:"status_distribusi"`
-	KategoriDist     map[string]int         `json:"kategori_distribusi"`
+	TotalAduan                    int            `json:"total_aduan"`
+	TotalSelesai                  int            `json:"total_selesai"`
+	TotalSensitif                 int            `json:"total_sensitif"`
+	TotalTereskalasiKaprodi       int            `json:"total_tereskalasi_kaprodi"`
+	TotalDiteruskanSatgas         int            `json:"total_diteruskan_satgas"`
+	RataRataWaktuPenyelesaianHari float64        `json:"rata_rata_waktu_penyelesaian_hari"`
+	RataRataKepuasanPelapor       float64        `json:"rata_rata_kepuasan_pelapor"`
+	StatusDistribusi              map[string]int `json:"status_distribusi"`
+	KategoriDist                  map[string]int `json:"kategori_distribusi"`
 }
