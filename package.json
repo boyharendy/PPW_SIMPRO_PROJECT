@@ -1,15 +1,25 @@
+
 {
-  "name": "simpro",
-  "version": "0.1.0",
+  "name": "simpro-monorepo",
+  "version": "1.0.0",
   "private": true,
+  "description": "SIMPRO - Sistem Informasi Manajemen Program Studi Monorepo",
+  "workspaces": [
+    "frontend"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "dev": "npm --prefix frontend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "cd backend && go run cmd/api/main.go",
+    "build": "npm --prefix frontend run build",
+    "build:frontend": "npm --prefix frontend run build",
+    "test": "npm --prefix frontend test",
+    "test:frontend": "npm --prefix frontend test",
+    "lint": "npm --prefix frontend run lint",
+    "test:supabase": "node frontend/scripts/test-supabase.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.117.2",
+    "@supabase/supabase-js": "^2.118.0",
     "clsx": "^2.1.1",
     "lucide-react": "^1.48.0",
     "next": "16.3.6",
