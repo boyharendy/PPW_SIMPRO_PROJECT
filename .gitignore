@@ -49,3 +49,10 @@ backend/.env*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Internal docs & PRD
+PRD.md
+prd.md
+prf.md
+*.docx
+
