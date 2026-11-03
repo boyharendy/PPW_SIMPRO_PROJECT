@@ -20,6 +20,7 @@ export type Role =
   | 'PENGELOLA_ADUAN'
   | 'PETUGAS_KEKERASAN'
   | 'MAHASISWA'
+  | 'HIMPUNAN'
   // Peran Kompatibilitas Data Induk (PRD Bab 6.A poin 2)
   | 'PENGURUS_HIMPUNAN'
   | 'DOSEN_WALI'
