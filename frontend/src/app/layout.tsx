@@ -9,8 +9,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="id">
-      <body className="antialiased">
+    // suppressHydrationWarning: ekstensi browser (mis. webcrx) menyuntikkan atribut ke <html>/<body>
+    // sebelum React hydrate, yang memicu hydration mismatch dan membuat UI tidak responsif.
+    <html lang="id" suppressHydrationWarning>
+      <body className="antialiased" suppressHydrationWarning>
         <AppProvider>{children}</AppProvider>
       </body>
     </html>
