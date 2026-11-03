@@ -2,9 +2,13 @@ import { createClient } from '@supabase/supabase-js';
 import fs from 'node:fs';
 import path from 'node:path';
 
-// Load .env.local
-const envPath = path.resolve(process.cwd(), '.env.local');
-if (fs.existsSync(envPath)) {
+// Load .env.local (works from root or frontend directory)
+const candidatePaths = [
+  path.resolve(process.cwd(), '.env.local'),
+  path.resolve(process.cwd(), 'frontend', '.env.local'),
+];
+const envPath = candidatePaths.find(p => fs.existsSync(p));
+if (envPath) {
   const content = fs.readFileSync(envPath, 'utf8');
   content.split('\n').forEach(line => {
     const trimmed = line.trim();

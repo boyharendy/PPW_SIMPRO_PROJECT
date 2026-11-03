@@ -27,10 +27,12 @@ import Modal from '@/components/ui/Modal';
 import {
   mockHimpunanProposals,
   mockHimpunanLpjs,
+  mockHimpunanProkers,
 } from '@/lib/mock-data';
 import {
   HimpunanProposal,
   HimpunanLpj,
+  HimpunanAuditLog,
 } from '@/lib/types';
 import { formatRupiah, formatDateShort, formatDateTime } from '@/lib/utils';
 
@@ -59,7 +61,7 @@ export default function HimpunanVerifikasiPage() {
     setReviewError(null);
 
     if ((action === 'REVISE' || action === 'REJECT') && !reviewNote.trim()) {
-      setReviewError('Catatan wajib diisi bila meminta revisi atau menolak pengajuan (NF-09).');
+      setReviewError('Catatan verifikasi wajib diisi bila meminta revisi atau menolak pengajuan.');
       return;
     }
 
@@ -79,11 +81,27 @@ export default function HimpunanVerifikasiPage() {
     }
 
     const nowIso = new Date().toISOString();
+    const actorName = isKaprodi ? 'Prof. Budi Santoso (Kaprodi)' : 'Dr. Eng. Ir. Hendra (Dosen Pembina)';
+    const actorRole = isKaprodi ? 'KAPRODI' : 'DOSEN_PEMBINA';
+
+    const newAuditLog: HimpunanAuditLog = {
+      id: `audit-${Date.now()}`,
+      waktu: nowIso,
+      aktor: actorName,
+      peran: actorRole,
+      aksi: action === 'APPROVE' ? 'PENGESAHAN_VERIFIKASI' : action === 'REVISE' ? 'PERMINTAAN_REVISI' : 'PENOLAKAN',
+      status_sebelum: currentStatus,
+      status_sesudah: newStatus,
+      catatan: reviewNote || (action === 'APPROVE' ? 'Disetujui tanpa catatan khusus.' : '-'),
+    };
+
     const updated = proposals.map((p) => {
       if (p.id === selectedProposalForReview.id) {
         return {
           ...p,
           status: newStatus,
+          nomor_revisi: action === 'REVISE' ? (p.nomor_revisi || 0) + 1 : p.nomor_revisi,
+          audit_trail: [...(p.audit_trail || []), newAuditLog],
           ...(currentStatus === 'DIAJUKAN'
             ? { catatan_pembina: reviewNote || p.catatan_pembina, diverifikasi_pembina_at: nowIso }
             : { catatan_kaprodi: reviewNote || p.catatan_kaprodi, disetujui_kaprodi_at: nowIso }),
@@ -105,7 +123,7 @@ export default function HimpunanVerifikasiPage() {
     setReviewError(null);
 
     if ((action === 'REVISE' || action === 'REJECT') && !reviewNote.trim()) {
-      setReviewError('Catatan wajib diisi bila meminta revisi atau menolak pengajuan (NF-09).');
+      setReviewError('Catatan verifikasi wajib diisi bila meminta revisi atau menolak pengajuan.');
       return;
     }
 
@@ -125,11 +143,27 @@ export default function HimpunanVerifikasiPage() {
     }
 
     const nowIso = new Date().toISOString();
+    const actorName = isKaprodi ? 'Prof. Budi Santoso (Kaprodi)' : 'Dr. Eng. Ir. Hendra (Dosen Pembina)';
+    const actorRole = isKaprodi ? 'KAPRODI' : 'DOSEN_PEMBINA';
+
+    const newAuditLog: HimpunanAuditLog = {
+      id: `audit-${Date.now()}`,
+      waktu: nowIso,
+      aktor: actorName,
+      peran: actorRole,
+      aksi: action === 'APPROVE' ? 'PENGESAHAN_LPJ' : action === 'REVISE' ? 'PERMINTAAN_REVISI_LPJ' : 'PENOLAKAN_LPJ',
+      status_sebelum: currentStatus,
+      status_sesudah: newStatus,
+      catatan: reviewNote || (action === 'APPROVE' ? 'LPJ telah diperiksa dan disetujui sah.' : '-'),
+    };
+
     const updated = lpjs.map((l) => {
       if (l.id === selectedLpjForReview.id) {
         return {
           ...l,
           status: newStatus,
+          nomor_revisi: action === 'REVISE' ? (l.nomor_revisi || 0) + 1 : l.nomor_revisi,
+          audit_trail: [...(l.audit_trail || []), newAuditLog],
           ...(currentStatus === 'DIAJUKAN'
             ? { catatan_pembina: reviewNote || l.catatan_pembina, diverifikasi_pembina_at: nowIso }
             : { catatan_kaprodi: reviewNote || l.catatan_kaprodi, disetujui_kaprodi_at: nowIso }),
@@ -281,8 +315,8 @@ export default function HimpunanVerifikasiPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Verifikasi Bertingkat Proposal &amp; LPJ (FR-20)"
-        description="Sistem menyediakan alur verifikasi dua tahap: Tahap 1 oleh Dosen Pembina Himpunan, dilanjutkan Tahap 2 persetujuan akhir oleh Ketua Program Studi (Kaprodi). Status verifikasi mencakup Diajukan, Disetujui Pembina, Perlu Revisi, Disetujui, dan Ditolak dengan catatan tersimpan pada log audit (NF-09)."
+        title="Verifikasi Bertingkat Proposal &amp; LPJ"
+        description="Alur verifikasi dua tahap: Tahap 1 oleh Dosen Pembina Himpunan, dilanjutkan Tahap 2 persetujuan akhir oleh Ketua Program Studi (Kaprodi). Status verifikasi mencakup Diajukan, Disetujui Pembina, Perlu Revisi, Disetujui, dan Ditolak dengan catatan riwayat audit tersimpan."
         badge={
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 border border-slate-200">
             Peran Aktif: {currentRole.replace('_', ' ')}
@@ -329,7 +363,7 @@ export default function HimpunanVerifikasiPage() {
           <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-3">
             <span className="font-bold text-slate-800 block text-xs">4. Rekap &amp; Analisis</span>
             <p className="text-[11px] text-slate-500 mt-1">
-              Otomatis terhitung ke dalam IKU dan analisis deviasi (FR-21/FR-22).
+              Otomatis terhitung ke dalam evaluasi capaian IKU dan analisis deviasi prodi.
             </p>
           </div>
         </div>
@@ -422,7 +456,7 @@ export default function HimpunanVerifikasiPage() {
 
             {/* Structured Table */}
             <div>
-              <h5 className="font-bold text-slate-900 mb-2">Pemeriksaan Rincian Pos Anggaran (FR-18):</h5>
+              <h5 className="font-bold text-slate-900 mb-2">Pemeriksaan Rincian Pos Anggaran:</h5>
               <div className="overflow-x-auto rounded-lg border border-slate-200">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
@@ -462,6 +496,29 @@ export default function HimpunanVerifikasiPage() {
               <div className="rounded-lg bg-blue-50/60 p-3 border border-blue-200 text-xs">
                 <span className="font-semibold text-blue-900">Catatan Dosen Pembina:</span>
                 <p className="mt-1 text-blue-800 italic">&quot;{selectedProposalForReview.catatan_pembina}&quot;</p>
+              </div>
+            )}
+
+            {/* Riwayat Jejak Audit & Keputusan (NF-09) */}
+            {selectedProposalForReview.audit_trail && selectedProposalForReview.audit_trail.length > 0 && (
+              <div className="rounded-lg border border-slate-200 p-3 bg-slate-50/70">
+                <span className="font-bold text-slate-800 block mb-2 text-[11px] uppercase tracking-wider">
+                  Riwayat Audit &amp; Keputusan Sebelumnya:
+                </span>
+                <div className="space-y-2">
+                  {selectedProposalForReview.audit_trail.map((log) => (
+                    <div key={log.id} className="p-2 rounded bg-white border border-slate-200 text-[11px]">
+                      <div className="flex items-center justify-between font-semibold">
+                        <span className="text-slate-800">{log.aktor} ({log.peran})</span>
+                        <span className="text-slate-400 font-mono text-[10px]">{formatDateTime(log.waktu)}</span>
+                      </div>
+                      <div className="mt-1 text-slate-600">
+                        <span className="font-medium text-blue-700">Aksi: {log.aksi}</span> &bull; 
+                        <span className="italic ml-1">&quot;{log.catatan}&quot;</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -568,6 +625,119 @@ export default function HimpunanVerifikasiPage() {
                 {selectedLpjForReview.capaian_indikator}
               </p>
             </div>
+
+            {/* Hasil Analisis Kesesuaian Terintegrasi (UC-09 «include» UC-07 & BPMN) */}
+            {(() => {
+              const matchingProposal = proposals.find((p) => p.id === selectedLpjForReview.proposal_id || p.proker_id === selectedLpjForReview.proker_id);
+              const matchingProker = mockHimpunanProkers.find((p) => p.id === selectedLpjForReview.proker_id);
+              const totalRencana = matchingProposal?.total_anggaran_proposal || matchingProker?.total_anggaran_rencana || selectedLpjForReview.total_biaya_realisasi;
+              const diffNominal = selectedLpjForReview.total_biaya_realisasi - totalRencana;
+              const diffPercent = totalRencana > 0 ? Number(((diffNominal / totalRencana) * 100).toFixed(1)) : 0;
+              const isOverBudget = diffNominal > 0;
+
+              return (
+                <div className="rounded-lg border border-indigo-200 bg-indigo-50/40 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-indigo-950 flex items-center gap-1.5 text-xs">
+                      <ShieldCheck className="h-4 w-4 text-indigo-600" />
+                      Hasil Analisis Kesesuaian Anggaran &amp; Jadwal:
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                      Math.abs(diffPercent) > 15
+                        ? 'bg-rose-100 text-rose-800 border-rose-300'
+                        : isOverBudget
+                        ? 'bg-amber-100 text-amber-800 border-amber-300'
+                        : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                    }`}>
+                      {Math.abs(diffPercent) > 15 ? 'Deviasi Signifikan > 15%' : isOverBudget ? 'Melebihi Proposal' : 'Efisiensi / Sesuai'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3 text-center bg-white p-2.5 rounded border border-indigo-100">
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">Rencana Proposal</span>
+                      <span className="font-bold text-slate-800">{formatRupiah(totalRencana)}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">Realisasi LPJ</span>
+                      <span className="font-bold text-slate-900">{formatRupiah(selectedLpjForReview.total_biaya_realisasi)}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">Selisih Anggaran</span>
+                      <span className={`font-bold ${diffNominal > 0 ? 'text-amber-700' : diffNominal < 0 ? 'text-emerald-700' : 'text-slate-700'}`}>
+                        {diffNominal > 0 ? `+${formatRupiah(diffNominal)}` : diffNominal < 0 ? formatRupiah(diffNominal) : 'Rp 0'} ({diffPercent > 0 ? `+${diffPercent}%` : `${diffPercent}%`})
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Pos Anggaran Realization Table */}
+                  <div className="overflow-x-auto rounded border border-indigo-100 bg-white">
+                    <table className="w-full text-left text-[11px]">
+                      <thead className="bg-indigo-50/50 text-indigo-900 font-semibold border-b border-indigo-100">
+                        <tr>
+                          <th className="px-2.5 py-1.5">Pos Anggaran</th>
+                          <th className="px-2.5 py-1.5 text-right">Rencana</th>
+                          <th className="px-2.5 py-1.5 text-right">Realisasi LPJ</th>
+                          <th className="px-2.5 py-1.5 text-right">Selisih</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {selectedLpjForReview.anggaran_per_pos.map((pos) => {
+                          const plan = pos.anggaran_rencana;
+                          const real = pos.realisasi_lpj || plan;
+                          const itemDiff = real - plan;
+                          return (
+                            <tr key={pos.id}>
+                              <td className="px-2.5 py-1.5 text-slate-800 font-medium">{pos.pos_anggaran}</td>
+                              <td className="px-2.5 py-1.5 text-right text-slate-500">{formatRupiah(plan)}</td>
+                              <td className="px-2.5 py-1.5 text-right font-semibold text-slate-900">{formatRupiah(real)}</td>
+                              <td className="px-2.5 py-1.5 text-right font-medium">
+                                <span className={itemDiff > 0 ? 'text-amber-600' : itemDiff < 0 ? 'text-emerald-600' : 'text-slate-400'}>
+                                  {itemDiff > 0 ? `+${formatRupiah(itemDiff)}` : itemDiff < 0 ? formatRupiah(itemDiff) : '0'}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Boundary Timer Alert (UC-14) */}
+                  <div className="flex items-center justify-between text-[11px] pt-1">
+                    <span className="text-slate-600">
+                      Tenggat LPJ (Batas 14 Hari Kalender): <strong>{formatDateShort(selectedLpjForReview.tenggat_pengumpulan)}</strong>
+                    </span>
+                    <span className={selectedLpjForReview.hari_keterlambatan > 0 ? 'text-rose-700 font-bold' : 'text-emerald-700 font-semibold'}>
+                      {selectedLpjForReview.hari_keterlambatan > 0 ? `Batas Terlewati (+${selectedLpjForReview.hari_keterlambatan} Hari)` : 'Pengumpulan Tepat Waktu'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Riwayat Jejak Audit & Keputusan (NF-09) */}
+            {selectedLpjForReview.audit_trail && selectedLpjForReview.audit_trail.length > 0 && (
+              <div className="rounded-lg border border-slate-200 p-3 bg-slate-50/70">
+                <span className="font-bold text-slate-800 block mb-2 text-[11px] uppercase tracking-wider">
+                  Riwayat Audit &amp; Keputusan Sebelumnya:
+                </span>
+                <div className="space-y-2">
+                  {selectedLpjForReview.audit_trail.map((log) => (
+                    <div key={log.id} className="p-2 rounded bg-white border border-slate-200 text-[11px]">
+                      <div className="flex items-center justify-between font-semibold">
+                        <span className="text-slate-800">{log.aktor} ({log.peran})</span>
+                        <span className="text-slate-400 font-mono text-[10px]">{formatDateTime(log.waktu)}</span>
+                      </div>
+                      <div className="mt-1 text-slate-600">
+                        <span className="font-medium text-blue-700">Aksi: {log.aksi}</span> &bull; 
+                        <span className="italic ml-1">&quot;{log.catatan}&quot;</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Review Decision Form */}
             <div className="border-t border-slate-200 pt-4 space-y-3">

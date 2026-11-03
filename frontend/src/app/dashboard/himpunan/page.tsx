@@ -19,6 +19,7 @@ import {
   ChevronRight,
   ShieldCheck,
   Layers,
+  Coins,
 } from 'lucide-react';
 import { useUser } from '@/lib/context';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -51,7 +52,7 @@ export default function HimpunanDashboardPage() {
     <div className="space-y-6">
       <PageHeader
         title="Modul 5: Program Kerja Himpunan"
-        description="Pengelolaan terpadu siklus program kerja: penginputan rencana anggaran (FR-17), pengajuan proposal terstruktur (FR-18), pelaporan LPJ & kuitansi (FR-19), verifikasi bertingkat Pembina–Kaprodi (FR-20), serta analisis deviasi otomatis (FR-21 & FR-22)."
+        description="Pengelolaan terpadu siklus program kerja: penginputan rencana anggaran, pengajuan proposal terstruktur, pelaporan LPJ & kuitansi sah, verifikasi bertingkat Pembina–Kaprodi, serta analisis deviasi otomatis dan laporan evaluasi."
         badge={
           <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 border border-blue-200">
             Himpunan Mahasiswa Sistem Informasi (HMSI)
@@ -95,25 +96,25 @@ export default function HimpunanDashboardPage() {
           title="Total Program Kerja"
           value={prokers.length}
           subtitle={`Periode ${selectedPeriod}`}
-          icon="Calendar"
+          icon={<Calendar size={18} />}
         />
         <StatCard
           title="Total Pagu Rencana"
           value={formatRupiah(totalRencana)}
           subtitle="Akumulasi Seluruh Proker"
-          icon="Coins"
+          icon={<Coins size={18} />}
         />
         <StatCard
           title="Realisasi Biaya LPJ"
           value={formatRupiah(totalRealisasi)}
           subtitle={`${((totalRealisasi / (totalRencana || 1)) * 100).toFixed(1)}% Penyerapan Anggaran`}
-          icon="TrendingUp"
+          icon={<TrendingUp size={18} />}
         />
         <StatCard
           title="Antrean Verifikasi"
           value={pendingPembina + pendingKaprodi}
           subtitle={`${pendingPembina} di Pembina, ${pendingKaprodi} di Kaprodi`}
-          icon="Clock"
+          icon={<Clock size={18} />}
         />
       </div>
 
@@ -135,7 +136,7 @@ export default function HimpunanDashboardPage() {
               <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
                 <Calendar className="h-5 w-5" />
               </div>
-              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">FR-17</span>
+              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Perencanaan</span>
               <h3 className="font-semibold text-slate-900 text-sm mt-1">Input Proker</h3>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                 Rencana kegiatan, indikator capaian, dan rincian pos anggaran wajib.
@@ -155,7 +156,7 @@ export default function HimpunanDashboardPage() {
               <div className="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
                 <FileText className="h-5 w-5" />
               </div>
-              <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">FR-18</span>
+              <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Pengajuan</span>
               <h3 className="font-semibold text-slate-900 text-sm mt-1">Proposal Kegiatan</h3>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                 Unggah proposal terstruktur dengan rincian anggaran & sumber dana otomatis.
@@ -175,7 +176,7 @@ export default function HimpunanDashboardPage() {
               <div className="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
                 <FileSpreadsheet className="h-5 w-5" />
               </div>
-              <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">FR-19</span>
+              <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Pelaporan</span>
               <h3 className="font-semibold text-slate-900 text-sm mt-1">Pengunggahan LPJ</h3>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                 Pelaporan realisasi biaya, kuitansi sah, peserta, dan hari keterlambatan.
@@ -195,10 +196,10 @@ export default function HimpunanDashboardPage() {
               <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
                 <FileCheck className="h-5 w-5" />
               </div>
-              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">FR-20</span>
+              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Persetujuan</span>
               <h3 className="font-semibold text-slate-900 text-sm mt-1">Verifikasi Bertingkat</h3>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                Persetujuan dua tahap: Tahap 1 Dosen Pembina $\rightarrow$ Tahap 2 Kaprodi.
+                Persetujuan dua tahap: Tahap 1 Dosen Pembina → Tahap 2 Kaprodi.
               </p>
             </div>
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-emerald-600">
@@ -215,7 +216,7 @@ export default function HimpunanDashboardPage() {
               <div className="w-9 h-9 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
                 <PieChart className="h-5 w-5" />
               </div>
-              <span className="text-[10px] font-bold text-purple-600 uppercase tracking-wider">FR-21 &amp; FR-22</span>
+              <span className="text-[10px] font-bold text-purple-600 uppercase tracking-wider">Evaluasi Mutu</span>
               <h3 className="font-semibold text-slate-900 text-sm mt-1">Analisis Deviasi</h3>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                 Komparasi Proker vs Proposal vs LPJ, batas toleransi deviasi 15%, &amp; evaluasi naratif.
@@ -313,7 +314,7 @@ export default function HimpunanDashboardPage() {
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                <h3 className="text-sm font-bold text-slate-900">Alur Verifikasi Aktif (FR-20)</h3>
+                <h3 className="text-sm font-bold text-slate-900">Alur Verifikasi Bertingkat</h3>
               </div>
               <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
                 2 Tahap
@@ -358,7 +359,7 @@ export default function HimpunanDashboardPage() {
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-amber-600" />
-                <h3 className="text-sm font-bold text-slate-900">Peringatan Deviasi (FR-21)</h3>
+                <h3 className="text-sm font-bold text-slate-900">Pemantauan Deviasi Kegiatan</h3>
               </div>
               <span className="text-[10px] text-slate-400 font-medium">Ambang: 15%</span>
             </div>

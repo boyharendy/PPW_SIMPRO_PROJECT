@@ -2,13 +2,15 @@ import React, { ReactNode } from 'react';
 import {
   Users, CheckCircle2, Clock, AlertTriangle, BookOpen, Award,
   ShieldAlert, Compass, Trophy, FileText, Calendar, Wallet,
-  PieChart, FileBadge, FileCheck, SmilePlus, Building
+  PieChart, FileBadge, FileCheck, SmilePlus, Building,
+  Coins, TrendingUp, DollarSign, ShieldCheck, Sparkles, Layers
 } from 'lucide-react';
 
 const stringIconMap: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   Users, CheckCircle2, Clock, AlertTriangle, BookOpen, Award,
   ShieldAlert, Compass, Trophy, FileText, Calendar, Wallet,
-  PieChart, FileBadge, FileCheck, SmilePlus, Building
+  PieChart, FileBadge, FileCheck, SmilePlus, Building,
+  Coins, TrendingUp, DollarSign, ShieldCheck, Sparkles, Layers
 };
 
 interface StatCardProps {
@@ -54,8 +56,10 @@ export function StatCard({
         <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{title}</p>
         {icon && (
           <div className={`w-9 h-9 rounded-lg border ${iconColor} flex items-center justify-center shrink-0`}>
-            {typeof icon === 'string' && stringIconMap[icon]
-              ? React.createElement(stringIconMap[icon], { size: 18 })
+            {typeof icon === 'string'
+              ? stringIconMap[icon]
+                ? React.createElement(stringIconMap[icon], { size: 18 })
+                : null
               : icon}
           </div>
         )}

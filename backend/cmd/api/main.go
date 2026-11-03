@@ -25,7 +25,7 @@ func main() {
 	// 4. Initialize Handlers
 	authHandler := handler.NewAuthHandler(authUsecase)
 	userHandler := handler.NewUserHandler(userUsecase)
-	healthHandler := handler.NewHealthHandler()
+	healthHandler := handler.NewHealthHandler(cfg)
 
 	// 5. Setup Router
 	router := deliveryHttp.SetupRouter(deliveryHttp.RouterParams{
@@ -41,6 +41,9 @@ func main() {
 	log.Printf("🚀 SIMPRO Golang Backend Server running on port %s", cfg.ServerPort)
 	log.Printf("👉 Health check: http://localhost:%s%s/health", cfg.ServerPort, cfg.APIPrefix)
 	log.Printf("👉 Frontend CORS allowed: %s", cfg.FrontendURL)
+	if cfg.SupabaseURL != "" {
+		log.Printf("👉 Supabase Project: %s", cfg.SupabaseURL)
+	}
 	log.Printf("==================================================")
 
 	if err := router.Run(serverAddr); err != nil {
