@@ -132,7 +132,7 @@ export default function RpsListPage() {
       <div className="card">
         <DataTable
           columns={columns}
-          data={filtered as unknown as Record<string, unknown>[]}
+          data={filtered}
           emptyMessage="Tidak ada pengajuan RPS yang cocok."
         />
       </div>

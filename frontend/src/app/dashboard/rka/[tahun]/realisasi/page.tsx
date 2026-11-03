@@ -127,7 +127,7 @@ export default function RkaRealisasiPage() {
       <div className="card">
         <DataTable
           columns={columns}
-          data={realizations as unknown as Record<string, unknown>[]}
+          data={realizations}
           emptyMessage="Belum ada riwayat realisasi anggaran."
         />
       </div>

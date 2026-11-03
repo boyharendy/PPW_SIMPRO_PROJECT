@@ -66,7 +66,7 @@ export default function RpsReviewSayaPage() {
       <div className="card">
         <DataTable
           columns={columns}
-          data={submissions as unknown as Record<string, unknown>[]}
+          data={submissions}
           emptyMessage="Tidak ada tugas review RPS saat ini."
         />
       </div>

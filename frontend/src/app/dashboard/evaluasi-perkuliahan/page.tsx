@@ -127,7 +127,7 @@ export default function EvaluasiPerkuliahanListPage() {
       <div className="card">
         <DataTable
           columns={columns}
-          data={evaluations as unknown as Record<string, unknown>[]}
+          data={evaluations}
           emptyMessage="Belum ada evaluasi perkuliahan pada semester ini."
         />
       </div>

@@ -139,7 +139,7 @@ export default function InstrumenKepuasanPage() {
       <div className="card">
         <DataTable
           columns={columns}
-          data={templates as unknown as Record<string, unknown>[]}
+          data={templates}
           emptyMessage="Belum ada template instrumen kepuasan"
         />
       </div>
