@@ -28,15 +28,18 @@ import { formatDate } from '@/lib/utils';
 import type { Complaint, ComplaintStatus } from '@/lib/types';
 
 export default function AntreanAduanPage() {
-  const [complaints, setComplaints] = useState<Complaint[]>(() => {
-    const list = storageSync.get<Complaint[]>(STORAGE_KEYS.COMPLAINTS, mockComplaints);
-    return list.filter((c) => !c.is_sensitif);
-  });
+  const [complaints, setComplaints] = useState<Complaint[]>(() => mockComplaints.filter((c) => !c.is_sensitif));
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('SEMUA');
   const [kategoriFilter, setKategoriFilter] = useState<string>('SEMUA');
 
   useEffect(() => {
+    // Sinkronisasi data lokal saat mount di client
+    const local = storageSync.get<Complaint[]>(STORAGE_KEYS.COMPLAINTS, mockComplaints);
+    if (local && local.length > 0) {
+      setComplaints(local.filter((c) => !c.is_sensitif));
+    }
+
     let active = true;
     complaintService
       .getComplaints()

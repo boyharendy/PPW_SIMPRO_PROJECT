@@ -22,13 +22,14 @@ export interface DataTableProps<T = any> {
 
 export function DataTable<T = any>({
   columns,
-  data,
+  data = [],
   emptyMessage = 'Tidak ada data',
   onRowClick,
   onEdit,
   onDelete,
 }: DataTableProps<T>) {
   const hasActions = onEdit || onDelete;
+  const safeData = Array.isArray(data) ? data.filter((row): row is T => row != null) : [];
 
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-xs bg-white">
@@ -51,7 +52,7 @@ export function DataTable<T = any>({
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {data.length === 0 ? (
+          {safeData.length === 0 ? (
             <tr>
               <td colSpan={columns.length + (hasActions ? 1 : 0)} className="px-4 py-16 text-center text-slate-500">
                 <div className="flex flex-col items-center justify-center">
@@ -61,7 +62,7 @@ export function DataTable<T = any>({
               </td>
             </tr>
           ) : (
-            data.map((row, i) => (
+            safeData.map((row, i) => (
               <tr
                 key={i}
                 onClick={() => onRowClick?.(row)}
@@ -73,7 +74,7 @@ export function DataTable<T = any>({
                   <td key={col.key} className={`px-4 py-3.5 text-slate-700 ${col.className || ''}`}>
                     {col.render
                       ? col.render(row)
-                      : ((row as Record<string, unknown>)[col.key] as ReactNode) ?? '-'}
+                      : ((row as Record<string, unknown>)?.[col.key] as ReactNode) ?? '-'}
                   </td>
                 ))}
                 {hasActions && (

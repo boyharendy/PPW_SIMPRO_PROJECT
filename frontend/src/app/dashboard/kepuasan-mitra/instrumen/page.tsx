@@ -14,16 +14,21 @@ import Link from 'next/link';
 import { formatDateShort } from '@/lib/utils';
 
 export default function InstrumenKepuasanPage() {
-  const [templates, setTemplates] = useState<PartnerSurveyTemplate[]>(() =>
-    storageSync.get<PartnerSurveyTemplate[]>(STORAGE_KEYS.SURVEYS, mockSurveyTemplates)
-  );
+  const [templates, setTemplates] = useState<PartnerSurveyTemplate[]>(mockSurveyTemplates);
   const [openModal, setOpenModal] = useState(false);
   const [formProgram, setFormProgram] = useState<SurveyProgram>('KP');
   const [formNama, setFormNama] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Muat data dari Backend / Supabase saat halaman dibuka
+  // Muat data dari persistent local storage dan Backend / Supabase
   useEffect(() => {
+    // 1. Sinkronisasi data lokal dari storageSync saat client mount (mencegah hydration mismatch)
+    const localSurveys = storageSync.get<PartnerSurveyTemplate[]>(STORAGE_KEYS.SURVEYS, mockSurveyTemplates);
+    if (localSurveys && localSurveys.length > 0) {
+      setTemplates(localSurveys);
+    }
+
+    // 2. Muat data dari Backend / Supabase saat halaman dibuka
     let active = true;
     surveyService
       .getSurveys()
@@ -81,7 +86,7 @@ export default function InstrumenKepuasanPage() {
       header: 'Program',
       render: (row: PartnerSurveyTemplate) => (
         <span className="font-bold text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-md">
-          {row.program}
+          {row?.program || '-'}
         </span>
       ),
     },
@@ -90,9 +95,9 @@ export default function InstrumenKepuasanPage() {
       header: 'Nama Template Instrumen',
       render: (row: PartnerSurveyTemplate) => (
         <div>
-          <p className="font-semibold text-slate-800 text-xs sm:text-sm">{row.nama}</p>
+          <p className="font-semibold text-slate-800 text-xs sm:text-sm">{row?.nama || '-'}</p>
           <p className="text-[11px] text-slate-400 mt-0.5">
-            Skala 1–{row.skala_maks} • Dibuat: {formatDateShort(row.created_at)}
+            Skala 1–{row?.skala_maks ?? 5} • Dibuat: {formatDateShort(row?.created_at)}
           </p>
         </div>
       ),
@@ -102,7 +107,7 @@ export default function InstrumenKepuasanPage() {
       header: 'Aspek Penilaian',
       render: (row: PartnerSurveyTemplate) => (
         <span className="text-xs text-slate-600 font-medium">
-          {row.aspek?.length || 0} Aspek
+          {row?.aspek?.length || 0} Aspek
         </span>
       ),
     },
@@ -111,14 +116,14 @@ export default function InstrumenKepuasanPage() {
       header: 'Responden',
       render: (row: PartnerSurveyTemplate) => (
         <span className="text-xs font-semibold text-slate-700">
-          {row.total_responden || 0} Mitra
+          {row?.total_responden || 0} Mitra
         </span>
       ),
     },
     {
       key: 'status',
       header: 'Status',
-      render: (row: PartnerSurveyTemplate) => <StatusBadge status={row.status} size="sm" />,
+      render: (row: PartnerSurveyTemplate) => <StatusBadge status={row?.status || 'DRAF'} size="sm" />,
     },
     {
       key: 'actions',
@@ -137,7 +142,7 @@ export default function InstrumenKepuasanPage() {
           </button>
 
           <Link
-            href={`/dashboard/kepuasan-mitra/instrumen/${row.id}`}
+            href={`/dashboard/kepuasan-mitra/instrumen/${row?.id || ''}`}
             className="btn-primary text-xs py-1.5 px-2.5 flex items-center gap-1"
           >
             <Settings2 size={13} />

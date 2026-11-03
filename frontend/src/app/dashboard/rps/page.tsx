@@ -12,13 +12,17 @@ import { Plus, BookCheck, Eye, Search, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 
 export default function RpsListPage() {
-  const [submissions, setSubmissions] = useState<RpsSubmission[]>(() =>
-    storageSync.get<RpsSubmission[]>(STORAGE_KEYS.RPS_SUBMISSIONS, mockRpsSubmissions)
-  );
+  const [submissions, setSubmissions] = useState<RpsSubmission[]>(mockRpsSubmissions);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
 
   useEffect(() => {
+    // Sinkronisasi data lokal saat mount di client
+    const local = storageSync.get<RpsSubmission[]>(STORAGE_KEYS.RPS_SUBMISSIONS, mockRpsSubmissions);
+    if (local && local.length > 0) {
+      setSubmissions(local);
+    }
+
     let active = true;
     rpsService
       .getSubmissions()

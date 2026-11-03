@@ -31,14 +31,13 @@ import {
 import { formatDateShort, copyToClipboard } from '@/lib/utils';
 
 export default function PengirimanMitraPage() {
-  const [invitations, setInvitations] = useState<PartnerSurveyInvitation[]>(() =>
-    storageSync.get<PartnerSurveyInvitation[]>(STORAGE_KEYS.SURVEY_INVITATIONS, mockSurveyInvitations)
-  );
+  const [invitations, setInvitations] = useState<PartnerSurveyInvitation[]>(mockSurveyInvitations);
   const [selectedPlacementId, setSelectedPlacementId] = useState<string>('');
   const [modalKirimOpen, setModalKirimOpen] = useState(false);
   const [modalManualOpen, setModalManualOpen] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [availableTemplates, setAvailableTemplates] = useState<PartnerSurveyTemplate[]>(mockSurveyTemplates);
 
   // Manual Form State
   const [manualPartnerName, setManualPartnerName] = useState('');
@@ -51,10 +50,20 @@ export default function PengirimanMitraPage() {
     asp4: 4,
   });
 
-  const availableTemplates = storageSync.get<PartnerSurveyTemplate[]>(STORAGE_KEYS.SURVEYS, mockSurveyTemplates);
   const activeTemplate = availableTemplates[0] || mockSurveyTemplates[0];
 
   useEffect(() => {
+    // 1. Sinkronisasi data lokal dari storageSync saat client mount (mencegah hydration mismatch)
+    const localInvs = storageSync.get<PartnerSurveyInvitation[]>(STORAGE_KEYS.SURVEY_INVITATIONS, mockSurveyInvitations);
+    if (localInvs && localInvs.length > 0) {
+      setInvitations(localInvs);
+    }
+    const localTmpls = storageSync.get<PartnerSurveyTemplate[]>(STORAGE_KEYS.SURVEYS, mockSurveyTemplates);
+    if (localTmpls && localTmpls.length > 0) {
+      setAvailableTemplates(localTmpls);
+    }
+
+    // 2. Muat data dari Backend / Supabase
     let active = true;
     surveyService
       .getInvitations()

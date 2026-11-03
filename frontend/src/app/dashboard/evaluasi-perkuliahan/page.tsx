@@ -12,13 +12,17 @@ import { GraduationCap, Eye, FileEdit, CheckCircle2, Search } from 'lucide-react
 import Link from 'next/link';
 
 export default function EvaluasiPerkuliahanListPage() {
-  const [evaluations, setEvaluations] = useState<CourseEvaluation[]>(() =>
-    storageSync.get<CourseEvaluation[]>(STORAGE_KEYS.EVALUATIONS, mockCourseEvaluations)
-  );
+  const [evaluations, setEvaluations] = useState<CourseEvaluation[]>(mockCourseEvaluations);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('period-2024-genap');
 
   useEffect(() => {
+    // Sinkronisasi data lokal saat mount di client
+    const local = storageSync.get<CourseEvaluation[]>(STORAGE_KEYS.EVALUATIONS, mockCourseEvaluations);
+    if (local && local.length > 0) {
+      setEvaluations(local);
+    }
+
     let active = true;
     evaluationService
       .getEvaluations()

@@ -13,13 +13,17 @@ import Link from 'next/link';
 import { formatDateShort, formatRupiah } from '@/lib/utils';
 
 export default function PerjalananDinasListPage() {
-  const [trips, setTrips] = useState<BusinessTrip[]>(() =>
-    storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips)
-  );
+  const [trips, setTrips] = useState<BusinessTrip[]>(mockBusinessTrips);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
 
   useEffect(() => {
+    // Sinkronisasi data lokal saat mount di client
+    const local = storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips);
+    if (local && local.length > 0) {
+      setTrips(local);
+    }
+
     let active = true;
     tripService
       .getTrips()

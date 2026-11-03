@@ -14,14 +14,18 @@ import Link from 'next/link';
 import { formatRupiah, calculateAbsorptionPercentage } from '@/lib/utils';
 
 export default function RkaListPage() {
-  const [rkaList, setRkaList] = useState<RkaDocument[]>(() =>
-    storageSync.get<RkaDocument[]>(STORAGE_KEYS.RKA_DOCUMENTS, mockRkaDocuments)
-  );
+  const [rkaList, setRkaList] = useState<RkaDocument[]>(mockRkaDocuments);
   const [modalOpen, setModalOpen] = useState(false);
   const [tahunBaru, setTahunBaru] = useState(new Date().getFullYear() + 1);
   const [judulBaru, setJudulBaru] = useState('');
 
   useEffect(() => {
+    // Sinkronisasi data lokal saat mount di client
+    const local = storageSync.get<RkaDocument[]>(STORAGE_KEYS.RKA_DOCUMENTS, mockRkaDocuments);
+    if (local && local.length > 0) {
+      setRkaList(local);
+    }
+
     let active = true;
     rkaService
       .getRkaList()
