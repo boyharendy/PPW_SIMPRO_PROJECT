@@ -15,6 +15,7 @@ type PublicationUsecase interface {
 	UpdatePublication(id string, pub *model.Publication) (*model.Publication, error)
 	DeletePublication(id string) error
 	SubmitPublication(id string) error
+	AddStageLog(id string, userID string, log *model.PublicationStageLog) error
 	VerifyPublication(id string, status model.PublicationStatus, reviewerID, catatan string) error
 	AddReview(id string, reviewerID, catatan, rekomendasi string) error
 	GetRecap() (*model.PublicationRecap, error)
@@ -48,7 +49,9 @@ func (u *publicationUsecase) CreatePublication(userID string, pub *model.Publica
 		return nil, errors.New("judul publikasi wajib diisi")
 	}
 	pub.CreatedBy = userID
-	pub.Status = model.PubStatusDraft
+	if pub.Status == "" {
+		pub.Status = model.PubStatusDraft
+	}
 	return u.repo.Create(pub)
 }
 
@@ -79,10 +82,16 @@ func (u *publicationUsecase) SubmitPublication(id string) error {
 	if err != nil {
 		return err
 	}
-	if existing.Status != model.PubStatusDraft && existing.Status != model.PubStatusDitolak {
+	if existing.Status != model.PubStatusDraft && existing.Status != model.PubStatusDitolak && existing.Status != model.PubStatusIde && existing.Status != model.PubStatusPenulisan {
 		return errors.New("hanya publikasi berstatus DRAFT atau DITOLAK yang dapat diajukan")
 	}
 	return u.repo.UpdateStatus(id, model.PubStatusMenungguVerifikasi)
+}
+
+func (u *publicationUsecase) AddStageLog(id string, userID string, log *model.PublicationStageLog) error {
+	log.PublicationID = id
+	log.CreatedBy = userID
+	return u.repo.AddStageLog(log)
 }
 
 func (u *publicationUsecase) VerifyPublication(id string, status model.PublicationStatus, reviewerID, catatan string) error {

@@ -12,7 +12,9 @@ type RpsUsecase interface {
 	GetSubmissionByID(id string) (*model.RpsSubmission, error)
 	CreateSubmission(userID string, sub *model.RpsSubmission) (*model.RpsSubmission, error)
 	SubmitForReview(id string) error
+	AssignReviewer(id string, reviewerID string) error
 	ReviewSubmission(id string, reviewerID string, komentar, rekomendasi string) error
+	ReviewSubmissionWithChecklist(id string, reviewerID string, komentar, rekomendasi string, items []*model.RpsReviewItem) error
 	RatifySubmission(id string) error
 	GetRecap() (*model.RpsRecap, error)
 }
@@ -47,15 +49,26 @@ func (u *rpsUsecase) SubmitForReview(id string) error {
 	if err != nil {
 		return err
 	}
-	if existing.Status != model.RpsStatusDraft && existing.Status != model.RpsStatusRevisi {
+	if existing.Status != model.RpsStatusDraft && existing.Status != model.RpsStatusRevisi && existing.Status != model.RpsStatusPerluRevisi {
 		return errors.New("hanya pengajuan berstatus DRAFT atau REVISI yang dapat diajukan")
 	}
 	return u.repo.UpdateStatus(id, model.RpsStatusDiajukan)
 }
 
+func (u *rpsUsecase) AssignReviewer(id string, reviewerID string) error {
+	if reviewerID == "" {
+		return errors.New("reviewer_id wajib diisi")
+	}
+	return u.repo.AssignReviewer(id, reviewerID)
+}
+
 func (u *rpsUsecase) ReviewSubmission(id string, reviewerID string, komentar, rekomendasi string) error {
+	return u.ReviewSubmissionWithChecklist(id, reviewerID, komentar, rekomendasi, nil)
+}
+
+func (u *rpsUsecase) ReviewSubmissionWithChecklist(id string, reviewerID string, komentar, rekomendasi string, items []*model.RpsReviewItem) error {
 	status := model.RpsStatusDisetujuiGKM
-	if rekomendasi == "REVISI" {
+	if rekomendasi == "REVISI" || rekomendasi == "PERLU_REVISI" {
 		status = model.RpsStatusRevisi
 	}
 	if err := u.repo.UpdateStatus(id, status); err != nil {
@@ -66,6 +79,7 @@ func (u *rpsUsecase) ReviewSubmission(id string, reviewerID string, komentar, re
 		ReviewerID:      reviewerID,
 		Komentar:        komentar,
 		Rekomendasi:     rekomendasi,
+		Items:           items,
 	})
 }
 
@@ -74,7 +88,7 @@ func (u *rpsUsecase) RatifySubmission(id string) error {
 	if err != nil {
 		return err
 	}
-	if existing.Status != model.RpsStatusDisetujuiGKM {
+	if existing.Status != model.RpsStatusDisetujuiGKM && existing.Status != model.RpsStatusDisetujui {
 		return errors.New("RPS harus disetujui GKM terlebih dahulu sebelum disahkan Kaprodi")
 	}
 	return u.repo.UpdateStatus(id, model.RpsStatusDisahkanKaprodi)

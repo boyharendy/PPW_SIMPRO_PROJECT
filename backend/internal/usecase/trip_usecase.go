@@ -17,6 +17,7 @@ type TripUsecase interface {
 	SubmitTrip(id string) error
 	ApproveTrip(id string, approverID string, approved bool) error
 	SubmitReport(id string, userID string, ringkasan, fileURL string, totalRealisasi float64) error
+	AddProof(id string, proof *model.TravelProof) error
 	GetRecap() (*model.TripRecap, error)
 }
 
@@ -47,8 +48,18 @@ func (u *tripUsecase) CreateTrip(userID string, trip *model.TravelOrder) (*model
 	if strings.TrimSpace(trip.Tujuan) == "" || strings.TrimSpace(trip.Keperluan) == "" {
 		return nil, errors.New("tujuan dan keperluan dinas wajib diisi")
 	}
+	if trip.EstimasiBiaya < 0 {
+		return nil, errors.New("estimasi biaya tidak boleh bernilai negatif")
+	}
+	for _, c := range trip.Costs {
+		if c.Estimasi < 0 || c.Realisasi < 0 {
+			return nil, errors.New("komponen biaya tidak boleh bernilai negatif")
+		}
+	}
 	trip.DiajukanOleh = userID
-	trip.Status = model.TripStatusDraft
+	if trip.Status == "" {
+		trip.Status = model.TripStatusDraft
+	}
 	return u.repo.Create(trip)
 }
 
@@ -94,6 +105,9 @@ func (u *tripUsecase) ApproveTrip(id string, approverID string, approved bool) e
 }
 
 func (u *tripUsecase) SubmitReport(id string, userID string, ringkasan, fileURL string, totalRealisasi float64) error {
+	if totalRealisasi < 0 {
+		return errors.New("total realisasi biaya tidak boleh negatif")
+	}
 	report := &model.TravelReport{
 		TravelOrderID:  id,
 		RingkasanHasil: ringkasan,
@@ -101,6 +115,11 @@ func (u *tripUsecase) SubmitReport(id string, userID string, ringkasan, fileURL 
 		VerifiedBy:     userID,
 	}
 	return u.repo.SubmitReport(report, totalRealisasi)
+}
+
+func (u *tripUsecase) AddProof(id string, proof *model.TravelProof) error {
+	proof.TravelOrderID = id
+	return u.repo.AddProof(proof)
 }
 
 func (u *tripUsecase) GetRecap() (*model.TripRecap, error) {

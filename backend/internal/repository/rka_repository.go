@@ -54,6 +54,13 @@ func (r *supabaseRkaRepository) FindByYear(tahun string) (*model.RkaDocument, er
 	}
 
 	doc := docs[0]
+	var activities []*model.RkaActivity
+	_ = r.client.Select("rka_activities", map[string]string{
+		"rka_id": fmt.Sprintf("eq.%s", doc.ID),
+		"order":  "triwulan.asc",
+	}, &activities)
+	doc.Activities = activities
+
 	var items []*model.RkaBudgetItem
 	_ = r.client.Select("rka_budget_items", map[string]string{
 		"rka_id": fmt.Sprintf("eq.%s", doc.ID),
@@ -64,6 +71,14 @@ func (r *supabaseRkaRepository) FindByYear(tahun string) (*model.RkaDocument, er
 		it.SisaAnggaran = it.AnggaranAlokasi - it.AnggaranTerpakai
 	}
 	doc.BudgetItems = items
+
+	var versions []*model.RkaVersion
+	_ = r.client.Select("rka_versions", map[string]string{
+		"rka_id": fmt.Sprintf("eq.%s", doc.ID),
+		"order":  "nomor_versi.desc",
+	}, &versions)
+	doc.Versions = versions
+
 	doc.SisaAnggaran = doc.PaguTotal - doc.TotalTerpakai
 	if doc.PaguTotal > 0 {
 		doc.PersentaseSerapan = (doc.TotalTerpakai / doc.PaguTotal) * 100
@@ -93,9 +108,30 @@ func (r *supabaseRkaRepository) Create(doc *model.RkaDocument) (*model.RkaDocume
 		return nil, fmt.Errorf("gagal membuat dokumen RKA: %w", err)
 	}
 
+	for _, act := range doc.Activities {
+		if act.ID == "" {
+			act.ID = uuid.New().String()
+		}
+		if act.Triwulan < 1 || act.Triwulan > 4 {
+			act.Triwulan = 1
+		}
+		actPayload := map[string]interface{}{
+			"id":                 act.ID,
+			"rka_id":             doc.ID,
+			"nama_kegiatan":      act.NamaKegiatan,
+			"indikator_kinerja":  act.IndikatorKinerja,
+			"triwulan":           act.Triwulan,
+			"status_pelaksanaan": "BELUM_TERLAKSANA",
+		}
+		_ = r.client.Insert("rka_activities", actPayload, nil)
+	}
+
 	for _, item := range doc.BudgetItems {
 		if item.ID == "" {
 			item.ID = uuid.New().String()
+		}
+		if item.Triwulan < 1 || item.Triwulan > 4 {
+			item.Triwulan = 1
 		}
 		itemPayload := map[string]interface{}{
 			"id":                 item.ID,
@@ -103,10 +139,24 @@ func (r *supabaseRkaRepository) Create(doc *model.RkaDocument) (*model.RkaDocume
 			"kode_mata_anggaran": item.KodeMataAnggaran,
 			"nama_kegiatan":      item.NamaKegiatan,
 			"kategori":           item.Kategori,
+			"triwulan":           item.Triwulan,
 			"anggaran_alokasi":   item.AnggaranAlokasi,
 			"anggaran_terpakai":  0,
 		}
+		if item.SumberDana != "" {
+			itemPayload["sumber_dana"] = item.SumberDana
+		}
 		_ = r.client.Insert("rka_budget_items", itemPayload, nil)
+	}
+
+	doc.Versions = []*model.RkaVersion{
+		{
+			ID:               uuid.New().String(),
+			RkaID:            doc.ID,
+			NomorVersi:       1,
+			CatatanPerubahan: "Penyusunan RKA awal tahun anggaran " + doc.TahunAnggaran,
+			CreatedAt:        time.Now(),
+		},
 	}
 
 	doc.CreatedAt = time.Now()
@@ -125,6 +175,22 @@ func (r *supabaseRkaRepository) Update(tahun string, doc *model.RkaDocument) (*m
 	if err != nil {
 		return nil, err
 	}
+
+	existing, err := r.FindByYear(tahun)
+	if err == nil && existing != nil {
+		nextVer := len(existing.Versions) + 1
+		catatan := doc.CatatanRevisi
+		if catatan == "" {
+			catatan = fmt.Sprintf("Revisi dokumen RKA versi %d", nextVer)
+		}
+		_ = r.client.Insert("rka_versions", map[string]interface{}{
+			"id":                uuid.New().String(),
+			"rka_id":            existing.ID,
+			"nomor_versi":       nextVer,
+			"catatan_perubahan": catatan,
+		}, nil)
+	}
+
 	return r.FindByYear(tahun)
 }
 
@@ -141,6 +207,7 @@ func (r *supabaseRkaRepository) AddRealization(realization *model.RkaRealization
 	}
 	if realization.TravelOrderID != "" {
 		payload["travel_order_id"] = realization.TravelOrderID
+		payload["sumber_pencatatan"] = "PERJALANAN_DINAS"
 	}
 	return r.client.Insert("rka_realizations", payload, nil)
 }
@@ -150,13 +217,64 @@ func (r *supabaseRkaRepository) GetSerapan(tahun string) (*model.RkaSerapan, err
 	if err != nil {
 		return nil, err
 	}
+	return computeRkaSerapan(doc), nil
+}
+
+func computeRkaSerapan(doc *model.RkaDocument) *model.RkaSerapan {
+	serapanPerKegiatan := make(map[string]float64)
+	serapanPerPos := make(map[string]float64)
+	serapanPerTriwulan := map[string]float64{
+		"TW1": 0,
+		"TW2": 0,
+		"TW3": 0,
+		"TW4": 0,
+	}
+	paguTriwulan := map[int]float64{}
+	realTriwulan := map[int]float64{}
+
+	for _, item := range doc.BudgetItems {
+		pct := 0.0
+		if item.AnggaranAlokasi > 0 {
+			pct = (item.AnggaranTerpakai / item.AnggaranAlokasi) * 100
+		}
+		serapanPerPos[item.KodeMataAnggaran] = pct
+		if item.NamaKegiatan != "" {
+			serapanPerKegiatan[item.NamaKegiatan] = pct
+		}
+		tw := item.Triwulan
+		if tw < 1 || tw > 4 {
+			tw = 1
+		}
+		paguTriwulan[tw] += item.AnggaranAlokasi
+		realTriwulan[tw] += item.AnggaranTerpakai
+	}
+
+	for tw := 1; tw <= 4; tw++ {
+		key := fmt.Sprintf("TW%d", tw)
+		if paguTriwulan[tw] > 0 {
+			serapanPerTriwulan[key] = (realTriwulan[tw] / paguTriwulan[tw]) * 100
+		}
+	}
+
+	today := time.Now().Format("2006-01-02")
+	overdueCount := 0
+	for _, act := range doc.Activities {
+		if act.StatusPelaksanaan != "TERLAKSANA" && act.JadwalSelesai != "" && act.JadwalSelesai < today {
+			overdueCount++
+		}
+	}
+
 	return &model.RkaSerapan{
-		TahunAnggaran:     doc.TahunAnggaran,
-		PaguTotal:         doc.PaguTotal,
-		TotalTerpakai:     doc.TotalTerpakai,
-		SisaAnggaran:      doc.SisaAnggaran,
-		PersentaseSerapan: doc.PersentaseSerapan,
-	}, nil
+		TahunAnggaran:          doc.TahunAnggaran,
+		PaguTotal:              doc.PaguTotal,
+		TotalTerpakai:          doc.TotalTerpakai,
+		SisaAnggaran:           doc.SisaAnggaran,
+		PersentaseSerapan:      doc.PersentaseSerapan,
+		SerapanPerKegiatan:     serapanPerKegiatan,
+		SerapanPerPos:          serapanPerPos,
+		SerapanPerTriwulan:     serapanPerTriwulan,
+		KegiatanMelewatiJadwal: overdueCount,
+	}
 }
 
 // ============================================================
@@ -213,6 +331,15 @@ func (r *memoryRkaRepository) Create(doc *model.RkaDocument) (*model.RkaDocument
 	if doc.PaguTotal > 0 {
 		doc.PersentaseSerapan = (doc.TotalTerpakai / doc.PaguTotal) * 100
 	}
+	doc.Versions = []*model.RkaVersion{
+		{
+			ID:               uuid.New().String(),
+			RkaID:            doc.ID,
+			NomorVersi:       1,
+			CatatanPerubahan: "Penyusunan RKA awal tahun anggaran " + doc.TahunAnggaran,
+			CreatedAt:        time.Now(),
+		},
+	}
 	doc.CreatedAt = time.Now()
 	doc.UpdatedAt = time.Now()
 	r.docs[doc.TahunAnggaran] = doc
@@ -228,6 +355,24 @@ func (r *memoryRkaRepository) Update(tahun string, doc *model.RkaDocument) (*mod
 	}
 	existing.PaguTotal = doc.PaguTotal
 	existing.Status = doc.Status
+	if len(doc.BudgetItems) > 0 {
+		existing.BudgetItems = doc.BudgetItems
+	}
+	if len(doc.Activities) > 0 {
+		existing.Activities = doc.Activities
+	}
+	nextVer := len(existing.Versions) + 1
+	catatan := doc.CatatanRevisi
+	if catatan == "" {
+		catatan = fmt.Sprintf("Revisi dokumen RKA versi %d", nextVer)
+	}
+	existing.Versions = append(existing.Versions, &model.RkaVersion{
+		ID:               uuid.New().String(),
+		RkaID:            existing.ID,
+		NomorVersi:       nextVer,
+		CatatanPerubahan: catatan,
+		CreatedAt:        time.Now(),
+	})
 	existing.UpdatedAt = time.Now()
 	return existing, nil
 }
@@ -266,11 +411,5 @@ func (r *memoryRkaRepository) GetSerapan(tahun string) (*model.RkaSerapan, error
 	if !ok {
 		return nil, errors.New("dokumen RKA tidak ditemukan")
 	}
-	return &model.RkaSerapan{
-		TahunAnggaran:     d.TahunAnggaran,
-		PaguTotal:         d.PaguTotal,
-		TotalTerpakai:     d.TotalTerpakai,
-		SisaAnggaran:      d.SisaAnggaran,
-		PersentaseSerapan: d.PersentaseSerapan,
-	}, nil
+	return computeRkaSerapan(d), nil
 }

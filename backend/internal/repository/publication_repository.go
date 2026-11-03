@@ -3,6 +3,7 @@ package repository
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,6 +19,7 @@ type PublicationRepository interface {
 	Update(id string, pub *model.Publication) (*model.Publication, error)
 	Delete(id string) error
 	UpdateStatus(id string, status model.PublicationStatus) error
+	AddStageLog(log *model.PublicationStageLog) error
 	AddReview(review *model.PublicationReview) error
 	GetRecap() (*model.PublicationRecap, error)
 }
@@ -93,9 +95,16 @@ func (r *supabasePublicationRepository) FindByID(id string) (*model.Publication,
 	var reviews []*model.PublicationReview
 	_ = r.client.Select("publication_reviews", map[string]string{
 		"publication_id": fmt.Sprintf("eq.%s", id),
-		"order":          "created_at.desc",
+		"order":          "reviewed_at.desc",
 	}, &reviews)
 	pub.Reviews = reviews
+
+	var stageLogs []*model.PublicationStageLog
+	_ = r.client.Select("publication_stage_logs", map[string]string{
+		"publication_id": fmt.Sprintf("eq.%s", id),
+		"order":          "created_at.asc",
+	}, &stageLogs)
+	pub.StageLogs = stageLogs
 
 	return pub, nil
 }
@@ -107,6 +116,18 @@ func (r *supabasePublicationRepository) Create(pub *model.Publication) (*model.P
 	if pub.Status == "" {
 		pub.Status = model.PubStatusDraft
 	}
+	if pub.NamaJurnalKonferensi == "" && pub.NamaTarget != "" {
+		pub.NamaJurnalKonferensi = pub.NamaTarget
+	}
+	if pub.TahunTerbit == 0 && pub.Tahun > 0 {
+		pub.TahunTerbit = pub.Tahun
+	}
+	if pub.Tipe == "" && pub.Jenis != "" {
+		pub.Tipe = model.PublicationType(pub.Jenis)
+	}
+	if pub.Peringkat == "" {
+		pub.Peringkat = "NON_PERINGKAT"
+	}
 
 	payload := map[string]interface{}{
 		"id":                     pub.ID,
@@ -114,11 +135,16 @@ func (r *supabasePublicationRepository) Create(pub *model.Publication) (*model.P
 		"tipe":                   string(pub.Tipe),
 		"status":                 string(pub.Status),
 		"nama_jurnal_konferensi": pub.NamaJurnalKonferensi,
+		"peringkat":              pub.Peringkat,
 		"tahun_terbit":           pub.TahunTerbit,
 		"doi":                    pub.DOI,
 		"url_publikasi":          pub.URLPublikasi,
 		"file_naskah_url":        pub.FileNaskahURL,
 		"created_by":             pub.CreatedBy,
+	}
+	if pub.VerifikatorID != "" {
+		payload["verifikator_id"] = pub.VerifikatorID
+		payload["status_verifikasi"] = "MENUNGGU"
 	}
 
 	var inserted []*model.Publication
@@ -130,10 +156,18 @@ func (r *supabasePublicationRepository) Create(pub *model.Publication) (*model.P
 		if a.ID == "" {
 			a.ID = uuid.New().String()
 		}
+		if a.TipePenulis == "" {
+			a.TipePenulis = "DOSEN"
+		}
+		if a.Peran == "" {
+			a.Peran = "PENULIS_UTAMA"
+		}
 		aPayload := map[string]interface{}{
 			"id":               a.ID,
 			"publication_id":   pub.ID,
 			"nama_penulis":     a.NamaPenulis,
+			"tipe_penulis":     a.TipePenulis,
+			"peran":            a.Peran,
 			"afiliasi":         a.Afiliasi,
 			"urutan":           a.Urutan,
 			"is_corresponding": a.IsCorresponding,
@@ -144,12 +178,23 @@ func (r *supabasePublicationRepository) Create(pub *model.Publication) (*model.P
 		_ = r.client.Insert("publication_authors", aPayload, nil)
 	}
 
+	for _, log := range pub.StageLogs {
+		log.PublicationID = pub.ID
+		_ = r.AddStageLog(log)
+	}
+
 	pub.CreatedAt = time.Now()
 	pub.UpdatedAt = time.Now()
 	return pub, nil
 }
 
 func (r *supabasePublicationRepository) Update(id string, pub *model.Publication) (*model.Publication, error) {
+	if pub.NamaJurnalKonferensi == "" && pub.NamaTarget != "" {
+		pub.NamaJurnalKonferensi = pub.NamaTarget
+	}
+	if pub.TahunTerbit == 0 && pub.Tahun > 0 {
+		pub.TahunTerbit = pub.Tahun
+	}
 	payload := map[string]interface{}{
 		"judul":                  pub.Judul,
 		"tipe":                   string(pub.Tipe),
@@ -157,6 +202,12 @@ func (r *supabasePublicationRepository) Update(id string, pub *model.Publication
 		"tahun_terbit":           pub.TahunTerbit,
 		"doi":                    pub.DOI,
 		"url_publikasi":          pub.URLPublikasi,
+	}
+	if pub.Peringkat != "" {
+		payload["peringkat"] = pub.Peringkat
+	}
+	if pub.Status != "" {
+		payload["status"] = string(pub.Status)
 	}
 	return pub, r.client.Update("publications", map[string]string{
 		"id": fmt.Sprintf("eq.%s", id),
@@ -170,9 +221,43 @@ func (r *supabasePublicationRepository) Delete(id string) error {
 }
 
 func (r *supabasePublicationRepository) UpdateStatus(id string, status model.PublicationStatus) error {
+	payload := map[string]interface{}{
+		"status": string(status),
+	}
+	if status == model.PubStatusTerverifikasi || status == model.PubStatusTerbit {
+		now := time.Now()
+		payload["status_verifikasi"] = "TERVERIFIKASI"
+		payload["diverifikasi_at"] = now
+		payload["is_forwarded_to_kinerja"] = true
+		payload["forwarded_to_kinerja_at"] = now
+	}
 	return r.client.Update("publications", map[string]string{
 		"id": fmt.Sprintf("eq.%s", id),
-	}, map[string]interface{}{"status": string(status)}, nil)
+	}, payload, nil)
+}
+
+func (r *supabasePublicationRepository) AddStageLog(log *model.PublicationStageLog) error {
+	if log.ID == "" {
+		log.ID = uuid.New().String()
+	}
+	if log.TanggalTahap == "" {
+		log.TanggalTahap = time.Now().Format("2006-01-02")
+	}
+	payload := map[string]interface{}{
+		"id":                log.ID,
+		"publication_id":    log.PublicationID,
+		"tahap":             string(log.Tahap),
+		"tanggal_tahap":     log.TanggalTahap,
+		"jenis_bukti":       log.JenisBukti,
+		"tautan_bukti":      log.TautanBukti,
+		"nama_berkas_bukti": log.NamaBerkasBukti,
+		"catatan":           log.Catatan,
+	}
+	if log.DicatatOleh != "" {
+		payload["dicatat_oleh"] = log.DicatatOleh
+	}
+	_ = r.UpdateStatus(log.PublicationID, log.Tahap)
+	return r.client.Insert("publication_stage_logs", payload, nil)
 }
 
 func (r *supabasePublicationRepository) AddReview(review *model.PublicationReview) error {
@@ -186,26 +271,53 @@ func (r *supabasePublicationRepository) AddReview(review *model.PublicationRevie
 		"catatan":        review.Catatan,
 		"rekomendasi":    review.Rekomendasi,
 	}
+	if review.Status != "" {
+		payload["status"] = review.Status
+	}
+	if review.TenggatReview != "" {
+		payload["tenggat_review"] = review.TenggatReview
+	}
 	return r.client.Insert("publication_reviews", payload, nil)
 }
 
 func (r *supabasePublicationRepository) GetRecap() (*model.PublicationRecap, error) {
 	var list []*model.Publication
-	_ = r.client.Select("publications", map[string]string{"select": "id,status,tipe,tahun_terbit"}, &list)
+	_ = r.client.Select("publications", map[string]string{"select": "id,status,tipe,peringkat,tahun_terbit,is_forwarded_to_kinerja"}, &list)
+
+	var allAuthors []*model.PublicationAuthor
+	_ = r.client.Select("publication_authors", map[string]string{"select": "publication_id,tipe_penulis"}, &allAuthors)
+	pubHasStudent := make(map[string]bool)
+	for _, a := range allAuthors {
+		if strings.EqualFold(a.TipePenulis, "MAHASISWA") {
+			pubHasStudent[a.PublicationID] = true
+		}
+	}
 
 	recap := &model.PublicationRecap{
 		TotalPublikasi: len(list),
 		PerTipe:        make(map[string]int),
 		PerStatus:      make(map[string]int),
+		PerPeringkat:   make(map[string]int),
 		PerTahun:       make(map[int]int),
 	}
 
 	for _, p := range list {
-		if p.Status == model.PubStatusTerverifikasi {
+		if p.Status == model.PubStatusTerverifikasi || p.Status == model.PubStatusTerbit || p.Status == model.PubStatusDiterima {
 			recap.Terverifikasi++
+		}
+		if p.IsForwardedToKinerja || p.Status == model.PubStatusTerverifikasi || p.Status == model.PubStatusTerbit {
+			recap.DiteruskanKeKinerja++
+		}
+		if pubHasStudent[p.ID] {
+			recap.JumlahLibatMahasiswa++
 		}
 		recap.PerTipe[string(p.Tipe)]++
 		recap.PerStatus[string(p.Status)]++
+		peringkat := p.Peringkat
+		if peringkat == "" {
+			peringkat = "NON_PERINGKAT"
+		}
+		recap.PerPeringkat[peringkat]++
 		recap.PerTahun[p.TahunTerbit]++
 	}
 
@@ -220,12 +332,14 @@ type memoryPublicationRepository struct {
 	mu           sync.RWMutex
 	publications map[string]*model.Publication
 	reviews      map[string][]*model.PublicationReview
+	stageLogs    map[string][]*model.PublicationStageLog
 }
 
 func NewMemoryPublicationRepository() PublicationRepository {
 	return &memoryPublicationRepository{
 		publications: make(map[string]*model.Publication),
 		reviews:      make(map[string][]*model.PublicationReview),
+		stageLogs:    make(map[string][]*model.PublicationStageLog),
 	}
 }
 
@@ -267,6 +381,9 @@ func (r *memoryPublicationRepository) FindByID(id string) (*model.Publication, e
 	}
 	res := *p
 	res.Reviews = r.reviews[id]
+	if len(r.stageLogs[id]) > 0 {
+		res.StageLogs = r.stageLogs[id]
+	}
 	return &res, nil
 }
 
@@ -279,9 +396,21 @@ func (r *memoryPublicationRepository) Create(pub *model.Publication) (*model.Pub
 	if pub.Status == "" {
 		pub.Status = model.PubStatusDraft
 	}
+	if pub.NamaJurnalKonferensi == "" && pub.NamaTarget != "" {
+		pub.NamaJurnalKonferensi = pub.NamaTarget
+	}
+	if pub.TahunTerbit == 0 && pub.Tahun > 0 {
+		pub.TahunTerbit = pub.Tahun
+	}
+	if pub.Peringkat == "" {
+		pub.Peringkat = "NON_PERINGKAT"
+	}
 	pub.CreatedAt = time.Now()
 	pub.UpdatedAt = time.Now()
 	r.publications[pub.ID] = pub
+	if len(pub.StageLogs) > 0 {
+		r.stageLogs[pub.ID] = pub.StageLogs
+	}
 	return pub, nil
 }
 
@@ -298,6 +427,16 @@ func (r *memoryPublicationRepository) Update(id string, pub *model.Publication) 
 	existing.TahunTerbit = pub.TahunTerbit
 	existing.DOI = pub.DOI
 	existing.URLPublikasi = pub.URLPublikasi
+	if pub.Peringkat != "" {
+		existing.Peringkat = pub.Peringkat
+	}
+	if pub.Status != "" {
+		existing.Status = pub.Status
+	}
+	if len(pub.StageLogs) > 0 {
+		existing.StageLogs = pub.StageLogs
+		r.stageLogs[id] = pub.StageLogs
+	}
 	existing.UpdatedAt = time.Now()
 	return existing, nil
 }
@@ -317,6 +456,31 @@ func (r *memoryPublicationRepository) UpdateStatus(id string, status model.Publi
 		return errors.New("publikasi tidak ditemukan")
 	}
 	p.Status = status
+	if status == model.PubStatusTerverifikasi || status == model.PubStatusTerbit {
+		now := time.Now()
+		p.StatusVerifikasi = "TERVERIFIKASI"
+		p.DiverifikasiAt = &now
+		p.IsForwardedToKinerja = true
+		p.ForwardedToKinerjaAt = &now
+	}
+	p.UpdatedAt = time.Now()
+	return nil
+}
+
+func (r *memoryPublicationRepository) AddStageLog(log *model.PublicationStageLog) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	p, ok := r.publications[log.PublicationID]
+	if !ok {
+		return errors.New("publikasi tidak ditemukan")
+	}
+	if log.ID == "" {
+		log.ID = uuid.New().String()
+	}
+	log.CreatedAt = time.Now()
+	r.stageLogs[log.PublicationID] = append(r.stageLogs[log.PublicationID], log)
+	p.Status = log.Tahap
+	p.StageLogs = r.stageLogs[log.PublicationID]
 	p.UpdatedAt = time.Now()
 	return nil
 }
@@ -340,15 +504,34 @@ func (r *memoryPublicationRepository) GetRecap() (*model.PublicationRecap, error
 		TotalPublikasi: len(r.publications),
 		PerTipe:        make(map[string]int),
 		PerStatus:      make(map[string]int),
+		PerPeringkat:   make(map[string]int),
 		PerTahun:       make(map[int]int),
 	}
 
 	for _, p := range r.publications {
-		if p.Status == model.PubStatusTerverifikasi {
+		if p.Status == model.PubStatusTerverifikasi || p.Status == model.PubStatusTerbit || p.Status == model.PubStatusDiterima {
 			recap.Terverifikasi++
+		}
+		if p.IsForwardedToKinerja || p.Status == model.PubStatusTerverifikasi || p.Status == model.PubStatusTerbit {
+			recap.DiteruskanKeKinerja++
+		}
+		hasStudent := false
+		for _, a := range p.Authors {
+			if strings.EqualFold(a.TipePenulis, "MAHASISWA") {
+				hasStudent = true
+				break
+			}
+		}
+		if hasStudent {
+			recap.JumlahLibatMahasiswa++
 		}
 		recap.PerTipe[string(p.Tipe)]++
 		recap.PerStatus[string(p.Status)]++
+		peringkat := p.Peringkat
+		if peringkat == "" {
+			peringkat = "NON_PERINGKAT"
+		}
+		recap.PerPeringkat[peringkat]++
 		recap.PerTahun[p.TahunTerbit]++
 	}
 
