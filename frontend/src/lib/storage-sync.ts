@@ -60,3 +60,4 @@ export const storageSync = {
     return updated;
   },
 };
+

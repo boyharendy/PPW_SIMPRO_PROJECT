@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useApp } from '@/lib/context';
 import { NAV_ITEMS } from '@/lib/navigation';
+import type { Role } from '@/lib/types';
 import AnimatedSimproLogo from '@/components/Logo/AnimatedSimproLogo';
 import {
   LayoutDashboard, FileCheck, Wallet, SmilePlus, FileText,
@@ -61,9 +62,39 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { user, sidebarOpen, setSidebarOpen } = useApp();
 
+  // Check if role is authorized (including backward compatibility aliases)
+  const isRoleAuthorized = (allowedRoles: Role[], currentRole: Role): boolean => {
+    if (allowedRoles.includes(currentRole)) return true;
+    if (currentRole === 'KOORDINATOR_KP_PSI_PDLK') {
+      return allowedRoles.some(r => r === 'KOORDINATOR_KP' || r === 'KOORDINATOR_PSI' || r === 'KOORDINATOR_PDLK' || r === 'KOORDINATOR_KP_PSI_PDLK');
+    }
+    if (currentRole === 'KOORDINATOR_KP' || currentRole === 'KOORDINATOR_PSI' || currentRole === 'KOORDINATOR_PDLK') {
+      return allowedRoles.includes('KOORDINATOR_KP_PSI_PDLK');
+    }
+    if (currentRole === 'MITRA') {
+      return allowedRoles.includes('MITRA_EKSTERNAL');
+    }
+    if (currentRole === 'MITRA_EKSTERNAL') {
+      return allowedRoles.includes('MITRA');
+    }
+    if (currentRole === 'PENGELOLA_ADUAN') {
+      return allowedRoles.includes('PETUGAS_KEKERASAN');
+    }
+    if (currentRole === 'PETUGAS_KEKERASAN') {
+      return allowedRoles.includes('PENGELOLA_ADUAN');
+    }
+    if (currentRole === 'PENGURUS_HIMPUNAN') {
+      return allowedRoles.includes('HIMPUNAN');
+    }
+    if (currentRole === 'HIMPUNAN') {
+      return allowedRoles.includes('PENGURUS_HIMPUNAN');
+    }
+    return false;
+  };
+
   // Filter items visible to current user's active role or user's assigned roles
   const visibleItems = NAV_ITEMS.filter(item =>
-    item.roles.includes(user.activeRole)
+    isRoleAuthorized(item.roles, user.activeRole)
   );
 
   // Group items by category
