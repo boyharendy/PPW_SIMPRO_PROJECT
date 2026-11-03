@@ -15,11 +15,23 @@ type Config struct {
 	JWTSecret           string
 	JWTExpirationHours  int
 	JWTRefreshDays      int
+	DatabaseURL         string
+	DBHost              string
+	DBPort              string
+	DBUser              string
+	DBPassword          string
+	DBName              string
+	DBSSLMode           string
+	SupabaseURL         string
+	SupabaseAnonKey     string
+	SupabaseServiceKey  string
 }
 
 func LoadConfig() *Config {
-	// Load .env if present
-	_ = godotenv.Load()
+	// 1. Try to load local backend .env first
+	_ = godotenv.Load(".env")
+	// 2. Also try loading from frontend/.env.local if running in monorepo
+	_ = godotenv.Load("../frontend/.env.local")
 
 	port := getEnv("SERVER_PORT", "8080")
 	env := getEnv("SERVER_ENV", "development")
@@ -37,6 +49,18 @@ func LoadConfig() *Config {
 		jwtRefreshDays = 7
 	}
 
+	dbURL := getEnv("DATABASE_URL", "")
+	dbHost := getEnv("DB_HOST", "localhost")
+	dbPort := getEnv("DB_PORT", "5432")
+	dbUser := getEnv("DB_USER", "postgres")
+	dbPass := getEnv("DB_PASSWORD", "")
+	dbName := getEnv("DB_NAME", "postgres")
+	dbSSL := getEnv("DB_SSLMODE", "require")
+
+	supabaseURL := getEnv("NEXT_PUBLIC_SUPABASE_URL", getEnv("SUPABASE_URL", ""))
+	supabaseAnonKey := getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", getEnv("SUPABASE_ANON_KEY", ""))
+	supabaseServiceKey := getEnv("SUPABASE_SERVICE_ROLE_KEY", "")
+
 	return &Config{
 		ServerPort:         port,
 		ServerEnv:          env,
@@ -45,6 +69,16 @@ func LoadConfig() *Config {
 		JWTSecret:          jwtSecret,
 		JWTExpirationHours: jwtExpHours,
 		JWTRefreshDays:     jwtRefreshDays,
+		DatabaseURL:        dbURL,
+		DBHost:             dbHost,
+		DBPort:             dbPort,
+		DBUser:             dbUser,
+		DBPassword:         dbPass,
+		DBName:             dbName,
+		DBSSLMode:          dbSSL,
+		SupabaseURL:        supabaseURL,
+		SupabaseAnonKey:    supabaseAnonKey,
+		SupabaseServiceKey: supabaseServiceKey,
 	}
 }
 
