@@ -30,7 +30,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   KOORD_TA: 'Koordinator TA',
   KOORD_MAGANG: 'Koordinator Magang',
   HIMPUNAN: 'Himpunan Mahasiswa',
-=======
+
   // Peran Kompatibilitas Data Induk (PRD Bab 6.A poin 2)
   PENGURUS_HIMPUNAN: 'Pengurus Himpunan',
   DOSEN_WALI: 'Dosen Wali',
