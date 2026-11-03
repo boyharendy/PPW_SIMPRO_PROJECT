@@ -25,7 +25,7 @@ import {
   Copy,
   ExternalLink,
 } from 'lucide-react';
-import { formatDateShort } from '@/lib/utils';
+import { formatDateShort, copyToClipboard } from '@/lib/utils';
 
 export default function PengirimanMitraPage() {
   const [invitations, setInvitations] = useState<PartnerSurveyInvitation[]>(mockSurveyInvitations);
