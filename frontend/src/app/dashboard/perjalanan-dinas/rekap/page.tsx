@@ -185,8 +185,8 @@ export default function RekapPerjalananPage() {
       render: (row: BusinessTrip) => {
         const returnDate = new Date(row.tanggal_kembali);
         const deadlineDate = new Date(returnDate.getTime() + 7 * 24 * 60 * 60 * 1000);
-        const deadlineStr = deadlineDate.toISOString().split('T')[0];
-        const hasProofs = (row.proofs?.length || 0) > 0;
+        const deadlineStr = row.batas_laporan || deadlineDate.toISOString().split('T')[0];
+        const hasProofs = Boolean(row.laporan_hasil);
 
         return (
           <div className="space-y-1">

@@ -128,7 +128,7 @@ export type PublicationStatus =
   | 'REVISI'
   | 'DITERIMA'
   | 'TERBIT'
-  | 'DITOLAK';
+  | 'IDE' | 'PENULISAN' | 'SUBMIT' | 'REVIEW' | 'ACCEPTED' | 'DITOLAK'; export type PublicationStage = PublicationStatus;
 
 export type VerificationStatus = 'TIDAK_PERLU' | 'MENUNGGU' | 'TERVERIFIKASI' | 'DITOLAK';
 export type AuthorType = 'DOSEN' | 'MAHASISWA' | 'EKSTERNAL';

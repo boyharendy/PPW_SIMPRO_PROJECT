@@ -200,7 +200,7 @@ export default function RkaSerapanPage() {
                   <tr key={pos.id} className="hover:bg-slate-50/50">
                     <td className="px-3 py-2.5 font-mono font-bold text-blue-700">{pos.kode_pos}</td>
                     <td className="px-3 py-2.5">
-                      <p className="font-semibold text-slate-800">{pos.uraian}</p>
+                      <p className="font-semibold text-slate-800">{pos.nama_pos}</p>
                       <span className="text-[11px] text-slate-400">{pos.nama_kegiatan}</span>
                     </td>
                     <td className="px-3 py-2.5 text-right font-medium text-slate-700">

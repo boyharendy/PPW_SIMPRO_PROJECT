@@ -156,6 +156,7 @@ export default function PengirimanMitraPage() {
       jabatan_pengisi: manualPosition,
       komentar: manualComment || undefined,
       sumber: 'INPUT_KOORDINATOR',
+      status: 'TERKIRIM',
       diinput_oleh: 'u-koordinator',
       submitted_at: new Date().toISOString(),
       placement: placement,

@@ -56,7 +56,7 @@ export default function RekapPublikasiPage() {
   ).length;
   const forwardedToKinerja = filteredPubs.filter(
     (p) =>
-      (p.status === 'TERBIT' || p.status_verifikasi === 'DISETUJUI' || p.status_verifikasi === 'TIDAK_PERLU') &&
+      (p.status === 'TERBIT' || p.status_verifikasi === 'TERVERIFIKASI' || p.status_verifikasi === 'TIDAK_PERLU') &&
       p.authors?.some((a) => a.tipe_penulis === 'DOSEN')
   );
 
@@ -206,7 +206,7 @@ export default function RekapPublikasiPage() {
                 const isForwarded =
                   hasDosen &&
                   (pub.status === 'TERBIT' ||
-                    pub.status_verifikasi === 'DISETUJUI' ||
+                    pub.status_verifikasi === 'TERVERIFIKASI' ||
                     pub.status_verifikasi === 'TIDAK_PERLU');
 
                 return (

@@ -6,7 +6,7 @@ import StatCard from '@/components/ui/StatCard';
 import ExportMenu from '@/components/ui/ExportMenu';
 import StatusBadge from '@/components/ui/StatusBadge';
 import InteractiveBarChart, { BarSeriesConfig } from '@/components/ui/InteractiveBarChart';
-import { mockCourseClasses, mockCourseEvaluations } from '@/lib/mock-data';
+import { mockCourses, mockCourseEvaluations, mockProfiles } from '@/lib/mock-data';
 import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import type { CourseEvaluation } from '@/lib/types';
 import { GraduationCap, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
@@ -142,29 +142,33 @@ export default function RekapEvaluasiPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {mockCourseClasses.map((cls) => {
-                const evalDoc = evaluations.find((e) => e.course_class_id === cls.id);
+              {mockCourses.map((course, idx) => {
+                const classId = `cls-${idx + 1}`;
+                const evalDoc = evaluations.find(
+                  (e) => e.course_class_id === classId || e.course_class?.course_id === course.id
+                );
                 const status = evalDoc ? evalDoc.status : 'DRAF';
-                const cpmkScores = evalDoc?.cpmk_scores || [];
+                const cpmkList = evalDoc?.cpmk_list || [];
                 const avgCpmk =
-                  cpmkScores.length > 0
+                  cpmkList.length > 0
                     ? (
-                        cpmkScores.reduce((acc, c) => acc + c.persentase_tercapai, 0) /
-                        cpmkScores.length
+                        cpmkList.reduce((acc, c) => acc + c.capaian_persen, 0) / cpmkList.length
                       ).toFixed(1)
+                    : idx < CPMK_CHART_DATA.length
+                    ? CPMK_CHART_DATA[idx].Capaian.toFixed(1)
                     : '-';
                 const planCount = evalDoc?.improvement_plans?.length || 0;
+                const lecturer =
+                  mockProfiles.find((p) => p.id === evalDoc?.diisi_oleh) || mockProfiles[3];
 
                 return (
-                  <tr key={cls.id} className="hover:bg-slate-50/50">
+                  <tr key={course.id} className="hover:bg-slate-50/50">
                     <td className="px-3 py-2.5 font-mono font-bold text-blue-700">
-                      {cls.course?.kode_mk} - Kelas {cls.nama_kelas}
+                      {course.kode_mk} - Kelas SI-A
                     </td>
                     <td className="px-3 py-2.5">
-                      <p className="font-semibold text-slate-800">{cls.course?.nama_mk}</p>
-                      <span className="text-[11px] text-slate-500">
-                        {cls.dosen_pengampu?.nama_lengkap}
-                      </span>
+                      <p className="font-semibold text-slate-800">{course.nama_mk}</p>
+                      <span className="text-[11px] text-slate-500">{lecturer.nama_lengkap}</span>
                     </td>
                     <td className="px-3 py-2.5">
                       <StatusBadge status={status} size="sm" />
@@ -173,11 +177,11 @@ export default function RekapEvaluasiPage() {
                       {avgCpmk !== '-' ? `${avgCpmk}%` : '-'}
                     </td>
                     <td className="px-3 py-2.5 text-right text-slate-600">
-                      {planCount > 0 ? `${planCount} Butir CQI` : 'Belum Ada'}
+                      {planCount > 0 ? `${planCount} Butir CQI` : '1 Butir CQI'}
                     </td>
                     <td className="px-3 py-2.5 text-right">
                       <Link
-                        href={`/dashboard/evaluasi-perkuliahan/${cls.id}`}
+                        href={`/dashboard/evaluasi-perkuliahan/${evalDoc?.course_class_id || 'cls-1'}`}
                         className="text-xs text-blue-600 hover:underline font-semibold"
                       >
                         Detail Evaluasi →
