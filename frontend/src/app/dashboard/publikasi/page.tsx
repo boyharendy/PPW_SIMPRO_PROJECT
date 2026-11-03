@@ -12,13 +12,17 @@ import type { Publication, PublicationType } from '@/lib/types';
 import { Plus, Search, BookOpen, ExternalLink, Eye, ArrowRight } from 'lucide-react';
 
 export default function PublikasiListPage() {
-  const [publications, setPublications] = useState<Publication[]>(() =>
-    storageSync.get<Publication[]>(STORAGE_KEYS.PUBLICATIONS, mockPublications)
-  );
+  const [publications, setPublications] = useState<Publication[]>(mockPublications);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedJenis, setSelectedJenis] = useState<string>('ALL');
 
   useEffect(() => {
+    // Sinkronisasi data lokal saat mount di client
+    const local = storageSync.get<Publication[]>(STORAGE_KEYS.PUBLICATIONS, mockPublications);
+    if (local && local.length > 0) {
+      setPublications(local);
+    }
+
     let active = true;
     publicationService
       .getPublications()
