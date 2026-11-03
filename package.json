@@ -1,3 +1,4 @@
+
 {
   "name": "simpro-monorepo",
   "version": "1.0.0",
@@ -16,5 +17,24 @@
     "test:frontend": "npm --prefix frontend test",
     "lint": "npm --prefix frontend run lint",
     "test:supabase": "node frontend/scripts/test-supabase.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.48.0",
+    "next": "16.3.6",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "recharts": "^3.10.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.6",
+    "tailwindcss": "^4",
+    "typescript": "^5"
   }
 }

@@ -2,8 +2,9 @@
 // SIMPRO — Core Type Definitions (sesuai PRD Modul 7–13 & SKPL)
 // ============================================================
 
-// ----- Enums Peran (RBAC) -----
+// ----- Enums Peran (RBAC - PRD Bab 8.1 & Bab 6.A poin 2) -----
 export type Role =
+  // 10 Peran Tetap Utama (PRD Bab 8.1)
   | 'KAPRODI'
   | 'GKM'
   | 'ADMIN_PRODI'
@@ -19,12 +20,11 @@ export type Role =
   | 'PENGELOLA_ADUAN'
   | 'PETUGAS_KEKERASAN'
   | 'MAHASISWA'
-  | 'DOSEN_VERIFIKATOR'
-  // Kompatibilitas modul lain
-  | 'KOORD_KP'
-  | 'KOORD_TA'
-  | 'KOORD_MAGANG'
-  | 'HIMPUNAN';
+  // Peran Kompatibilitas Data Induk (PRD Bab 6.A poin 2)
+  | 'PENGURUS_HIMPUNAN'
+  | 'DOSEN_WALI'
+  | 'DOSEN_PEMBINA'
+  | 'KETUA_KELAS';
 
 export type Semester = 'GANJIL' | 'GENAP';
 export type StudentStatus = 'AKTIF' | 'CUTI' | 'LULUS' | 'KELUAR';
