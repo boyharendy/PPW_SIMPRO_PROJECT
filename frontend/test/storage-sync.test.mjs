@@ -88,3 +88,4 @@ test('storageSync remove deletes specific item by id', async () => {
   assert.equal(updated.length, 1);
   assert.equal(updated[0].id, '2');
 });
+
