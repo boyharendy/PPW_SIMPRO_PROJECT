@@ -5,12 +5,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useApp } from '@/lib/context';
 import { NAV_ITEMS } from '@/lib/navigation';
-import Image from 'next/image';
-import LogoImage from '@/components/Logo/Logos.png';
+import AnimatedSimproLogo from '@/components/Logo/AnimatedSimproLogo';
 import {
   LayoutDashboard, FileCheck, Wallet, SmilePlus, FileText,
-  GraduationCap, Users, BookOpen, Handshake, Settings, ChevronLeft,
-  ChevronRight, ChevronDown, X, LogOut, Plane, BookCheck, ClipboardCheck,
+  GraduationCap, Users, BookOpen, Handshake, Settings,
+  ChevronDown, LogOut, Plane, BookCheck, ClipboardCheck,
   MessageSquareHeart, ShieldAlert, FileSpreadsheet, PieChart,
   ExternalLink, Layers
 } from 'lucide-react';
@@ -126,46 +125,19 @@ export default function Sidebar() {
         className={`
           fixed top-0 left-0 z-50 h-screen
           bg-blue-600
-          transition-all duration-300 ease-in-out
+          transition-all duration-500 ease-out
           flex flex-col shadow-xl
           ${sidebarOpen ? 'w-64' : 'w-20'}
           lg:relative
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >
-        {/* Blue Header Section */}
-        <div className="flex flex-col items-center justify-center pt-2 pb-6 px-4 relative flex-shrink-0">
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="lg:hidden absolute top-3 right-3 flex items-center justify-center w-8 h-8 rounded-full hover:bg-white/10 text-white transition-colors"
-          >
-            <X size={18} />
-          </button>
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="hidden lg:flex absolute top-4 -right-3 items-center justify-center w-6 h-6 rounded-full bg-white border border-slate-200 shadow-sm text-slate-500 hover:text-blue-600 transition-colors z-10"
-          >
-            {sidebarOpen ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
-          </button>
-
-          {sidebarOpen ? (
-            <div className="flex flex-col items-center w-full relative">
-              <div className="w-32 h-32 -mb-6 relative z-10">
-                <Image src={LogoImage} alt="SIMPRO Logo" className="w-full h-full object-contain drop-shadow-xl" priority />
-              </div>
-              <h2 className="font-bold text-white text-2xl tracking-tight leading-tight relative z-20">SIMPRO</h2>
-              <p className="text-[11px] text-blue-50 text-center mt-0.5 font-medium px-2 leading-snug relative z-20">
-                Sistem Informasi Manajemen<br/>Program Studi
-              </p>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center w-full mt-2 relative z-10">
-              <div className="w-14 h-14 relative">
-                <Image src={LogoImage} alt="SIMPRO Logo" className="w-full h-full object-contain drop-shadow-md" priority />
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Animated SVG Logo & Blue Header Section (Anime.js createScope + SVG Morphing) */}
+        <AnimatedSimproLogo
+          collapsed={!sidebarOpen}
+          onToggleCollapse={(nextCollapsed) => setSidebarOpen(!nextCollapsed)}
+          onMobileClose={() => setSidebarOpen(false)}
+        />
 
         {/* White Navigation Container with rounded-tr-[2rem] */}
         <div className="flex-1 bg-white rounded-tr-[2rem] flex flex-col pt-5 overflow-hidden relative shadow-[0_-8px_15px_-3px_rgba(0,0,0,0.1)]">
