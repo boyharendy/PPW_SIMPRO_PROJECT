@@ -34,6 +34,19 @@ export default function RkaSerapanPage() {
     mockRkaDocuments.find((d) => d.tahun_anggaran === tahun) || mockRkaDocuments[0];
 
   const serapanPct = calculateAbsorptionPercentage(doc.total_realisasi || 0, doc.total_anggaran);
+  const allBudgetItems = (doc.activities || []).flatMap((act) =>
+    (act.budget_items || []).map((b) => ({
+      ...b,
+      nama_kegiatan: act.nama_kegiatan,
+      jadwal_selesai: act.jadwal_selesai,
+    }))
+  );
+
+  // Deteksi kegiatan yang belum memiliki realisasi melewati jadwal pelaksanaan (FR-38)
+  const overdueActivities = (doc.activities || []).filter((act) => {
+    const actReal = (act.budget_items || []).reduce((s, b) => s + (b.realisasi_total || 0), 0);
+    return actReal === 0 && act.jadwal_selesai && new Date(act.jadwal_selesai) < new Date();
+  });
 
   return (
     <div className="space-y-6">
@@ -49,8 +62,8 @@ export default function RkaSerapanPage() {
 
       <PageHeader
         title={`Monitoring Serapan Anggaran RKA ${doc.tahun_anggaran}`}
-        description="Analisis serapan anggaran per triwulan, monitoring realisasi pos, dan deteksi dini deviasi belanja."
-        action={<ExportMenu title="Ekspor Laporan Serapan" />}
+        description="Analisis persentase serapan anggaran per kegiatan, per pos anggaran, dan per triwulan (TW1–TW4), serta penanda kegiatan yang melewati jadwal."
+        action={<ExportMenu title="Ekspor Laporan Serapan" filename={`serapan-rka-${doc.tahun_anggaran}`} />}
       />
 
       {/* Metrics */}
@@ -70,16 +83,20 @@ export default function RkaSerapanPage() {
           gradient="bg-emerald-50 text-emerald-600"
         />
         <StatCard
-          title="Kegiatan Terlambat"
-          value="0 Kegiatan"
-          subtitle="Semua berjalan sesuai jadwal"
+          title="Kegiatan Melewati Jadwal"
+          value={`${overdueActivities.length} Kegiatan`}
+          subtitle={
+            overdueActivities.length === 0
+              ? 'Semua berjalan sesuai jadwal'
+              : 'Belum terlaksana melewati jadwal'
+          }
           icon={<Clock size={20} />}
           gradient="bg-blue-50 text-blue-600"
         />
         <StatCard
-          title="Pos Over-Realisasi"
-          value="0 Pos"
-          subtitle="Tidak ada pos defisit"
+          title="Total Pos Anggaran"
+          value={`${allBudgetItems.length} Pos`}
+          subtitle="Tercatat aktif di RKA"
           icon={<AlertTriangle size={20} />}
           gradient="bg-emerald-50 text-emerald-600"
         />
@@ -114,7 +131,7 @@ export default function RkaSerapanPage() {
         {/* Serapan Per Kegiatan */}
         <div className="card space-y-4">
           <div className="border-b border-slate-100 pb-3">
-            <h3 className="text-sm font-bold text-slate-800">Serapan per Kegiatan</h3>
+            <h3 className="text-sm font-bold text-slate-800">Serapan per Kegiatan & Jadwal</h3>
             <p className="text-xs text-slate-500">Capaian belanja per butir program kerja</p>
           </div>
 
@@ -148,6 +165,59 @@ export default function RkaSerapanPage() {
           <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 leading-relaxed">
             Data monitoring serapan dihasilkan secara langsung dari database agregat aktif (&le; 5 detik) untuk kebutuhan audit mutu ISO dan akreditasi BAN-PT/LAM INFOKOM.
           </div>
+        </div>
+      </div>
+
+      {/* Tabel Serapan per Pos Anggaran (SKPL FR-38) */}
+      <div className="card space-y-4">
+        <div className="border-b border-slate-100 pb-3">
+          <h3 className="text-sm font-bold text-slate-800">
+            Rincian Persentase Serapan per Pos Anggaran (FR-38)
+          </h3>
+          <p className="text-xs text-slate-500">
+            Pemantauan alokasi pagu, realisasi riil, sisa anggaran, dan persentase serapan per mata anggaran
+          </p>
+        </div>
+
+        <div className="overflow-x-auto rounded-xl border border-slate-200">
+          <table className="w-full text-xs">
+            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase">
+              <tr>
+                <th className="px-3 py-2.5 text-left font-mono">Kode Pos</th>
+                <th className="px-3 py-2.5 text-left">Uraian Pos Anggaran &amp; Kegiatan</th>
+                <th className="px-3 py-2.5 text-right">Pagu Anggaran</th>
+                <th className="px-3 py-2.5 text-right">Realisasi</th>
+                <th className="px-3 py-2.5 text-right">Sisa Anggaran</th>
+                <th className="px-3 py-2.5 text-right">% Serapan</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {allBudgetItems.map((pos) => {
+                const real = pos.realisasi_total || 0;
+                const sisa = pos.sisa_anggaran ?? pos.nominal_anggaran - real;
+                const pct = calculateAbsorptionPercentage(real, pos.nominal_anggaran);
+                return (
+                  <tr key={pos.id} className="hover:bg-slate-50/50">
+                    <td className="px-3 py-2.5 font-mono font-bold text-blue-700">{pos.kode_pos}</td>
+                    <td className="px-3 py-2.5">
+                      <p className="font-semibold text-slate-800">{pos.uraian}</p>
+                      <span className="text-[11px] text-slate-400">{pos.nama_kegiatan}</span>
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-medium text-slate-700">
+                      {formatRupiah(pos.nominal_anggaran)}
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-bold text-blue-700">
+                      {formatRupiah(real)}
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-medium text-emerald-700">
+                      {formatRupiah(sisa)}
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-extrabold text-slate-800">{pct}%</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

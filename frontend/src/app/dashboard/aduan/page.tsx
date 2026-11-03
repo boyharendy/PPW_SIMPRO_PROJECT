@@ -8,13 +8,14 @@ import { generateTicketCode } from '@/lib/utils';
 import { mockComplaints } from '@/lib/mock-data';
 import { complaintService } from '@/lib/api/services/complaint.service';
 import type { ComplaintCategory, Complaint } from '@/lib/types';
-import { ShieldCheck, Send, Lock, AlertTriangle, ExternalLink } from 'lucide-react';
+import { ShieldCheck, Send, Lock, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 
 export default function KirimAduanAnonimPage() {
   const [kategori, setKategori] = useState<ComplaintCategory>('FASILITAS');
   const [judul, setJudul] = useState('');
   const [uraian, setUraian] = useState('');
+  const [kontakSukarela, setKontakSukarela] = useState('');
   const [generatedTicket, setGeneratedTicket] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -28,6 +29,10 @@ export default function KirimAduanAnonimPage() {
     const ticketCode = generateTicketCode();
     const isSensitif = kategori === 'PERUNDUNGAN_KEKERASAN';
 
+    const fullUraian = kontakSukarela.trim()
+      ? `${uraian}\n\n[Kontak Sukarela Pelapor: ${kontakSukarela.trim()}]`
+      : uraian;
+
     const newComplaint: Complaint = {
       id: `comp-${Date.now()}`,
       nomor_aduan: `ADU-2025-00${mockComplaints.length + 1}`,
@@ -35,7 +40,7 @@ export default function KirimAduanAnonimPage() {
       kode_tiket_hash: `hash_${ticketCode}`,
       kategori,
       judul,
-      uraian,
+      uraian: fullUraian,
       is_sensitif: isSensitif,
       status: 'DITERIMA',
       tanggal_diterima: new Date().toISOString().split('T')[0],
@@ -50,6 +55,7 @@ export default function KirimAduanAnonimPage() {
     // Reset Form
     setJudul('');
     setUraian('');
+    setKontakSukarela('');
   };
 
   return (
@@ -127,6 +133,19 @@ export default function KirimAduanAnonimPage() {
             />
           </div>
 
+          <div>
+            <label className="label">
+              Kontak Sukarela untuk Tindak Lanjut Resmi (Opsional — FR-50)
+            </label>
+            <input
+              type="text"
+              value={kontakSukarela}
+              onChange={(e) => setKontakSukarela(e.target.value)}
+              placeholder="Kosongkan untuk tetap 100% anonim, atau cantumkan nomor/email sukarela bila diperlukan pendampingan Satgas PPKPT..."
+              className="input-field text-xs"
+            />
+          </div>
+
           <FileUploader
             label="Lampiran Bukti (Foto, Dokumen, Tangkapan Layar - Opsional)"
             helperText="Format: JPG, PNG, PDF (Metadata EXIF akan otomatis dibersihkan server)"
@@ -161,4 +180,3 @@ export default function KirimAduanAnonimPage() {
     </div>
   );
 }
-

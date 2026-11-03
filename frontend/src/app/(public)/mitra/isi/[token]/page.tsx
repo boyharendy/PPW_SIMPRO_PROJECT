@@ -55,6 +55,7 @@ export default function PublicMitraSurveyPage() {
       jabatan_pengisi: jabatanPengisi,
       komentar: komentar || undefined,
       sumber: 'TAUTAN_MITRA',
+      status: 'TERKIRIM',
       submitted_at: new Date().toISOString(),
       placement,
       answers: (template.aspek || []).map((asp, i) => ({
