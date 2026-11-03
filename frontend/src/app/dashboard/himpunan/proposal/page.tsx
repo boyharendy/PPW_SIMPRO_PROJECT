@@ -6,7 +6,6 @@ import {
   FileText,
   PlusCircle,
   Search,
-  Filter,
   DollarSign,
   Download,
   Eye,
@@ -18,6 +17,10 @@ import {
   Calendar,
   Layers,
   FileCheck,
+  Edit,
+  History,
+  ShieldCheck,
+  RotateCcw,
 } from 'lucide-react';
 import { useUser } from '@/lib/context';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -30,14 +33,14 @@ import {
 } from '@/lib/mock-data';
 import {
   HimpunanProposal,
-  HimpunanProker,
   HimpunanBudgetLine,
   HimpunanFundingSource,
+  HimpunanAuditLog,
 } from '@/lib/types';
 import { formatRupiah, formatDateShort, formatDateTime } from '@/lib/utils';
 
 export default function HimpunanProposalPage() {
-  const { currentRole } = useUser();
+  const { currentRole, user } = useUser();
   const [proposals, setProposals] = useState<HimpunanProposal[]>(mockHimpunanProposals);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
@@ -45,15 +48,19 @@ export default function HimpunanProposalPage() {
   // Modals
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   const [selectedProposalDetail, setSelectedProposalDetail] = useState<HimpunanProposal | null>(null);
+  const [revisingProposal, setRevisingProposal] = useState<HimpunanProposal | null>(null);
 
-  // Form State
+  // Form State (New Submission)
   const [selectedProkerId, setSelectedProkerId] = useState<string>('');
   const [nomorSurat, setNomorSurat] = useState('');
   const [berkasFileName, setBerkasFileName] = useState('');
   const [formBudgetLines, setFormBudgetLines] = useState<HimpunanBudgetLine[]>([]);
   const [formFundingSources, setFormFundingSources] = useState<HimpunanFundingSource[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
-  const [isSuccessAlert, setIsSuccessAlert] = useState(false);
+  const [isSuccessAlert, setIsSuccessAlert] = useState<string | null>(null);
+
+  // Form State (Revision Submission)
+  const [revisionNotePengurus, setRevisionNotePengurus] = useState('');
 
   // Handle Proker Selection in Form
   const handleSelectProker = (prokerId: string) => {
@@ -83,10 +90,12 @@ export default function HimpunanProposalPage() {
     0
   );
 
+  // Submit Handler: Pengajuan Awal (BPMN: Mengunggah proposal terstruktur)
   const handleSubmitProposal = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
 
+    // BPMN & UC-12: Memvalidasi kelengkapan isian dan anggaran
     if (!selectedProkerId) {
       setFormError('Pilih program kerja yang terhubung terlebih dahulu.');
       return;
@@ -96,30 +105,44 @@ export default function HimpunanProposalPage() {
       return;
     }
     if (totalAnggaranProposal <= 0) {
-      setFormError('Rincian anggaran proposal terstruktur harus lebih besar dari Rp 0 (NF-07).');
+      setFormError('Rincian anggaran proposal terstruktur harus lebih besar dari Rp 0.');
       return;
     }
 
     const prokerObj = mockHimpunanProkers.find((p) => p.id === selectedProkerId);
+    const nowIso = new Date().toISOString();
+
+    const newAuditLog: HimpunanAuditLog = {
+      id: `aud-${Date.now()}`,
+      waktu: nowIso,
+      aktor: user.nama_lengkap || 'Pengurus Himpunan',
+      peran: currentRole,
+      aksi: 'PENGAJUAN',
+      status_sebelum: 'DRAF',
+      status_sesudah: 'DIAJUKAN',
+      catatan: 'Pengajuan proposal baru terstruktur oleh Pengurus Himpunan.',
+    };
 
     const newProposal: HimpunanProposal = {
       id: `prop-${Date.now()}`,
       proker_id: selectedProkerId,
       proker_nama: prokerObj?.nama_kegiatan || 'Program Kerja',
       nomor_surat: nomorSurat,
-      tanggal_pengajuan: new Date().toISOString().split('T')[0],
+      tanggal_pengajuan: nowIso.split('T')[0],
       total_anggaran_proposal: totalAnggaranProposal,
       anggaran_per_pos: formBudgetLines,
       sumber_dana: formFundingSources,
       berkas_proposal_url: berkasFileName ? `/uploads/${berkasFileName}` : '/docs/proposal-kegiatan.pdf',
       status: 'DIAJUKAN',
-      created_at: new Date().toISOString(),
+      nomor_revisi: 0,
+      audit_trail: [newAuditLog],
+      created_at: nowIso,
     };
 
     setProposals([newProposal, ...proposals]);
     setIsSubmitModalOpen(false);
-    setIsSuccessAlert(true);
-    setTimeout(() => setIsSuccessAlert(false), 5000);
+    setIsSuccessAlert('Proposal berhasil diajukan dan diteruskan ke Dosen Pembina (Tahap 1).');
+    setTimeout(() => setIsSuccessAlert(null), 5000);
 
     // Reset Form
     setSelectedProkerId('');
@@ -127,6 +150,63 @@ export default function HimpunanProposalPage() {
     setBerkasFileName('');
     setFormBudgetLines([]);
     setFormFundingSources([]);
+  };
+
+  // Submit Handler: Pengajuan Revisi Proposal (BPMN: Mengunggah/merevisi proposal setelah Perlu Revisi)
+  const handleSubmitRevision = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!revisingProposal) return;
+    setFormError(null);
+
+    if (totalAnggaranProposal <= 0) {
+      setFormError('Rincian anggaran proposal terstruktur harus lebih besar dari Rp 0.');
+      return;
+    }
+
+    const nowIso = new Date().toISOString();
+    const nextRevNum = (revisingProposal.nomor_revisi || 0) + 1;
+
+    const revisionAuditLog: HimpunanAuditLog = {
+      id: `aud-${Date.now()}`,
+      waktu: nowIso,
+      aktor: user.nama_lengkap || 'Pengurus Himpunan',
+      peran: currentRole,
+      aksi: 'REVISI_PENGAJUAN',
+      status_sebelum: 'PERLU_REVISI',
+      status_sesudah: 'DIAJUKAN',
+      catatan: revisionNotePengurus || `Pengajuan perbaikan/revisi proposal ke-${nextRevNum}.`,
+    };
+
+    const updated = proposals.map((p) => {
+      if (p.id === revisingProposal.id) {
+        return {
+          ...p,
+          total_anggaran_proposal: totalAnggaranProposal,
+          anggaran_per_pos: formBudgetLines,
+          sumber_dana: formFundingSources,
+          berkas_proposal_url: berkasFileName ? `/uploads/${berkasFileName}` : p.berkas_proposal_url,
+          status: 'DIAJUKAN' as const,
+          nomor_revisi: nextRevNum,
+          audit_trail: [...(p.audit_trail || []), revisionAuditLog],
+        };
+      }
+      return p;
+    });
+
+    setProposals(updated);
+    setRevisingProposal(null);
+    setIsSuccessAlert(`Perbaikan proposal (Revisi ke-${nextRevNum}) berhasil dikirim ulang ke Dosen Pembina.`);
+    setTimeout(() => setIsSuccessAlert(null), 5000);
+  };
+
+  // Open Revision Modal
+  const handleOpenRevisionModal = (proposal: HimpunanProposal) => {
+    setRevisingProposal(proposal);
+    setFormBudgetLines(proposal.anggaran_per_pos);
+    setFormFundingSources(proposal.sumber_dana);
+    setBerkasFileName('');
+    setRevisionNotePengurus('');
+    setFormError(null);
   };
 
   // Filter
@@ -141,7 +221,7 @@ export default function HimpunanProposalPage() {
   const columns: DataTableColumn<HimpunanProposal>[] = [
     {
       key: 'proker_nama',
-      header: 'Program Kerja & Nomor Surat',
+      header: 'Program Kerja & Surat',
       render: (row) => (
         <div className="max-w-md py-1">
           <p className="font-semibold text-slate-900 text-sm leading-snug">{row.proker_nama}</p>
@@ -150,34 +230,47 @@ export default function HimpunanProposalPage() {
               {row.nomor_surat}
             </span>
             <span>&bull; Diajukan: {formatDateShort(row.tanggal_pengajuan)}</span>
+            {row.nomor_revisi && row.nomor_revisi > 0 ? (
+              <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700 border border-indigo-200">
+                Revisi ke-{row.nomor_revisi}
+              </span>
+            ) : null}
           </div>
+          {row.status === 'PERLU_REVISI' && (
+            <div className="mt-1.5 rounded border border-amber-200 bg-amber-50/70 p-2 text-[11px] text-amber-900">
+              <span className="font-bold block">Catatan Perlu Revisi:</span>
+              <span>{row.catatan_pembina || row.catatan_kaprodi || 'Harap lakukan perbaikan sesuai arahan.'}</span>
+            </div>
+          )}
         </div>
       ),
     },
     {
       key: 'total_anggaran_proposal',
-      header: 'Total Anggaran Proposal',
+      header: 'Pagu Proposal',
       render: (row) => (
         <div className="text-right whitespace-nowrap text-xs">
           <p className="font-bold text-slate-900">{formatRupiah(row.total_anggaran_proposal)}</p>
-          <p className="text-[11px] text-slate-500 mt-0.5">{row.anggaran_per_pos.length} Pos Terstruktur</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">{row.anggaran_per_pos.length} Pos Terinci</p>
         </div>
       ),
     },
     {
       key: 'status',
-      header: 'Status Verifikasi Bertingkat',
+      header: 'Status & Alur BPMN',
       render: (row) => (
         <div className="text-center whitespace-nowrap">
           <StatusBadge status={row.status} size="sm" />
           <span className="block text-[10px] text-slate-400 mt-1">
             {row.status === 'DIAJUKAN'
-              ? 'Tahap 1: Dosen Pembina'
+              ? 'Menunggu Review Pembina'
               : row.status === 'DISETUJUI_PEMBINA'
-              ? 'Tahap 2: Kaprodi'
+              ? 'Menunggu Pengesahan Kaprodi'
               : row.status === 'DISETUJUI'
               ? 'Sah oleh Kaprodi'
-              : 'Revisi/Ditolak'}
+              : row.status === 'PERLU_REVISI'
+              ? 'Menunggu Tindakan Pengurus'
+              : 'Ditolak'}
           </span>
         </div>
       ),
@@ -191,16 +284,27 @@ export default function HimpunanProposalPage() {
           <button
             onClick={() => setSelectedProposalDetail(row)}
             className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition-colors"
-            title="Lihat Rincian Isian Terstruktur & Catatan Verifikator"
+            title="Lihat Detail & Riwayat Audit"
           >
             <Eye className="h-4 w-4" />
           </button>
+          {/* Mengunggah/merevisi proposal saat Perlu Revisi */}
+          {row.status === 'PERLU_REVISI' && (
+            <button
+              onClick={() => handleOpenRevisionModal(row)}
+              className="rounded-lg bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-amber-600 transition-colors inline-flex items-center gap-1 shadow-xs"
+              title="Perbaiki Proposal Sesuai Catatan"
+            >
+              <RotateCcw className="h-3 w-3" />
+              Revisi Proposal
+            </button>
+          )}
           {row.status === 'DISETUJUI' && (
             <Link
               href={`/dashboard/himpunan/lpj?proposal_id=${row.id}`}
               className="rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-colors inline-flex items-center gap-1"
             >
-              Lanjut LPJ
+              Susun LPJ
               <ArrowRight className="h-3 w-3" />
             </Link>
           )}
@@ -212,11 +316,14 @@ export default function HimpunanProposalPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Pengajuan Proposal Kegiatan (FR-18)"
-        description="Sistem memungkinkan pengunggahan proposal yang terhubung langsung ke program kerja. Rincian anggaran per pos dan sumber dana wajib diisi dalam bentuk isian terstruktur (bukan hanya berkas PDF) agar dapat dibandingkan dan diverifikasi secara otomatis (NF-07)."
+        title="Pengajuan &amp; Revisi Proposal Kegiatan"
+        description="Pengurus himpunan mengajukan proposal terstruktur, menerima catatan verifikasi, dan melakukan perbaikan revisi bila diminta oleh Dosen Pembina atau Kaprodi sebelum kegiatan disahkan."
         actions={
           <button
-            onClick={() => setIsSubmitModalOpen(true)}
+            onClick={() => {
+              setIsSubmitModalOpen(true);
+              setFormError(null);
+            }}
             className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition-colors inline-flex items-center gap-1.5 shadow-xs"
           >
             <PlusCircle className="h-4 w-4" />
@@ -229,11 +336,9 @@ export default function HimpunanProposalPage() {
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs text-emerald-800 flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-            <span>
-              <strong>Proposal Berhasil Diajukan!</strong> Berkas dan rincian anggaran telah diteruskan ke meja verifikasi Dosen Pembina (Tahap 1).
-            </span>
+            <span>{isSuccessAlert}</span>
           </div>
-          <button onClick={() => setIsSuccessAlert(false)} className="text-emerald-700 font-bold hover:underline">
+          <button onClick={() => setIsSuccessAlert(null)} className="text-emerald-700 font-bold hover:underline">
             Tutup
           </button>
         </div>
@@ -262,8 +367,8 @@ export default function HimpunanProposalPage() {
               <option value="ALL">Semua Status Verifikasi</option>
               <option value="DIAJUKAN">Diajukan (Menunggu Dosen Pembina)</option>
               <option value="DISETUJUI_PEMBINA">Disetujui Pembina (Menunggu Kaprodi)</option>
-              <option value="DISETUJUI">Disetujui Kaprodi (Final)</option>
-              <option value="PERLU_REVISI">Perlu Revisi</option>
+              <option value="PERLU_REVISI">Perlu Revisi (Loopback Pengurus)</option>
+              <option value="DISETUJUI">Disetujui Kaprodi (Sah)</option>
               <option value="DITOLAK">Ditolak</option>
             </select>
           </div>
@@ -276,11 +381,11 @@ export default function HimpunanProposalPage() {
         emptyMessage="Tidak ada proposal kegiatan yang sesuai filter"
       />
 
-      {/* Modal 1: Submit Proposal with Structured Budget Form (FR-18) */}
+      {/* Modal 1: Submit New Proposal Form */}
       <Modal
         open={isSubmitModalOpen}
         onClose={() => setIsSubmitModalOpen(false)}
-        title="Formulir Pengajuan Proposal Kegiatan Terstruktur (FR-18)"
+        title="Formulir Pengajuan Proposal Terstruktur"
         size="lg"
       >
         <form onSubmit={handleSubmitProposal} className="space-y-5 text-xs">
@@ -305,7 +410,7 @@ export default function HimpunanProposalPage() {
                 <option value="">-- Pilih Program Kerja yang Terdaftar --</option>
                 {mockHimpunanProkers.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.nama_kegiatan} (Pagu Rencana: {formatRupiah(p.total_anggaran_rencana)})
+                    {p.nama_kegiatan} (Pagu Baseline: {formatRupiah(p.total_anggaran_rencana)})
                   </option>
                 ))}
               </select>
@@ -327,32 +432,28 @@ export default function HimpunanProposalPage() {
 
             <div>
               <label className="block font-semibold text-slate-700 mb-1">
-                Unggah Berkas Naskah Proposal (PDF/DOCX - NF-08) <span className="text-rose-500">*</span>
+                Unggah Berkas Naskah Proposal (PDF/DOCX) <span className="text-rose-500">*</span>
               </label>
-              <div className="relative">
-                <input
-                  type="file"
-                  accept=".pdf,.docx"
-                  onChange={(e) => setBerkasFileName(e.target.files?.[0]?.name || '')}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs file:mr-2 file:rounded-md file:border-0 file:bg-blue-50 file:px-2.5 file:py-1 file:text-xs file:font-semibold file:text-blue-700 hover:file:bg-blue-100"
-                />
-              </div>
+              <input
+                type="file"
+                accept=".pdf,.docx"
+                onChange={(e) => setBerkasFileName(e.target.files?.[0]?.name || '')}
+                className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs file:mr-2 file:rounded-md file:border-0 file:bg-blue-50 file:px-2.5 file:py-1 file:text-xs file:font-semibold file:text-blue-700 hover:file:bg-blue-100"
+              />
             </div>
           </div>
 
           {/* Structured Budget Lines Section */}
           {formBudgetLines.length > 0 && (
             <div className="border-t border-slate-200 pt-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                    <DollarSign className="h-4 w-4 text-emerald-600" />
-                    Rincian Anggaran Proposal Terstruktur (Bukan Hanya Berkas PDF)
-                  </h4>
-                  <p className="text-[11px] text-slate-500">
-                    Sesuaikan nominal per pos anggaran proposal terhadap baseline program kerja awal.
-                  </p>
-                </div>
+              <div>
+                <h4 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                  <DollarSign className="h-4 w-4 text-emerald-600" />
+                  Rincian Anggaran Proposal Terstruktur (BPMN: Service Task Validasi)
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  Sesuaikan nominal pengajuan per pos anggaran terhadap baseline awal.
+                </p>
               </div>
 
               <div className="overflow-x-auto rounded-lg border border-slate-200">
@@ -407,18 +508,14 @@ export default function HimpunanProposalPage() {
           {formFundingSources.length > 0 && (
             <div className="border-t border-slate-200 pt-4 space-y-3">
               <div>
-                <h4 className="font-bold text-slate-900 text-sm">Rencana Sumber Dana Proposal Terstruktur</h4>
-                <p className="text-[11px] text-slate-500">
-                  Pastikan sumber dana mencukupi alokasi biaya pengajuan kegiatan.
-                </p>
+                <h4 className="font-bold text-slate-900 text-sm">Rencana Sumber Dana Proposal</h4>
               </div>
-
               <div className="overflow-x-auto rounded-lg border border-slate-200">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
                     <tr>
                       <th className="px-3 py-2">Sumber Pendanaan</th>
-                      <th className="px-3 py-2 text-right w-48">Nominal Target Proposal (Rp)</th>
+                      <th className="px-3 py-2 text-right w-48">Target Nominal (Rp)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -467,13 +564,145 @@ export default function HimpunanProposalPage() {
               type="submit"
               className="rounded-lg bg-blue-600 px-5 py-2 font-semibold text-white hover:bg-blue-700 transition-colors shadow-xs"
             >
-              Kirim Proposal ke Pembina
+              Validasi &amp; Kirim Proposal
             </button>
           </div>
         </form>
       </Modal>
 
-      {/* Modal 2: Proposal Detail View */}
+      {/* Modal 2: Revision Modal (BPMN: Mengunggah/merevisi proposal setelah Perlu Revisi) */}
+      {revisingProposal && (
+        <Modal
+          open={Boolean(revisingProposal)}
+          onClose={() => setRevisingProposal(null)}
+          title={`Formulir Revisi Proposal (Revisi ke-${(revisingProposal.nomor_revisi || 0) + 1})`}
+          size="lg"
+        >
+          <form onSubmit={handleSubmitRevision} className="space-y-5 text-xs">
+            {/* Reviewer Note Warning */}
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3.5 text-amber-900 space-y-1">
+              <span className="font-bold flex items-center gap-1.5 text-xs">
+                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                Catatan Evaluasi Verifikator yang Harus Diperbaiki:
+              </span>
+              <p className="text-xs italic pl-5.5">
+                &quot;{revisingProposal.catatan_pembina || revisingProposal.catatan_kaprodi}&quot;
+              </p>
+            </div>
+
+            {formError && (
+              <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-rose-800 flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+                <span>{formError}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Nomor Surat Proposal</label>
+                <input
+                  type="text"
+                  disabled
+                  value={revisingProposal.nomor_surat}
+                  className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-xs font-mono text-slate-600"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Unggah Berkas Naskah Revisi (PDF/DOCX)
+                </label>
+                <input
+                  type="file"
+                  accept=".pdf,.docx"
+                  onChange={(e) => setBerkasFileName(e.target.files?.[0]?.name || '')}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs file:mr-2 file:rounded-md file:border-0 file:bg-blue-50 file:px-2.5 file:py-1 file:text-xs file:font-semibold file:text-blue-700 hover:file:bg-blue-100"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Keterangan Perbaikan dari Pengurus Himpunan <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  rows={2}
+                  required
+                  placeholder="Jelaskan butir revisi yang telah diperbaiki sesuai catatan verifikator..."
+                  value={revisionNotePengurus}
+                  onChange={(e) => setRevisionNotePengurus(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Editable Structured Budget */}
+            <div className="border-t border-slate-200 pt-4 space-y-3">
+              <h4 className="font-bold text-slate-900 text-sm">Sesuaikan Rincian Anggaran Proposal (Terstruktur):</h4>
+              <div className="overflow-x-auto rounded-lg border border-slate-200">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                    <tr>
+                      <th className="px-3 py-2">Pos Anggaran</th>
+                      <th className="px-3 py-2 text-right">Rencana Baseline</th>
+                      <th className="px-3 py-2 text-right w-44">Nominal Proposal Revisi (Rp)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {formBudgetLines.map((line, idx) => (
+                      <tr key={line.id} className="hover:bg-slate-50">
+                        <td className="px-3 py-2 font-medium text-slate-900">{line.pos_anggaran}</td>
+                        <td className="px-3 py-2 text-right text-slate-600">{formatRupiah(line.anggaran_rencana)}</td>
+                        <td className="px-3 py-2 text-right">
+                          <input
+                            type="number"
+                            min={0}
+                            step={10000}
+                            value={line.anggaran_proposal || 0}
+                            onChange={(e) => {
+                              const updated = [...formBudgetLines];
+                              updated[idx].anggaran_proposal = Number(e.target.value) || 0;
+                              setFormBudgetLines(updated);
+                            }}
+                            className="w-full rounded border border-slate-200 px-2 py-1 text-right font-medium focus:border-blue-500 focus:outline-none"
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-slate-50 font-bold border-t border-slate-200">
+                    <tr>
+                      <td colSpan={2} className="px-3 py-2 text-right text-slate-700">
+                        Total Anggaran Setelah Revisi:
+                      </td>
+                      <td className="px-3 py-2 text-right text-blue-700 font-bold">
+                        {formatRupiah(totalAnggaranProposal)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => setRevisingProposal(null)}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                className="rounded-lg bg-amber-600 px-5 py-2 font-semibold text-white hover:bg-amber-700 transition-colors shadow-xs"
+              >
+                Kirim Ulang Revisi Proposal ke Pembina
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Modal 3: Proposal Detail & Audit Trail View (UC-04 & NF-09) */}
       {selectedProposalDetail && (
         <Modal
           open={Boolean(selectedProposalDetail)}
@@ -502,62 +731,6 @@ export default function HimpunanProposalPage() {
               <div>
                 <span className="text-slate-400 block text-[10px] font-semibold uppercase">Status Persetujuan</span>
                 <StatusBadge status={selectedProposalDetail.status} size="sm" />
-              </div>
-            </div>
-
-            {/* Stepper Approval Info */}
-            <div className="rounded-lg border border-slate-200 p-4 space-y-3 bg-white">
-              <h5 className="font-bold text-slate-900">Jejak Verifikasi Bertingkat (FR-20):</h5>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-slate-800">Tahap 1: Dosen Pembina</span>
-                    {selectedProposalDetail.diverifikasi_pembina_at ? (
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                        Disetujui
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                        Menunggu
-                      </span>
-                    )}
-                  </div>
-                  {selectedProposalDetail.catatan_pembina && (
-                    <p className="mt-1.5 text-slate-600 text-[11px] bg-white p-2 rounded border border-slate-200 italic">
-                      &quot;{selectedProposalDetail.catatan_pembina}&quot;
-                    </p>
-                  )}
-                  {selectedProposalDetail.diverifikasi_pembina_at && (
-                    <span className="block text-[10px] text-slate-400 mt-1">
-                      Waktu: {formatDateTime(selectedProposalDetail.diverifikasi_pembina_at)}
-                    </span>
-                  )}
-                </div>
-
-                <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-slate-800">Tahap 2: Ketua Program Studi</span>
-                    {selectedProposalDetail.disetujui_kaprodi_at ? (
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                        Disahkan
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-bold text-slate-500 bg-slate-200 px-2 py-0.5 rounded">
-                        Belum Disahkan
-                      </span>
-                    )}
-                  </div>
-                  {selectedProposalDetail.catatan_kaprodi && (
-                    <p className="mt-1.5 text-slate-600 text-[11px] bg-white p-2 rounded border border-slate-200 italic">
-                      &quot;{selectedProposalDetail.catatan_kaprodi}&quot;
-                    </p>
-                  )}
-                  {selectedProposalDetail.disetujui_kaprodi_at && (
-                    <span className="block text-[10px] text-slate-400 mt-1">
-                      Waktu: {formatDateTime(selectedProposalDetail.disetujui_kaprodi_at)}
-                    </span>
-                  )}
-                </div>
               </div>
             </div>
 
@@ -595,6 +768,36 @@ export default function HimpunanProposalPage() {
                     })}
                   </tbody>
                 </table>
+              </div>
+            </div>
+
+            {/* Audit Trail Log History (NF-09) */}
+            <div className="rounded-lg border border-slate-200 p-4 space-y-3 bg-white">
+              <div className="flex items-center gap-2">
+                <History className="h-4 w-4 text-blue-600" />
+                <h5 className="font-bold text-slate-900">
+                  Log Jejak Audit &amp; Riwayat Verifikasi:
+                </h5>
+              </div>
+              <div className="space-y-2.5">
+                {selectedProposalDetail.audit_trail?.map((log) => (
+                  <div key={log.id} className="rounded-lg border border-slate-200 bg-slate-50/60 p-3 text-xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-800">{log.aksi.replace('_', ' ')}</span>
+                      <span className="text-[10px] text-slate-400">{formatDateTime(log.waktu)}</span>
+                    </div>
+                    <div className="text-[11px] text-slate-600 flex items-center gap-2">
+                      <span>Oleh: <strong>{log.aktor}</strong> ({log.peran})</span>
+                      <span>&bull;</span>
+                      <span>Status: <code className="text-slate-700">{log.status_sebelum}</code> &rarr; <code className="font-bold text-blue-700">{log.status_sesudah}</code></span>
+                    </div>
+                    {log.catatan && (
+                      <p className="text-[11px] text-slate-600 italic bg-white p-2 rounded border border-slate-200 mt-1">
+                        &quot;{log.catatan}&quot;
+                      </p>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
 

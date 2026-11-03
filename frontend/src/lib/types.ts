@@ -964,6 +964,17 @@ export interface HimpunanProker {
   created_at: string;
 }
 
+export interface HimpunanAuditLog {
+  id: string;
+  waktu: string;
+  aktor: string;
+  peran: string;
+  aksi: string;
+  status_sebelum: string;
+  status_sesudah: string;
+  catatan?: string;
+}
+
 export interface HimpunanProposal {
   id: string;
   proker_id: string;
@@ -979,6 +990,8 @@ export interface HimpunanProposal {
   catatan_kaprodi?: string;
   diverifikasi_pembina_at?: string;
   disetujui_kaprodi_at?: string;
+  nomor_revisi?: number;
+  audit_trail?: HimpunanAuditLog[];
   created_at: string;
 }
 
@@ -1005,6 +1018,8 @@ export interface HimpunanLpj {
   catatan_kaprodi?: string;
   diverifikasi_pembina_at?: string;
   disetujui_kaprodi_at?: string;
+  nomor_revisi?: number;
+  audit_trail?: HimpunanAuditLog[];
   created_at: string;
 }
 

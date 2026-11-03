@@ -134,7 +134,7 @@ export default function HimpunanProkerPage() {
     // NF-07: Rincian anggaran wajib diisi; program kerja tidak dapat dikirim tanpa anggaran
     const validBudgetLines = budgetLines.filter((b) => b.pos.trim() !== '' && b.nominal > 0);
     if (validBudgetLines.length === 0 || totalAnggaran <= 0) {
-      setFormError('Sesuai aturan SKPL (NF-07), rincian anggaran wajib diisi dan total anggaran harus lebih besar dari 0.');
+      setFormError('Rincian pos anggaran wajib diisi dan total anggaran rencana harus lebih besar dari Rp 0.');
       return;
     }
 
@@ -280,8 +280,8 @@ export default function HimpunanProkerPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Input & Manajemen Program Kerja (FR-17)"
-        description="Sistem memungkinkan pengurus himpunan mencantumkan program kerja per periode kepengurusan lengkap dengan nama kegiatan, tujuan, indikator capaian, jadwal linimasa, serta rincian pos anggaran dan sumber dana wajib (NF-07)."
+        title="Input & Manajemen Program Kerja"
+        description="Pengelolaan program kerja himpunan per periode kepengurusan lengkap dengan nama kegiatan, tujuan, indikator capaian, linimasa pelaksanaan, serta rincian pos anggaran dan alokasi sumber dana wajib."
         actions={
           <button
             onClick={() => setIsCreateModalOpen(true)}
@@ -362,7 +362,7 @@ export default function HimpunanProkerPage() {
       <Modal
         open={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        title="Formulir Input Program Kerja Himpunan (FR-17)"
+        title="Formulir Input Program Kerja Himpunan"
         size="lg"
       >
         <form onSubmit={handleSubmitProker} className="space-y-5 text-xs">
@@ -467,7 +467,7 @@ export default function HimpunanProkerPage() {
                   Rincian Anggaran per Pos Biaya <span className="text-rose-500">*</span>
                 </h4>
                 <p className="text-[11px] text-slate-500">
-                  Wajib diisi; sistem tidak memperbolehkan pengiriman proker tanpa rincian anggaran (NF-07).
+                  Wajib diisi; sistem tidak memperbolehkan pengiriman proker tanpa rincian anggaran.
                 </p>
               </div>
               <button
@@ -701,7 +701,7 @@ export default function HimpunanProkerPage() {
 
             {/* Pos Anggaran Table */}
             <div>
-              <h5 className="font-bold text-slate-900 mb-2">Rincian Pos Anggaran (FR-17):</h5>
+              <h5 className="font-bold text-slate-900 mb-2">Rincian Pos Anggaran:</h5>
               <div className="overflow-x-auto rounded-lg border border-slate-200">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">

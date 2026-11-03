@@ -6,7 +6,6 @@ import {
   FileSpreadsheet,
   PlusCircle,
   Search,
-  Filter,
   DollarSign,
   Eye,
   CheckCircle2,
@@ -18,6 +17,10 @@ import {
   Receipt,
   Users,
   FileCheck,
+  RotateCcw,
+  History,
+  TrendingDown,
+  TrendingUp,
 } from 'lucide-react';
 import { useUser } from '@/lib/context';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -32,11 +35,12 @@ import {
   HimpunanLpj,
   HimpunanBudgetLine,
   HimpunanFundingSource,
+  HimpunanAuditLog,
 } from '@/lib/types';
 import { formatRupiah, formatDateShort, formatDateTime } from '@/lib/utils';
 
 export default function HimpunanLpjPage() {
-  const { currentRole } = useUser();
+  const { currentRole, user } = useUser();
   const [lpjs, setLpjs] = useState<HimpunanLpj[]>(mockHimpunanLpjs);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
@@ -44,8 +48,9 @@ export default function HimpunanLpjPage() {
   // Modals
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   const [selectedLpjDetail, setSelectedLpjDetail] = useState<HimpunanLpj | null>(null);
+  const [revisingLpj, setRevisingLpj] = useState<HimpunanLpj | null>(null);
 
-  // Form State
+  // Form State (New Submission)
   const [selectedProposalId, setSelectedProposalId] = useState<string>('');
   const [tglMulai, setTglMulai] = useState('');
   const [tglSelesai, setTglSelesai] = useState('');
@@ -56,7 +61,10 @@ export default function HimpunanLpjPage() {
   const [formBudgetLines, setFormBudgetLines] = useState<HimpunanBudgetLine[]>([]);
   const [formFundingSources, setFormFundingSources] = useState<HimpunanFundingSource[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
-  const [isSuccessAlert, setIsSuccessAlert] = useState(false);
+  const [isSuccessAlert, setIsSuccessAlert] = useState<string | null>(null);
+
+  // Form State (Revision)
+  const [revisionNotePengurus, setRevisionNotePengurus] = useState('');
 
   // When Proposal is selected, populate budget lines
   const handleSelectProposal = (propId: string) => {
@@ -87,10 +95,12 @@ export default function HimpunanLpjPage() {
     0
   );
 
+  // Submit Handler: Pengajuan LPJ Baru (BPMN: Mengisi & mengunggah LPJ)
   const handleSubmitLpj = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
 
+    // BPMN & UC-12: Memvalidasi kelengkapan isian dan anggaran
     if (!selectedProposalId) {
       setFormError('Pilih proposal kegiatan yang telah disetujui terlebih dahulu.');
       return;
@@ -108,13 +118,13 @@ export default function HimpunanLpjPage() {
       return;
     }
     if (totalBiayaRealisasi <= 0) {
-      setFormError('Total realisasi biaya per pos wajib diisi dan lebih dari Rp 0 (NF-07).');
+      setFormError('Total realisasi biaya per pos wajib diisi dan lebih dari Rp 0.');
       return;
     }
 
     const propObj = mockHimpunanProposals.find((p) => p.id === selectedProposalId);
 
-    // Calculate Tenggat: 14 hari pasca selesai kegiatan
+    // BPMN: Boundary Event "Tenggat LPJ terlampaui" (14 hari pasca selesai kegiatan)
     const endDate = new Date(tglSelesai);
     const deadlineDate = new Date(endDate.getTime() + 14 * 24 * 60 * 60 * 1000);
     const deadlineStr = deadlineDate.toISOString().split('T')[0];
@@ -123,6 +133,19 @@ export default function HimpunanLpjPage() {
     const todayDate = new Date(todayStr);
     const diffTime = todayDate.getTime() - deadlineDate.getTime();
     const lateDays = diffTime > 0 ? Math.ceil(diffTime / (1000 * 60 * 60 * 24)) : 0;
+
+    const nowIso = new Date().toISOString();
+
+    const newAuditLog: HimpunanAuditLog = {
+      id: `aud-${Date.now()}`,
+      waktu: nowIso,
+      aktor: user.nama_lengkap || 'Pengurus Himpunan',
+      peran: currentRole,
+      aksi: 'PENGAJUAN_LPJ',
+      status_sebelum: 'DRAF',
+      status_sesudah: 'DIAJUKAN',
+      catatan: lateDays > 0 ? `LPJ diunggah terlambat ${lateDays} hari dari tenggat.` : 'LPJ diunggah tepat waktu sebelum tenggat.',
+    };
 
     const newLpj: HimpunanLpj = {
       id: `lpj-${Date.now()}`,
@@ -143,13 +166,15 @@ export default function HimpunanLpjPage() {
       tenggat_pengumpulan: deadlineStr,
       hari_keterlambatan: lateDays,
       status: 'DIAJUKAN',
-      created_at: new Date().toISOString(),
+      nomor_revisi: 0,
+      audit_trail: [newAuditLog],
+      created_at: nowIso,
     };
 
     setLpjs([newLpj, ...lpjs]);
     setIsSubmitModalOpen(false);
-    setIsSuccessAlert(true);
-    setTimeout(() => setIsSuccessAlert(false), 5000);
+    setIsSuccessAlert('LPJ berhasil diunggah dan otomatis masuk ke antrean verifikasi Dosen Pembina (Tahap 1).');
+    setTimeout(() => setIsSuccessAlert(null), 5000);
 
     // Reset Form
     setSelectedProposalId('');
@@ -161,6 +186,66 @@ export default function HimpunanLpjPage() {
     setBerkasFileName('');
     setFormBudgetLines([]);
     setFormFundingSources([]);
+  };
+
+  // Submit Handler: Pengajuan Revisi LPJ (BPMN: Mengisi / merevisi LPJ setelah Perlu Revisi)
+  const handleSubmitRevisionLpj = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!revisingLpj) return;
+    setFormError(null);
+
+    if (totalBiayaRealisasi <= 0) {
+      setFormError('Total realisasi biaya per pos wajib diisi dan lebih dari Rp 0.');
+      return;
+    }
+
+    const nowIso = new Date().toISOString();
+    const nextRevNum = (revisingLpj.nomor_revisi || 0) + 1;
+
+    const revisionAuditLog: HimpunanAuditLog = {
+      id: `aud-${Date.now()}`,
+      waktu: nowIso,
+      aktor: user.nama_lengkap || 'Pengurus Himpunan',
+      peran: currentRole,
+      aksi: 'REVISI_PENGAJUAN',
+      status_sebelum: 'PERLU_REVISI',
+      status_sesudah: 'DIAJUKAN',
+      catatan: revisionNotePengurus || `Pengajuan perbaikan/revisi LPJ ke-${nextRevNum}.`,
+    };
+
+    const updated = lpjs.map((l) => {
+      if (l.id === revisingLpj.id) {
+        return {
+          ...l,
+          total_biaya_realisasi: totalBiayaRealisasi,
+          total_dana_diterima: totalDanaDiterima,
+          anggaran_per_pos: formBudgetLines,
+          sumber_dana: formFundingSources,
+          bukti_kuitansi_count: kuitansiCount,
+          berkas_lpj_url: berkasFileName ? `/uploads/${berkasFileName}` : l.berkas_lpj_url,
+          status: 'DIAJUKAN' as const,
+          nomor_revisi: nextRevNum,
+          audit_trail: [...(l.audit_trail || []), revisionAuditLog],
+        };
+      }
+      return l;
+    });
+
+    setLpjs(updated);
+    setRevisingLpj(null);
+    setIsSuccessAlert(`Perbaikan LPJ (Revisi ke-${nextRevNum}) berhasil dikirim ulang ke Dosen Pembina.`);
+    setTimeout(() => setIsSuccessAlert(null), 5000);
+  };
+
+  // Open Revision Modal
+  const handleOpenRevisionModal = (lpj: HimpunanLpj) => {
+    setRevisingLpj(lpj);
+    setFormBudgetLines(lpj.anggaran_per_pos);
+    setFormFundingSources(lpj.sumber_dana);
+    setKuitansiCount(lpj.bukti_kuitansi_count);
+    setBerkasFileName('');
+    setRevisionNotePengurus('');
+    setFormError(null);
   };
 
   // Filter
@@ -188,16 +273,24 @@ export default function HimpunanLpjPage() {
               <Users className="h-3 w-3 text-blue-600" />
               {row.jumlah_peserta_realisasi} Peserta
             </span>
+            {row.nomor_revisi && row.nomor_revisi > 0 ? (
+              <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700 border border-indigo-200">
+                Revisi ke-{row.nomor_revisi}
+              </span>
+            ) : null}
           </div>
-          <p className="text-[11px] text-slate-600 mt-1 line-clamp-1 italic">
-            &quot;{row.capaian_indikator}&quot;
-          </p>
+          {row.status === 'PERLU_REVISI' && (
+            <div className="mt-1.5 rounded border border-amber-200 bg-amber-50/70 p-2 text-[11px] text-amber-900">
+              <span className="font-bold block">Catatan Perlu Revisi LPJ:</span>
+              <span>{row.catatan_pembina || row.catatan_kaprodi || 'Harap perbaiki bukti pengeluaran.'}</span>
+            </div>
+          )}
         </div>
       ),
     },
     {
       key: 'total_biaya_realisasi',
-      header: 'Realisasi Biaya & Kuitansi',
+      header: 'Realisasi & Kuitansi',
       render: (row) => (
         <div className="text-right whitespace-nowrap text-xs">
           <p className="font-bold text-slate-900">{formatRupiah(row.total_biaya_realisasi)}</p>
@@ -210,20 +303,21 @@ export default function HimpunanLpjPage() {
     },
     {
       key: 'tanggal_pengumpulan',
-      header: 'Tenggat & Kepatuhan',
+      header: 'Tenggat & Keterlambatan (BPMN Timer)',
       render: (row) => (
         <div className="whitespace-nowrap text-xs">
           <span className="font-semibold text-slate-800">
             Kumpul: {formatDateShort(row.tanggal_pengumpulan)}
           </span>
           <p className="text-[11px] text-slate-400 mt-0.5">Tenggat: {formatDateShort(row.tenggat_pengumpulan)}</p>
+          {/* BPMN Boundary Event: Tenggat LPJ terlampaui -> Menandai keterlambatan LPJ (UC-14) */}
           {row.hari_keterlambatan > 0 ? (
             <span className="inline-block mt-1 text-[10px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
-              Terlambat {row.hari_keterlambatan} Hari
+              Keterlambatan Tercatat (+{row.hari_keterlambatan} Hari)
             </span>
           ) : (
             <span className="inline-block mt-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-              Tepat Waktu
+              Tepat Waktu (Sebelum Tenggat)
             </span>
           )}
         </div>
@@ -231,18 +325,20 @@ export default function HimpunanLpjPage() {
     },
     {
       key: 'status',
-      header: 'Status LPJ',
+      header: 'Status & Alur BPMN',
       render: (row) => (
         <div className="text-center whitespace-nowrap">
           <StatusBadge status={row.status} size="sm" />
           <span className="block text-[10px] text-slate-400 mt-1">
             {row.status === 'DIAJUKAN'
-              ? 'Tahap 1: Dosen Pembina'
+              ? 'Menunggu Review Pembina'
               : row.status === 'DISETUJUI_PEMBINA'
-              ? 'Tahap 2: Kaprodi'
+              ? 'Menunggu Pengesahan Kaprodi'
               : row.status === 'DISETUJUI'
               ? 'LPJ Disahkan'
-              : 'Revisi/Ditolak'}
+              : row.status === 'PERLU_REVISI'
+              ? 'Menunggu Tindakan Pengurus'
+              : 'Ditolak'}
           </span>
         </div>
       ),
@@ -256,15 +352,26 @@ export default function HimpunanLpjPage() {
           <button
             onClick={() => setSelectedLpjDetail(row)}
             className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition-colors"
-            title="Lihat Detail Realisasi LPJ & Deviasi"
+            title="Lihat Detail & Riwayat Audit"
           >
             <Eye className="h-4 w-4" />
           </button>
+          {/* Mengisi / merevisi LPJ saat Perlu Revisi */}
+          {row.status === 'PERLU_REVISI' && (
+            <button
+              onClick={() => handleOpenRevisionModal(row)}
+              className="rounded-lg bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-amber-600 transition-colors inline-flex items-center gap-1 shadow-xs"
+              title="Perbaiki LPJ Sesuai Catatan"
+            >
+              <RotateCcw className="h-3 w-3" />
+              Revisi LPJ
+            </button>
+          )}
           <Link
-            href={`/dashboard/himpunan/analisis`}
+            href={`/dashboard/himpunan/analisis?proker_id=${row.proker_id}`}
             className="rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors inline-flex items-center gap-1"
           >
-            Analisis
+            Analisis Deviasi
             <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
@@ -275,11 +382,14 @@ export default function HimpunanLpjPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Pengunggahan LPJ &amp; Realisasi Biaya (FR-19)"
-        description="Sistem memungkinkan pengunggahan Laporan Pertanggungjawaban (LPJ) yang terhubung ke proposal. Realisasi biaya per pos dan dana yang diterima per sumber wajib diisi terstruktur, beserta tanggal pelaksanaan, jumlah peserta, capaian indikator, bukti kuitansi bernomor, dan penghitungan keterlambatan otomatis."
+        title="Pelaporan &amp; Revisi LPJ Kegiatan"
+        description="Pengurus himpunan menyusun LPJ dengan rincian biaya aktual per pos, pelaporan dana riil per sumber, melampirkan kuitansi bernomor, memantau batas tenggat waktu otomatis, serta melakukan revisi bila diminta verifikator."
         actions={
           <button
-            onClick={() => setIsSubmitModalOpen(true)}
+            onClick={() => {
+              setIsSubmitModalOpen(true);
+              setFormError(null);
+            }}
             className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition-colors inline-flex items-center gap-1.5 shadow-xs"
           >
             <PlusCircle className="h-4 w-4" />
@@ -292,11 +402,9 @@ export default function HimpunanLpjPage() {
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs text-emerald-800 flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-            <span>
-              <strong>LPJ Berhasil Diunggah!</strong> Realisasi biaya dan berkas bukti telah masuk ke antrean verifikasi Dosen Pembina (Tahap 1).
-            </span>
+            <span>{isSuccessAlert}</span>
           </div>
-          <button onClick={() => setIsSuccessAlert(false)} className="text-emerald-700 font-bold hover:underline">
+          <button onClick={() => setIsSuccessAlert(null)} className="text-emerald-700 font-bold hover:underline">
             Tutup
           </button>
         </div>
@@ -323,10 +431,10 @@ export default function HimpunanLpjPage() {
               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
             >
               <option value="ALL">Semua Status LPJ</option>
-              <option value="DIAJUKAN">Diajukan (Menunggu Dosen Pembina)</option>
+              <option value="DIAJUKAN">Diajukan (Menunggu Review Pembina)</option>
               <option value="DISETUJUI_PEMBINA">Disetujui Pembina (Menunggu Kaprodi)</option>
+              <option value="PERLU_REVISI">Perlu Revisi (Loopback Pengurus)</option>
               <option value="DISETUJUI">Disetujui Kaprodi (Sah)</option>
-              <option value="PERLU_REVISI">Perlu Revisi</option>
               <option value="DITOLAK">Ditolak</option>
             </select>
           </div>
@@ -339,11 +447,11 @@ export default function HimpunanLpjPage() {
         emptyMessage="Tidak ada LPJ yang sesuai filter"
       />
 
-      {/* Modal 1: Submit LPJ Form (FR-19 & NF-07 Compliance) */}
+      {/* Modal 1: Submit LPJ Form */}
       <Modal
         open={isSubmitModalOpen}
         onClose={() => setIsSubmitModalOpen(false)}
-        title="Formulir Pengunggahan LPJ Realisasi Kegiatan (FR-19)"
+        title="Formulir Pengunggahan LPJ Realisasi Kegiatan"
         size="lg"
       >
         <form onSubmit={handleSubmitLpj} className="space-y-5 text-xs">
@@ -357,7 +465,7 @@ export default function HimpunanLpjPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
               <label className="block font-semibold text-slate-700 mb-1">
-                Pilih Proposal Terkait yang Telah Disetujui <span className="text-rose-500">*</span>
+                Pilih Proposal Disetujui Terkait <span className="text-rose-500">*</span>
               </label>
               <select
                 required
@@ -368,7 +476,7 @@ export default function HimpunanLpjPage() {
                 <option value="">-- Pilih Proposal Kegiatan --</option>
                 {mockHimpunanProposals.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.proker_nama} ({p.nomor_surat}) - Pagu Proposal: {formatRupiah(p.total_anggaran_proposal)}
+                    {p.proker_nama} ({p.nomor_surat}) - Pagu Disetujui: {formatRupiah(p.total_anggaran_proposal)}
                   </option>
                 ))}
               </select>
@@ -376,7 +484,7 @@ export default function HimpunanLpjPage() {
 
             <div>
               <label className="block font-semibold text-slate-700 mb-1">
-                Tanggal Pelaksanaan Aktual Mulai <span className="text-rose-500">*</span>
+                Tanggal Pelaksanaan Mulai <span className="text-rose-500">*</span>
               </label>
               <input
                 type="date"
@@ -389,7 +497,7 @@ export default function HimpunanLpjPage() {
 
             <div>
               <label className="block font-semibold text-slate-700 mb-1">
-                Tanggal Pelaksanaan Aktual Selesai <span className="text-rose-500">*</span>
+                Tanggal Pelaksanaan Selesai <span className="text-rose-500">*</span>
               </label>
               <input
                 type="date"
@@ -408,7 +516,7 @@ export default function HimpunanLpjPage() {
                 type="number"
                 min={1}
                 required
-                placeholder="Jumlah mahasiswa/peserta hadir"
+                placeholder="Jumlah peserta hadir riil"
                 value={jumlahPeserta || ''}
                 onChange={(e) => setJumlahPeserta(Number(e.target.value) || 0)}
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-none"
@@ -445,7 +553,7 @@ export default function HimpunanLpjPage() {
 
             <div className="md:col-span-2">
               <label className="block font-semibold text-slate-700 mb-1">
-                Unggah Berkas Bundel LPJ &amp; Dokumentasi (PDF/ZIP - NF-08) <span className="text-rose-500">*</span>
+                Unggah Berkas Bundel LPJ &amp; Dokumentasi (PDF/ZIP) <span className="text-rose-500">*</span>
               </label>
               <input
                 type="file"
@@ -462,10 +570,10 @@ export default function HimpunanLpjPage() {
               <div>
                 <h4 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
                   <DollarSign className="h-4 w-4 text-emerald-600" />
-                  Rincian Realisasi Biaya per Pos (Wajib Diisi Terstruktur - NF-07)
+                  Rincian Realisasi Biaya per Pos (BPMN: Validasi Otomatis)
                 </h4>
                 <p className="text-[11px] text-slate-500">
-                  Masukkan biaya aktual yang dikeluarkan berdasarkan bukti kuitansi sah bernomor.
+                  Masukkan biaya aktual yang dikeluarkan berdasarkan bukti kuitansi bernomor.
                 </p>
               </div>
 
@@ -475,7 +583,7 @@ export default function HimpunanLpjPage() {
                     <tr>
                       <th className="px-3 py-2">Pos Anggaran</th>
                       <th className="px-3 py-2">Kategori</th>
-                      <th className="px-3 py-2 text-right">Proposal Disetujui</th>
+                      <th className="px-3 py-2 text-right">Pagu Proposal</th>
                       <th className="px-3 py-2 text-right w-44">Realisasi LPJ (Rp)</th>
                     </tr>
                   </thead>
@@ -519,58 +627,6 @@ export default function HimpunanLpjPage() {
             </div>
           )}
 
-          {/* Structured Funding Received Table */}
-          {formFundingSources.length > 0 && (
-            <div className="border-t border-slate-200 pt-4 space-y-3">
-              <div>
-                <h4 className="font-bold text-slate-900 text-sm">Dana yang Diterima per Sumber</h4>
-                <p className="text-[11px] text-slate-500">
-                  Laporkan dana riil yang berhasil dikumpulkan untuk menutup pengeluaran.
-                </p>
-              </div>
-
-              <div className="overflow-x-auto rounded-lg border border-slate-200">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
-                    <tr>
-                      <th className="px-3 py-2">Sumber Pendanaan</th>
-                      <th className="px-3 py-2 text-right w-48">Nominal Diterima (Rp)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {formFundingSources.map((src, idx) => (
-                      <tr key={src.id} className="hover:bg-slate-50">
-                        <td className="px-3 py-2 font-medium text-slate-900">{src.sumber.replace('_', ' ')}</td>
-                        <td className="px-3 py-2 text-right">
-                          <input
-                            type="number"
-                            min={0}
-                            step={10000}
-                            value={src.realisasi_nominal || 0}
-                            onChange={(e) => {
-                              const updated = [...formFundingSources];
-                              updated[idx].realisasi_nominal = Number(e.target.value) || 0;
-                              setFormFundingSources(updated);
-                            }}
-                            className="w-full rounded border border-slate-200 px-2 py-1 text-right font-medium focus:border-blue-500 focus:outline-none"
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="bg-slate-50 font-bold border-t border-slate-200">
-                    <tr>
-                      <td className="px-3 py-2 text-right text-slate-700">Total Dana Diterima:</td>
-                      <td className="px-3 py-2 text-right text-emerald-700 font-bold">
-                        {formatRupiah(totalDanaDiterima)}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          )}
-
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
             <button
               type="button"
@@ -583,13 +639,160 @@ export default function HimpunanLpjPage() {
               type="submit"
               className="rounded-lg bg-blue-600 px-5 py-2 font-semibold text-white hover:bg-blue-700 transition-colors shadow-xs"
             >
-              Kirim LPJ ke Dosen Pembina
+              Validasi &amp; Kirim LPJ ke Pembina
             </button>
           </div>
         </form>
       </Modal>
 
-      {/* Modal 2: LPJ Detail View */}
+      {/* Modal 2: Revision Modal LPJ (BPMN: Mengisi / merevisi LPJ setelah Perlu Revisi) */}
+      {revisingLpj && (
+        <Modal
+          open={Boolean(revisingLpj)}
+          onClose={() => setRevisingLpj(null)}
+          title={`Formulir Perbaikan / Revisi LPJ (Revisi ke-${(revisingLpj.nomor_revisi || 0) + 1})`}
+          size="lg"
+        >
+          <form onSubmit={handleSubmitRevisionLpj} className="space-y-5 text-xs">
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3.5 text-amber-900 space-y-1">
+              <span className="font-bold flex items-center gap-1.5 text-xs">
+                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                Catatan Verifikator yang Harus Diperbaiki pada LPJ:
+              </span>
+              <p className="text-xs italic pl-5.5">
+                &quot;{revisingLpj.catatan_pembina || revisingLpj.catatan_kaprodi}&quot;
+              </p>
+            </div>
+
+            {formError && (
+              <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-rose-800 flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+                <span>{formError}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Program Kerja</label>
+                <input
+                  type="text"
+                  disabled
+                  value={revisingLpj.proker_nama}
+                  className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-xs text-slate-600"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Jumlah Bukti Kuitansi Sah <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  required
+                  value={kuitansiCount || ''}
+                  onChange={(e) => setKuitansiCount(Number(e.target.value) || 1)}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Unggah Berkas Bundel LPJ Revisi (PDF/ZIP)
+                </label>
+                <input
+                  type="file"
+                  accept=".pdf,.zip,.docx"
+                  onChange={(e) => setBerkasFileName(e.target.files?.[0]?.name || '')}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs file:mr-2 file:rounded-md file:border-0 file:bg-blue-50 file:px-2.5 file:py-1 file:text-xs file:font-semibold file:text-blue-700 hover:file:bg-blue-100"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Keterangan Perbaikan dari Pengurus Himpunan <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  rows={2}
+                  required
+                  placeholder="Jelaskan bukti fisik atau pos anggaran LPJ yang telah diperbaiki..."
+                  value={revisionNotePengurus}
+                  onChange={(e) => setRevisionNotePengurus(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Editable Realization Table */}
+            <div className="border-t border-slate-200 pt-4 space-y-3">
+              <h4 className="font-bold text-slate-900 text-sm">Sesuaikan Biaya Realisasi Aktual:</h4>
+              <div className="overflow-x-auto rounded-lg border border-slate-200">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                    <tr>
+                      <th className="px-3 py-2">Pos Anggaran</th>
+                      <th className="px-3 py-2 text-right">Pagu Proposal</th>
+                      <th className="px-3 py-2 text-right w-44">Realisasi Revisi (Rp)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {formBudgetLines.map((line, idx) => (
+                      <tr key={line.id} className="hover:bg-slate-50">
+                        <td className="px-3 py-2 font-medium text-slate-900">{line.pos_anggaran}</td>
+                        <td className="px-3 py-2 text-right text-slate-600">
+                          {formatRupiah(line.anggaran_proposal || line.anggaran_rencana)}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <input
+                            type="number"
+                            min={0}
+                            step={10000}
+                            value={line.realisasi_lpj || 0}
+                            onChange={(e) => {
+                              const updated = [...formBudgetLines];
+                              updated[idx].realisasi_lpj = Number(e.target.value) || 0;
+                              setFormBudgetLines(updated);
+                            }}
+                            className="w-full rounded border border-slate-200 px-2 py-1 text-right font-medium focus:border-blue-500 focus:outline-none"
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-slate-50 font-bold border-t border-slate-200">
+                    <tr>
+                      <td colSpan={2} className="px-3 py-2 text-right text-slate-700">
+                        Total Biaya Realisasi Revisi:
+                      </td>
+                      <td className="px-3 py-2 text-right text-blue-700 font-bold">
+                        {formatRupiah(totalBiayaRealisasi)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => setRevisingLpj(null)}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                className="rounded-lg bg-amber-600 px-5 py-2 font-semibold text-white hover:bg-amber-700 transition-colors shadow-xs"
+              >
+                Kirim Ulang Revisi LPJ ke Pembina
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Modal 3: LPJ Detail & Audit Trail View (UC-04 & NF-09) */}
       {selectedLpjDetail && (
         <Modal
           open={Boolean(selectedLpjDetail)}
@@ -622,6 +825,7 @@ export default function HimpunanLpjPage() {
               </div>
             </div>
 
+            {/* Capaian Indikator */}
             <div className="rounded-lg border border-slate-200 p-4 space-y-2 bg-white">
               <h5 className="font-bold text-slate-900">Capaian Indikator Keberhasilan:</h5>
               <p className="text-slate-700 leading-relaxed bg-slate-50 p-3 rounded border border-slate-200">
@@ -629,76 +833,33 @@ export default function HimpunanLpjPage() {
               </p>
             </div>
 
-            {/* Kepatuhan & Keterlambatan */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="rounded-lg border border-slate-200 p-3 bg-slate-50">
-                <span className="text-slate-500 block text-[11px]">Bukti Kuitansi Terlampir:</span>
-                <p className="text-sm font-bold text-slate-900 mt-1">
-                  {selectedLpjDetail.bukti_kuitansi_count} Berkas Bukti Sah
-                </p>
-                <span className="text-[10px] text-slate-400">Tersimpan di: {selectedLpjDetail.berkas_lpj_url}</span>
-              </div>
-
-              <div className="rounded-lg border border-slate-200 p-3 bg-slate-50">
-                <span className="text-slate-500 block text-[11px]">Kepatuhan Tenggat Pelaporan:</span>
-                <div className="mt-1 flex items-center gap-2">
-                  {selectedLpjDetail.hari_keterlambatan > 0 ? (
-                    <span className="font-bold text-rose-700">
-                      Terlambat {selectedLpjDetail.hari_keterlambatan} Hari dari Tenggat
-                    </span>
-                  ) : (
-                    <span className="font-bold text-emerald-700">Tepat Waktu (Sebelum Tenggat)</span>
-                  )}
-                </div>
-                <span className="text-[10px] text-slate-400">
-                  Tenggat: {formatDateShort(selectedLpjDetail.tenggat_pengumpulan)}
-                </span>
-              </div>
-            </div>
-
-            {/* Stepper Approval Info */}
+            {/* Audit Trail Log History (NF-09) */}
             <div className="rounded-lg border border-slate-200 p-4 space-y-3 bg-white">
-              <h5 className="font-bold text-slate-900">Jejak Verifikasi Bertingkat LPJ:</h5>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-slate-800">Tahap 1: Dosen Pembina</span>
-                    {selectedLpjDetail.diverifikasi_pembina_at ? (
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                        Disetujui
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                        Menunggu
-                      </span>
+              <div className="flex items-center gap-2">
+                <History className="h-4 w-4 text-blue-600" />
+                <h5 className="font-bold text-slate-900">
+                  Log Jejak Audit Verifikasi LPJ:
+                </h5>
+              </div>
+              <div className="space-y-2.5">
+                {selectedLpjDetail.audit_trail?.map((log) => (
+                  <div key={log.id} className="rounded-lg border border-slate-200 bg-slate-50/60 p-3 text-xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-800">{log.aksi.replace('_', ' ')}</span>
+                      <span className="text-[10px] text-slate-400">{formatDateTime(log.waktu)}</span>
+                    </div>
+                    <div className="text-[11px] text-slate-600 flex items-center gap-2">
+                      <span>Oleh: <strong>{log.aktor}</strong> ({log.peran})</span>
+                      <span>&bull;</span>
+                      <span>Status: <code className="text-slate-700">{log.status_sebelum}</code> &rarr; <code className="font-bold text-blue-700">{log.status_sesudah}</code></span>
+                    </div>
+                    {log.catatan && (
+                      <p className="text-[11px] text-slate-600 italic bg-white p-2 rounded border border-slate-200 mt-1">
+                        &quot;{log.catatan}&quot;
+                      </p>
                     )}
                   </div>
-                  {selectedLpjDetail.catatan_pembina && (
-                    <p className="mt-1.5 text-slate-600 text-[11px] bg-white p-2 rounded border border-slate-200 italic">
-                      &quot;{selectedLpjDetail.catatan_pembina}&quot;
-                    </p>
-                  )}
-                </div>
-
-                <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-slate-800">Tahap 2: Ketua Program Studi</span>
-                    {selectedLpjDetail.disetujui_kaprodi_at ? (
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                        Disahkan
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-bold text-slate-500 bg-slate-200 px-2 py-0.5 rounded">
-                        Belum Disahkan
-                      </span>
-                    )}
-                  </div>
-                  {selectedLpjDetail.catatan_kaprodi && (
-                    <p className="mt-1.5 text-slate-600 text-[11px] bg-white p-2 rounded border border-slate-200 italic">
-                      &quot;{selectedLpjDetail.catatan_kaprodi}&quot;
-                    </p>
-                  )}
-                </div>
+                ))}
               </div>
             </div>
 
