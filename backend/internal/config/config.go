@@ -28,10 +28,9 @@ type Config struct {
 }
 
 func LoadConfig() *Config {
-	// Try loading environment files in order of precedence:
-	_ = godotenv.Load(".env.local")
+	// Muat konfigurasi server privat dari backend/.env
 	_ = godotenv.Load(".env")
-	_ = godotenv.Load("../frontend/.env.local")
+	_ = godotenv.Load("backend/.env")
 
 	port := getEnv("SERVER_PORT", "8080")
 	env := getEnv("SERVER_ENV", "development")
