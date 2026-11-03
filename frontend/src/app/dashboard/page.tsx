@@ -20,6 +20,11 @@ import {
   Star,
   ExternalLink,
   Calendar,
+  Award,
+  Compass,
+  FileBadge,
+  Users,
+  ShieldAlert,
 } from 'lucide-react';
 import { useUser } from '@/lib/context';
 import {
@@ -66,8 +71,8 @@ export default function DashboardPage() {
               Selamat Datang, {user?.name || 'Civitas Akademika'}!
             </h1>
             <p className="text-sm md:text-base text-slate-600 leading-relaxed">
-              Sistem Informasi Manajemen Program Studi (SIMPRO) mengintegrasikan kepuasan mitra, publikasi ilmiah,
-              perjalanan dinas, perencanaan RKA, review RPS, evaluasi perkuliahan, dan layanan aduan mahasiswa.
+              Sistem Informasi Manajemen Program Studi (SIMPRO) mengintegrasikan layanan kemahasiswaan (perwalian, beasiswa, sanksi, UKM, himpunan, sertifikat) serta tata kelola, mutu &amp; akreditasi program studi.
+
             </p>
           </div>
 
@@ -377,6 +382,69 @@ export default function DashboardPage() {
                   </Link>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Quick Shortcuts to Modules 1-6 */}
+          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-sm font-bold text-slate-900">Akses Modul Kemahasiswaan</h3>
+              <span className="text-xs text-slate-400 font-medium">Modul 1–6</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <Link
+                href="/dashboard/perwalian"
+                className="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 text-xs hover:bg-blue-50 hover:border-blue-200 transition-colors"
+              >
+                <Users className="h-4 w-4 text-blue-600 mb-2" />
+                <p className="font-semibold text-slate-800">Laporan Perwalian</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">Ketua Kelas &amp; Dosen</p>
+              </Link>
+
+              <Link
+                href="/dashboard/beasiswa"
+                className="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 text-xs hover:bg-blue-50 hover:border-blue-200 transition-colors"
+              >
+                <Award className="h-4 w-4 text-blue-600 mb-2" />
+                <p className="font-semibold text-slate-800">Beasiswa &amp; Jam Karya</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">Log Jam &amp; Verifikasi</p>
+              </Link>
+
+              <Link
+                href="/dashboard/pelanggaran"
+                className="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 text-xs hover:bg-blue-50 hover:border-blue-200 transition-colors"
+              >
+                <ShieldAlert className="h-4 w-4 text-rose-600 mb-2" />
+                <p className="font-semibold text-slate-800">Pelanggaran &amp; Sanksi</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">Jam Sanksi Sosial</p>
+              </Link>
+
+              <Link
+                href="/dashboard/ukm"
+                className="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 text-xs hover:bg-blue-50 hover:border-blue-200 transition-colors"
+              >
+                <Compass className="h-4 w-4 text-blue-600 mb-2" />
+                <p className="font-semibold text-slate-800">Kegiatan UKM</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">Direktori &amp; Anggota</p>
+              </Link>
+
+              <Link
+                href="/dashboard/himpunan/proker"
+                className="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 text-xs hover:bg-blue-50 hover:border-blue-200 transition-colors"
+              >
+                <Calendar className="h-4 w-4 text-blue-600 mb-2" />
+                <p className="font-semibold text-slate-800">Proker Himpunan</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">Proposal &amp; LPJ</p>
+              </Link>
+
+              <Link
+                href="/dashboard/sertifikat"
+                className="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 text-xs hover:bg-blue-50 hover:border-blue-200 transition-colors"
+              >
+                <FileBadge className="h-4 w-4 text-blue-600 mb-2" />
+                <p className="font-semibold text-slate-800">Sertifikat Mahasiswa</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">Bahasa &amp; Profesi</p>
+              </Link>
             </div>
           </div>
 

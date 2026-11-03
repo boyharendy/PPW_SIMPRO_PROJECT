@@ -9,6 +9,11 @@ export type Role =
   | 'GKM'
   | 'ADMIN_PRODI'
   | 'DOSEN'
+  | 'DOSEN_WALI'
+  | 'DOSEN_PEMBINA'
+  | 'DOSEN_VERIFIKATOR'
+  | 'KETUA_KELAS'
+  | 'PENGURUS_HIMPUNAN'
   | 'KOORDINATOR_KP'
   | 'KOORDINATOR_PSI'
   | 'KOORDINATOR_PDLK'
@@ -695,4 +700,372 @@ export interface NavItem {
   roles: Role[];
   badge?: number;
   category?: string; // Grouping menu di sidebar
+}
+
+
+// ============================================================
+// SIMPRO — Modul 1: Laporan Perwalian (Ketua Kelas & Dosen Wali)
+// ============================================================
+export type PerwalianStatus = 'BELUM' | 'DRAF' | 'TERKIRIM' | 'TERVERIFIKASI';
+export type PerwalianSessionType = 'AWAL_SEMESTER' | 'TENGAH_SEMESTER' | 'AKHIR_SEMESTER';
+
+export interface AttentionStudent {
+  nim: string;
+  nama: string;
+  isu: string;
+  persentase_kehadiran?: number;
+  catatan?: string;
+}
+
+export interface ClassPerwalianReport {
+  id: string;
+  kelas: string;
+  angkatan: number;
+  semester: Semester;
+  tahun_akademik: string;
+  ketua_kelas_nim: string;
+  ketua_kelas_nama: string;
+  dosen_wali_id: string;
+  dosen_wali_nama: string;
+  kondisi_umum: string;
+  kendala_akademik: string;
+  kendala_non_akademik: string;
+  aspirasi_mahasiswa: string;
+  mahasiswa_perhatian: AttentionStudent[];
+  status: PerwalianStatus;
+  catatan_verifikasi_dosen?: string;
+  diverifikasi_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DosenWaliStudentNote {
+  nim: string;
+  nama: string;
+  catatan: string;
+  status_akademik?: string;
+  hadir: boolean;
+}
+
+export interface DosenWaliSessionReport {
+  id: string;
+  dosen_wali_id: string;
+  dosen_wali_nama: string;
+  kelas: string;
+  angkatan: number;
+  semester: Semester;
+  tahun_akademik: string;
+  sesi: PerwalianSessionType;
+  tanggal_sesi: string;
+  total_mahasiswa: number;
+  hadir_mahasiswa: number;
+  topik_bahasan: string;
+  catatan_per_mahasiswa: DosenWaliStudentNote[];
+  rekomendasi: string;
+  rencana_tindak_lanjut: string;
+  status: 'DRAF' | 'SELESAI';
+  created_at: string;
+}
+
+export interface PerwalianRecurringIssue {
+  id: string;
+  kategori: 'AKADEMIK' | 'FASILITAS' | 'KEHADIRAN' | 'FINANSIAL_SOSIAL';
+  isu: string;
+  jumlah_kemunculan: number;
+  kelas_terdampak: string[];
+  tingkat_urgensi: 'RENDAH' | 'SEDANG' | 'TINGGI';
+}
+
+// ============================================================
+// SIMPRO — Modul 2: Beasiswa dan Jam Karya Mahasiswa
+// ============================================================
+export type ScholarshipStatus = 'AKTIF' | 'SELESAI' | 'DICABUT';
+export type WorkLogStatus = 'MENUNGGU' | 'TERVERIFIKASI' | 'DITOLAK';
+export type WorkLogCategory = 'ASISTENSI_LAB' | 'ADMINISTRASI_PRODI' | 'KEPANITIAAN_ACARA' | 'BANTUAN_RISET' | 'LAINNYA';
+
+export interface ScholarshipRecipient {
+  id: string;
+  mahasiswa_nim: string;
+  mahasiswa_nama: string;
+  angkatan: number;
+  program_studi: string;
+  jenis_beasiswa: string;
+  pemberi_beasiswa: string;
+  periode: string;
+  kewajiban_jam: number;
+  jam_terverifikasi: number;
+  jam_menunggu: number;
+  status: ScholarshipStatus;
+  dosen_verifikator_id: string;
+  dosen_verifikator_nama: string;
+  is_berisiko: boolean;
+  created_at: string;
+}
+
+export interface ScholarshipWorkLog {
+  id: string;
+  recipient_id: string;
+  mahasiswa_nim: string;
+  mahasiswa_nama: string;
+  tanggal: string;
+  jam_mulai: string;
+  jam_selesai: string;
+  durasi_jam: number;
+  lokasi: string;
+  uraian_kegiatan: string;
+  kategori_kegiatan: WorkLogCategory;
+  bukti_url?: string;
+  status: WorkLogStatus;
+  catatan_verifikator?: string;
+  diverifikasi_oleh?: string;
+  diverifikasi_at?: string;
+  created_at: string;
+}
+
+// ============================================================
+// SIMPRO — Modul 3: Pelanggaran dan Jam Sanksi Sosial
+// ============================================================
+export type ViolationType = 'AKADEMIK' | 'NON_AKADEMIK' | 'KODE_ETIK';
+export type ViolationLevel = 'RINGAN' | 'SEDANG' | 'BERAT';
+export type SanctionStatus = 'BELUM_DIMULAI' | 'DALAM_PROSES' | 'SELESAI';
+
+export interface StudentViolation {
+  id: string;
+  mahasiswa_nim: string;
+  mahasiswa_nama: string;
+  angkatan: number;
+  status_mahasiswa: StudentStatus;
+  tanggal_pelanggaran: string;
+  jenis_pelanggaran: ViolationType;
+  tingkat: ViolationLevel;
+  judul_kasus: string;
+  uraian: string;
+  dasar_keputusan: string;
+  total_jam_sanksi: number;
+  jam_sanksi_terpenuhi: number;
+  status_sanksi: SanctionStatus;
+  dosen_pencatat_id: string;
+  dosen_pencatat_nama: string;
+  dosen_wali_id: string;
+  dosen_wali_nama: string;
+  dosen_verifikator_id: string;
+  dosen_verifikator_nama: string;
+  created_at: string;
+}
+
+export interface SanctionActivityLog {
+  id: string;
+  violation_id: string;
+  mahasiswa_nim: string;
+  mahasiswa_nama: string;
+  tanggal: string;
+  durasi_jam: number;
+  lokasi: string;
+  uraian_kegiatan: string;
+  bukti_url?: string;
+  status: 'MENUNGGU' | 'TERVERIFIKASI' | 'DITOLAK';
+  catatan_verifikator?: string;
+  diverifikasi_oleh?: string;
+  diverifikasi_at?: string;
+  created_at: string;
+}
+
+export interface ViolationRetentionLog {
+  id: string;
+  tanggal_hapus: string;
+  alasan_status: 'LULUS' | 'KELUAR' | 'MENGUNDURKAN_DIRI';
+  mahasiswa_hash: string;
+  operator: string;
+  catatan_audit: string;
+}
+
+// ============================================================
+// SIMPRO — Modul 4: Unit Kegiatan Mahasiswa (UKM)
+// ============================================================
+export type UkmCategory = 'OLAHRAGA' | 'SENI' | 'KEAGAMAAN' | 'PENALARAN' | 'SOSIAL' | 'KHUSUS';
+export type UkmPosition = 'KETUA' | 'WAKIL_KETUA' | 'SEKRETARIS' | 'BENDAHARA' | 'KORDINATOR_DIVISI' | 'ANGGOTA';
+
+export interface UkmDirectory {
+  id: string;
+  kode_ukm: string;
+  nama_ukm: string;
+  kategori: UkmCategory;
+  dosen_pembina_id: string;
+  dosen_pembina_nama: string;
+  ketua_nim: string;
+  ketua_nama: string;
+  kontak_email: string;
+  kontak_telepon: string;
+  kontak_instagram?: string;
+  deskripsi: string;
+  jadwal_rutin: string;
+  status_aktif: 'AKTIF' | 'NONAKTIF';
+  jumlah_anggota_aktif: number;
+  created_at: string;
+}
+
+export interface UkmMembership {
+  id: string;
+  ukm_id: string;
+  ukm_nama: string;
+  mahasiswa_nim: string;
+  mahasiswa_nama: string;
+  angkatan: number;
+  jabatan: UkmPosition;
+  periode_kepengurusan: string;
+  status: 'MENUNGGU' | 'TERVERIFIKASI' | 'DITOLAK';
+  diverifikasi_oleh?: string;
+  diverifikasi_at?: string;
+  catatan?: string;
+  created_at: string;
+}
+
+export interface UkmParticipationStats {
+  angkatan: number;
+  total_mahasiswa_angkatan: number;
+  mahasiswa_aktif_ukm: number;
+  persentase_aktif: number;
+}
+
+// ============================================================
+// SIMPRO — Modul 5: Program Kerja Himpunan
+// ============================================================
+export type HimpunanBudgetCategory = 'OPERASIONAL' | 'KONSUMSI' | 'PERLENGKAPAN' | 'PUBLIKASI_DOKUMENTASI' | 'HADIAH_HONOR' | 'LAINNYA';
+export type HimpunanFundingType = 'DANA_PRODI' | 'IURAN_PESERTA' | 'SPONSOR' | 'USAHA_DANA' | 'KAS_HIMPUNAN';
+
+export interface HimpunanBudgetLine {
+  id: string;
+  pos_anggaran: string;
+  kategori: HimpunanBudgetCategory;
+  anggaran_rencana: number;
+  anggaran_proposal?: number;
+  realisasi_lpj?: number;
+}
+
+export interface HimpunanFundingSource {
+  id: string;
+  sumber: HimpunanFundingType;
+  rencana_nominal: number;
+  realisasi_nominal?: number;
+}
+
+export interface HimpunanProker {
+  id: string;
+  nama_kegiatan: string;
+  tujuan: string;
+  indikator_keberhasilan: string;
+  periode_kepengurusan: string;
+  tanggal_rencana_mulai: string;
+  tanggal_rencana_selesai: string;
+  total_anggaran_rencana: number;
+  anggaran_per_pos: HimpunanBudgetLine[];
+  sumber_dana: HimpunanFundingSource[];
+  status: 'TERDAFTAR' | 'PROPOSAL_DIAJUKAN' | 'PROPOSAL_DISETUJUI' | 'LPJ_DIAJUKAN' | 'SELESAI';
+  created_at: string;
+}
+
+export interface HimpunanAuditLog {
+  id: string;
+  waktu: string;
+  aktor: string;
+  peran: string;
+  aksi: string;
+  status_sebelum: string;
+  status_sesudah: string;
+  catatan?: string;
+}
+
+export interface HimpunanProposal {
+  id: string;
+  proker_id: string;
+  proker_nama: string;
+  nomor_surat: string;
+  tanggal_pengajuan: string;
+  total_anggaran_proposal: number;
+  anggaran_per_pos: HimpunanBudgetLine[];
+  sumber_dana: HimpunanFundingSource[];
+  berkas_proposal_url: string;
+  status: 'DIAJUKAN' | 'DISETUJUI_PEMBINA' | 'PERLU_REVISI' | 'DISETUJUI' | 'DITOLAK';
+  catatan_pembina?: string;
+  catatan_kaprodi?: string;
+  diverifikasi_pembina_at?: string;
+  disetujui_kaprodi_at?: string;
+  nomor_revisi?: number;
+  audit_trail?: HimpunanAuditLog[];
+  created_at: string;
+}
+
+export interface HimpunanLpj {
+  id: string;
+  proker_id: string;
+  proposal_id: string;
+  proker_nama: string;
+  tanggal_pelaksanaan_mulai: string;
+  tanggal_pelaksanaan_selesai: string;
+  jumlah_peserta_realisasi: number;
+  capaian_indikator: string;
+  total_biaya_realisasi: number;
+  total_dana_diterima: number;
+  anggaran_per_pos: HimpunanBudgetLine[];
+  sumber_dana: HimpunanFundingSource[];
+  berkas_lpj_url: string;
+  bukti_kuitansi_count: number;
+  tanggal_pengumpulan: string;
+  tenggat_pengumpulan: string;
+  hari_keterlambatan: number;
+  status: 'DIAJUKAN' | 'DISETUJUI_PEMBINA' | 'PERLU_REVISI' | 'DISETUJUI' | 'DITOLAK';
+  catatan_pembina?: string;
+  catatan_kaprodi?: string;
+  diverifikasi_pembina_at?: string;
+  disetujui_kaprodi_at?: string;
+  nomor_revisi?: number;
+  audit_trail?: HimpunanAuditLog[];
+  created_at: string;
+}
+
+export interface HimpunanDeviationReport {
+  proker_id: string;
+  nama_kegiatan: string;
+  anggaran_rencana: number;
+  realisasi_biaya: number;
+  deviasi_anggaran_nominal: number;
+  deviasi_anggaran_persen: number;
+  jadwal_rencana: string;
+  jadwal_realisasi: string;
+  deviasi_jadwal_hari: number;
+  hari_keterlambatan_lpj: number;
+  capaian_indikator: string;
+  is_over_threshold: boolean;
+  ringkasan_evaluasi_draf: string;
+  ringkasan_evaluasi_disunting?: string;
+  is_diterbitkan: boolean;
+}
+
+// ============================================================
+// SIMPRO — Modul 6: Sertifikat Bahasa dan Sertifikat Profesi
+// ============================================================
+export type CertificateCategory = 'BAHASA' | 'PROFESI_KOMPETENSI';
+
+export interface StudentCertificate {
+  id: string;
+  mahasiswa_nim: string;
+  mahasiswa_nama: string;
+  angkatan: number;
+  kategori: CertificateCategory;
+  jenis_sertifikasi: string;
+  lembaga_penerbit: string;
+  nomor_sertifikat: string;
+  skor_level: string;
+  nilai_numerik?: number;
+  tanggal_terbit: string;
+  tanggal_kedaluwarsa?: string;
+  is_seumur_hidup: boolean;
+  berkas_url: string;
+  status: 'MENUNGGU' | 'TERVERIFIKASI' | 'DITOLAK';
+  alasan_penolakan?: string;
+  diverifikasi_oleh?: string;
+  diverifikasi_at?: string;
+  is_kedaluwarsa: boolean;
+  is_segera_kedaluwarsa: boolean;
+  created_at: string;
 }

@@ -12,7 +12,7 @@ import {
   GraduationCap, Users, BookOpen, Handshake, Settings, ChevronLeft,
   ChevronRight, ChevronDown, X, LogOut, Plane, BookCheck, ClipboardCheck,
   MessageSquareHeart, ShieldAlert, FileSpreadsheet, PieChart,
-  ExternalLink, Layers
+  ExternalLink, Layers, Award, Clock, Compass, Calendar, FileBadge
 } from 'lucide-react';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -33,10 +33,22 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   ShieldAlert,
   Settings,
   Users,
+  Award,
+  Clock,
+  Compass,
+  Calendar,
+  FileBadge,
+  Layers,
 };
 
 const categoryIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   'Utama': LayoutDashboard,
+  'Laporan Perwalian': Users,
+  'Beasiswa & Jam Karya': Clock,
+  'Pelanggaran & Sanksi': ShieldAlert,
+  'Unit Kegiatan Mahasiswa': Compass,
+  'Program Kerja Himpunan': Calendar,
+  'Sertifikat Mahasiswa': FileBadge,
   'Kepuasan Mitra': SmilePlus,
   'Publikasi': BookOpen,
   'Perjalanan Dinas': Plane,

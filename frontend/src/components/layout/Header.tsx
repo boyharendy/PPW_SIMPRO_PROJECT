@@ -12,17 +12,31 @@ export const ROLE_LABELS: Record<Role, string> = {
   GKM: 'GKM (Gugus Kendali Mutu)',
   ADMIN_PRODI: 'Admin Prodi',
   DOSEN: 'Dosen',
+  DOSEN_WALI: 'Dosen Wali',
+  DOSEN_PEMBINA: 'Dosen Pembina UKM / Himpunan',
+  DOSEN_VERIFIKATOR: 'Dosen Verifikator',
+
+  KETUA_KELAS: 'Ketua Kelas',
+  PENGURUS_HIMPUNAN: 'Pengurus Himpunan',
   KOORDINATOR_KP: 'Koordinator KP',
   KOORDINATOR_PSI: 'Koordinator PSI',
   KOORDINATOR_PDLK: 'Koordinator PDLK',
   PENGELOLA_ADUAN: 'Pengelola Aduan',
   PETUGAS_KEKERASAN: 'Petugas Kekerasan (Satgas)',
   MAHASISWA: 'Mahasiswa',
+
+
+  KOORD_KP: 'Koordinator KP',
+  KOORD_TA: 'Koordinator TA',
+  KOORD_MAGANG: 'Koordinator Magang',
+  HIMPUNAN: 'Himpunan Mahasiswa',
+=======
   // Peran Kompatibilitas Data Induk (PRD Bab 6.A poin 2)
   PENGURUS_HIMPUNAN: 'Pengurus Himpunan',
   DOSEN_WALI: 'Dosen Wali',
   DOSEN_PEMBINA: 'Dosen Pembina',
   KETUA_KELAS: 'Ketua Kelas',
+
 };
 
 export default function Header() {
