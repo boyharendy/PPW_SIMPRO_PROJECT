@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
 import StatusBadge from '@/components/ui/StatusBadge';
 import StatCard from '@/components/ui/StatCard';
 import Modal from '@/components/ui/Modal';
-import { mockScholarshipWorkLogs } from '@/lib/mock-data';
+import { supabaseBeasiswa } from '@/lib/supabase';
 import type { ScholarshipWorkLog, WorkLogStatus } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import {
@@ -26,13 +26,25 @@ import {
 } from 'lucide-react';
 
 export default function VerifikasiJamKaryaPage() {
-  const [logs, setLogs] = useState<ScholarshipWorkLog[]>(mockScholarshipWorkLogs);
+  const [logs, setLogs] = useState<ScholarshipWorkLog[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedLog, setSelectedLog] = useState<ScholarshipWorkLog | null>(null);
   const [actionType, setActionType] = useState<'APPROVE' | 'REJECT'>('APPROVE');
   const [notes, setNotes] = useState('');
   const [activeTab, setActiveTab] = useState<'MENUNGGU' | 'TERVERIFIKASI' | 'DITOLAK' | 'ALL'>('MENUNGGU');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    supabaseBeasiswa.getLogsAll().then((data) => {
+      setLogs(data);
+      setLoading(false);
+    }).catch((err) => {
+      console.error('Gagal memuat log jam karya:', err);
+      setLoading(false);
+    });
+  }, []);
 
   const pendingLogs = logs.filter((l) => l.status === 'MENUNGGU');
   const verifiedLogs = logs.filter((l) => l.status === 'TERVERIFIKASI');
@@ -43,54 +55,47 @@ export default function VerifikasiJamKaryaPage() {
     return l.status === activeTab;
   });
 
-  const handleDecision = () => {
+  const handleDecision = async () => {
     if (!selectedLog) return;
     const newStatus: WorkLogStatus = actionType === 'APPROVE' ? 'TERVERIFIKASI' : 'DITOLAK';
-
-    setLogs(
-      logs.map((l) =>
-        l.id === selectedLog.id
-          ? {
-              ...l,
-              status: newStatus,
-              catatan_verifikator: notes || (actionType === 'APPROVE' ? 'Disetujui dosen verifikator resmi.' : 'Ditolak: bukti kurang lengkap atau uraian tidak sesuai.'),
-              diverifikasi_oleh: 'Dr. Ahmad Fauzi, M.T.',
-              diverifikasi_at: new Date().toISOString(),
-            }
-          : l
-      )
-    );
-
-    const msg = actionType === 'APPROVE'
-      ? `Entri jam karya mahasiswa ${selectedLog.mahasiswa_nama} (${selectedLog.durasi_jam} Jam) berhasil disetujui.`
-      : `Entri jam karya mahasiswa ${selectedLog.mahasiswa_nama} telah ditolak dengan catatan.`;
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 5000);
-
+    try {
+      const updated = await supabaseBeasiswa.verifikasiLog(selectedLog.id, {
+        status: newStatus,
+        dosen_verifikator_nama: 'Dr. Ahmad Fauzi, M.T.',
+        catatan_verifikator: notes || (actionType === 'APPROVE' ? 'Disetujui dosen verifikator resmi.' : 'Ditolak: bukti kurang lengkap atau uraian tidak sesuai.'),
+      });
+      setLogs((prev) => prev.map((l) => l.id === updated.id ? updated : l));
+      const msg = actionType === 'APPROVE'
+        ? `Entri jam karya mahasiswa ${selectedLog.mahasiswa_nama} (${selectedLog.jumlah_jam} Jam) berhasil disetujui.`
+        : `Entri jam karya mahasiswa ${selectedLog.mahasiswa_nama} telah ditolak dengan catatan.`;
+      setToastMessage(msg);
+      setTimeout(() => setToastMessage(null), 5000);
+    } catch (err) {
+      console.error('Gagal verifikasi log:', err);
+    }
     setSelectedLog(null);
     setNotes('');
   };
 
   // Batch Approval
-  const handleBatchApprove = () => {
+  const handleBatchApprove = async () => {
     if (selectedIds.length === 0) return;
-    setLogs(
-      logs.map((l) =>
-        selectedIds.includes(l.id)
-          ? {
-              ...l,
-              status: 'TERVERIFIKASI',
-              catatan_verifikator: 'Disetujui secara kolektif oleh Dosen Verifikator.',
-              diverifikasi_oleh: 'Dr. Ahmad Fauzi, M.T.',
-              diverifikasi_at: new Date().toISOString(),
-            }
-          : l
-      )
-    );
-
-    setToastMessage(`Berhasil menyetujui ${selectedIds.length} entri jam karya mahasiswa secara massal!`);
-    setSelectedIds([]);
-    setTimeout(() => setToastMessage(null), 5000);
+    try {
+      await Promise.all(selectedIds.map((id) =>
+        supabaseBeasiswa.verifikasiLog(id, {
+          status: 'TERVERIFIKASI',
+          dosen_verifikator_nama: 'Dr. Ahmad Fauzi, M.T.',
+          catatan_verifikator: 'Disetujui secara kolektif oleh Dosen Verifikator.',
+        })
+      ));
+      const refreshed = await supabaseBeasiswa.getLogsAll();
+      setLogs(refreshed);
+      setToastMessage(`Berhasil menyetujui ${selectedIds.length} entri jam karya mahasiswa secara massal!`);
+      setSelectedIds([]);
+      setTimeout(() => setToastMessage(null), 5000);
+    } catch (err) {
+      console.error('Gagal batch approve:', err);
+    }
   };
 
   const toggleSelectAllPending = () => {
@@ -148,9 +153,9 @@ export default function VerifikasiJamKaryaPage() {
       header: 'Tanggal & Durasi',
       render: (row: ScholarshipWorkLog) => (
         <div className="space-y-0.5">
-          <span className="text-xs font-semibold text-slate-800">{formatDate(row.tanggal)}</span>
+          <span className="text-xs font-semibold text-slate-800">{formatDate(row.tanggal_kegiatan)}</span>
           <p className="text-[11px] text-slate-500 font-mono">
-            {row.jam_mulai} - {row.jam_selesai} (<strong className="text-blue-700">{row.durasi_jam} Jam</strong>)
+            {row.jumlah_jam} Jam
           </p>
         </div>
       ),
@@ -161,10 +166,10 @@ export default function VerifikasiJamKaryaPage() {
       render: (row: ScholarshipWorkLog) => (
         <div className="space-y-1 max-w-sm">
           <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
-            {row.kategori_kegiatan.replace('_', ' ')}
+            {(row.kategori ?? '').replace('_', ' ')}
           </span>
-          <p className="text-xs text-slate-700 line-clamp-2">{row.uraian_kegiatan}</p>
-          <p className="text-[11px] text-slate-500">Lokasi: {row.lokasi}</p>
+          <p className="text-xs text-slate-700 line-clamp-2">{row.deskripsi_kegiatan}</p>
+          
         </div>
       ),
     },
@@ -172,7 +177,7 @@ export default function VerifikasiJamKaryaPage() {
       key: 'bukti',
       header: 'Bukti Kegiatan',
       render: (row: ScholarshipWorkLog) => (
-        row.bukti_url ? (
+        (row.bukti_nama_berkas || row.bukti_url) ? (
           <button
             onClick={() => {
               setSelectedLog(row);
@@ -378,17 +383,17 @@ export default function VerifikasiJamKaryaPage() {
                 <span className="text-slate-500 font-mono text-xs">NIM: {selectedLog.mahasiswa_nim}</span>
               </div>
               <p className="text-slate-600 text-xs">
-                Tanggal: <strong>{formatDate(selectedLog.tanggal)}</strong> • Jam: <strong>{selectedLog.jam_mulai} - {selectedLog.jam_selesai}</strong> ({selectedLog.durasi_jam} Jam)
+                Tanggal: <strong>{formatDate(selectedLog.tanggal_kegiatan || selectedLog.tanggal || '')}</strong> • Durasi: <strong>{selectedLog.jumlah_jam ?? selectedLog.durasi_jam} Jam</strong>
               </p>
               <p className="text-slate-600 text-xs">
-                Lokasi: <strong>{selectedLog.lokasi}</strong> • Kategori: <strong>{selectedLog.kategori_kegiatan.replace('_', ' ')}</strong>
+                Kategori: <strong>{(selectedLog.kategori || selectedLog.kategori_kegiatan || '').replace('_', ' ')}</strong>
               </p>
             </div>
 
             <div>
               <span className="font-bold text-slate-700 block mb-1">Uraian Rinci Kegiatan:</span>
               <p className="text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200 leading-relaxed">
-                {selectedLog.uraian_kegiatan}
+                {selectedLog.deskripsi_kegiatan || selectedLog.uraian_kegiatan}
               </p>
             </div>
 
@@ -400,7 +405,7 @@ export default function VerifikasiJamKaryaPage() {
                   <FileText className="h-5 w-5 text-blue-600" />
                   <div>
                     <p className="font-semibold text-slate-800 text-xs">
-                      {selectedLog.bukti_url?.split('/').pop() || 'dokumen-bukti.pdf'}
+                      {selectedLog.bukti_nama_berkas || selectedLog.bukti_url?.split('/').pop() || 'dokumen-bukti.pdf'}
                     </p>
                     <p className="text-[10px] text-slate-500">Berkas Lampiran Mahasiswa</p>
                   </div>
@@ -481,7 +486,7 @@ export default function VerifikasiJamKaryaPage() {
                 <span className="font-bold text-slate-800">Catatan Hasil Verifikasi:</span>
                 <p className="text-slate-700">{selectedLog.catatan_verifikator || '-'}</p>
                 <p className="text-[10px] text-slate-500 pt-1">
-                  Diverifikasi oleh: <strong>{selectedLog.diverifikasi_oleh || 'Dosen Verifikator'}</strong> pada {selectedLog.diverifikasi_at ? formatDate(selectedLog.diverifikasi_at) : '-'}
+                  Diverifikasi oleh: <strong>{selectedLog.dosen_verifikator_nama || selectedLog.diverifikasi_oleh || 'Dosen Verifikator'}</strong> pada {selectedLog.diverifikasi_at ? formatDate(selectedLog.diverifikasi_at) : '-'}
                 </p>
                 <div className="flex justify-end pt-2">
                   <button

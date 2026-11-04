@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
@@ -8,7 +8,7 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import StatCard from '@/components/ui/StatCard';
 import Modal from '@/components/ui/Modal';
 import { useUser } from '@/lib/context';
-import { mockScholarshipRecipients, mockScholarshipWorkLogs } from '@/lib/mock-data';
+import { supabaseBeasiswa } from '@/lib/supabase';
 import type { ScholarshipRecipient, ScholarshipStatus } from '@/lib/types';
 import {
   Award,
@@ -31,7 +31,8 @@ import {
 
 export default function BeasiswaListPage() {
   const { currentRole } = useUser();
-  const [recipients, setRecipients] = useState<ScholarshipRecipient[]>(mockScholarshipRecipients);
+  const [recipients, setRecipients] = useState<ScholarshipRecipient[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedRecipient, setSelectedRecipient] = useState<ScholarshipRecipient | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
@@ -52,59 +53,59 @@ export default function BeasiswaListPage() {
   // Edit status state inside modal detail
   const [editingStatus, setEditingStatus] = useState<ScholarshipStatus>('AKTIF');
 
+  useEffect(() => {
+    setLoading(true);
+    supabaseBeasiswa.getPenerimaAll().then((data) => {
+      setRecipients(data);
+      setLoading(false);
+    }).catch((err) => {
+      console.error('Gagal memuat data penerima:', err);
+      setLoading(false);
+    });
+  }, []);
+
   const filteredRecipients = recipients.filter((r) => {
     const matchStatus = selectedStatus === 'ALL' || r.status === selectedStatus;
     const matchJenis = selectedJenis === 'ALL' || r.jenis_beasiswa.toLowerCase().includes(selectedJenis.toLowerCase());
     return matchStatus && matchJenis;
   });
 
-  const handleAddRecipient = () => {
+  const handleAddRecipient = async () => {
     if (!nim || !nama) return;
-    const newRec: ScholarshipRecipient = {
-      id: `sch-rec-${Date.now()}`,
-      mahasiswa_nim: nim,
-      mahasiswa_nama: nama,
-      angkatan: parseInt(angkatan) || 2023,
-      program_studi: prodi || 'Sistem Informasi',
-      jenis_beasiswa: jenisBeasiswa,
-      pemberi_beasiswa: pemberi,
-      periode,
-      kewajiban_jam: parseInt(kewajibanJam) || 50,
-      jam_terverifikasi: 0,
-      jam_menunggu: 0,
-      status: 'AKTIF',
-      dosen_verifikator_id: 'u-kaprodi',
-      dosen_verifikator_nama: dosenVerifikatorNama,
-      is_berisiko: false,
-      created_at: new Date().toISOString(),
-    };
-
-    setRecipients([newRec, ...recipients]);
-    setShowAddModal(false);
-    setNim('');
-    setNama('');
-    setNotification(`Mahasiswa ${nama} (${nim}) berhasil ditambahkan sebagai penerima ${jenisBeasiswa}.`);
-    setTimeout(() => setNotification(null), 5000);
+    try {
+      const saved = await supabaseBeasiswa.createPenerima({
+        mahasiswa_nim: nim,
+        mahasiswa_nama: nama,
+        angkatan: parseInt(angkatan) || 2023,
+        program_studi: prodi || 'Sistem Informasi',
+        jenis_beasiswa: jenisBeasiswa,
+        pemberi_beasiswa: pemberi,
+        periode,
+        kewajiban_jam: parseInt(kewajibanJam) || 50,
+        dosen_verifikator_nama: dosenVerifikatorNama,
+      });
+      setRecipients((prev) => [saved, ...prev]);
+      setShowAddModal(false);
+      setNim('');
+      setNama('');
+      setNotification(`Mahasiswa ${nama} (${nim}) berhasil ditambahkan sebagai penerima ${jenisBeasiswa}.`);
+      setTimeout(() => setNotification(null), 5000);
+    } catch (err) {
+      console.error('Gagal menambah penerima:', err);
+    }
   };
 
-  const handleUpdateStatus = () => {
+  const handleUpdateStatus = async () => {
     if (!selectedRecipient) return;
-    setRecipients(
-      recipients.map((r) =>
-        r.id === selectedRecipient.id
-          ? {
-              ...r,
-              status: editingStatus,
-            }
-          : r
-      )
-    );
-    setSelectedRecipient({
-      ...selectedRecipient,
-      status: editingStatus,
-    });
-    setNotification(`Status beasiswa mahasiswa ${selectedRecipient.mahasiswa_nama} berhasil diperbarui menjadi ${editingStatus}.`);
-    setTimeout(() => setNotification(null), 5000);
+    try {
+      const updated = await supabaseBeasiswa.updatePenerimaStatus(selectedRecipient.id, editingStatus);
+      setRecipients((prev) => prev.map((r) => r.id === updated.id ? updated : r));
+      setSelectedRecipient(updated);
+      setNotification(`Status beasiswa mahasiswa ${selectedRecipient.mahasiswa_nama} berhasil diperbarui menjadi ${editingStatus}.`);
+      setTimeout(() => setNotification(null), 5000);
+    } catch (err) {
+      console.error('Gagal update status:', err);
+    }
   };
 
   const columns = [

@@ -1,43 +1,34 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
 import StatusBadge from '@/components/ui/StatusBadge';
-import StatCard from '@/components/ui/StatCard';
 import Modal from '@/components/ui/Modal';
-import { mockScholarshipWorkLogs, mockScholarshipRecipients } from '@/lib/mock-data';
-import type { ScholarshipWorkLog, WorkLogCategory, WorkLogStatus } from '@/lib/types';
+import { supabaseBeasiswa } from '@/lib/supabase';
+import type { ScholarshipRecipient, ScholarshipWorkLog, WorkLogCategory } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import {
   ArrowLeft,
   Clock,
-  CheckCircle2,
-  AlertCircle,
   Plus,
   FileText,
   Upload,
-  Calendar,
   MapPin,
-  FileCheck,
   Lock,
   Eye,
   CheckCircle,
-  AlertTriangle,
-  Info,
-  Filter,
 } from 'lucide-react';
 
 export default function PencatatanJamKaryaPage() {
-  const [logs, setLogs] = useState<ScholarshipWorkLog[]>(mockScholarshipWorkLogs);
+  const [logs, setLogs] = useState<ScholarshipWorkLog[]>([]);
+  const [recipient, setRecipient] = useState<ScholarshipRecipient | null>(null);
+  const [loading, setLoading] = useState(true);
   const [showLogModal, setShowLogModal] = useState(false);
   const [selectedLogForDetail, setSelectedLogForDetail] = useState<ScholarshipWorkLog | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [notification, setNotification] = useState<string | null>(null);
-
-  // Current student demo info
-  const myRecipient = mockScholarshipRecipients[1]; // Dewi Lestari, 60 jam
 
   // Form states
   const [tanggal, setTanggal] = useState('2024-11-03');
@@ -48,6 +39,29 @@ export default function PencatatanJamKaryaPage() {
   const [uraian, setUraian] = useState('');
   const [fileName, setFileName] = useState<string | null>(null);
   const [fileSize, setFileSize] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadData() {
+      setLoading(true);
+      try {
+        const recipients = await supabaseBeasiswa.getPenerimaAll();
+        const current = recipients.find((r) => r.mahasiswa_nim === '220101002') || recipients[0] || null;
+        setRecipient(current);
+        if (current) {
+          const userLogs = await supabaseBeasiswa.getLogsByPenerima(current.id);
+          setLogs(userLogs);
+        } else {
+          const allLogs = await supabaseBeasiswa.getLogsAll();
+          setLogs(allLogs);
+        }
+      } catch (err) {
+        console.error('Gagal memuat data jam karya:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
 
   // Auto calculate duration in hours
   const calculateDuration = () => {
@@ -61,50 +75,54 @@ export default function PencatatanJamKaryaPage() {
     }
   };
 
-  const handleSaveLog = () => {
+  const handleSaveLog = async () => {
     if (!lokasi || !uraian) {
       alert('Mohon lengkapi lokasi dan uraian kegiatan!');
       return;
     }
+    if (!recipient) {
+      alert('Data penerima beasiswa tidak ditemukan!');
+      return;
+    }
     const durasi = calculateDuration();
 
-    const newLog: ScholarshipWorkLog = {
-      id: `wlog-${Date.now()}`,
-      recipient_id: myRecipient.id,
-      mahasiswa_nim: myRecipient.mahasiswa_nim,
-      mahasiswa_nama: myRecipient.mahasiswa_nama,
-      tanggal,
-      jam_mulai: jamMulai,
-      jam_selesai: jamSelesai,
-      durasi_jam: durasi,
-      lokasi,
-      uraian_kegiatan: uraian,
-      kategori_kegiatan: kategori,
-      bukti_url: fileName ? `/uploads/${fileName}` : '/docs/bukti-jam-karya-default.pdf',
-      status: 'MENUNGGU',
-      created_at: new Date().toISOString(),
-    };
+    try {
+      const newLog = await supabaseBeasiswa.createLog({
+        penerima_id: recipient.id,
+        mahasiswa_nim: recipient.mahasiswa_nim,
+        mahasiswa_nama: recipient.mahasiswa_nama,
+        tanggal_kegiatan: tanggal,
+        kategori,
+        deskripsi_kegiatan: `[${lokasi}] ${uraian}`,
+        jumlah_jam: durasi,
+        bukti_nama_berkas: fileName || 'bukti-jam-karya.pdf',
+      });
 
-    setLogs([newLog, ...logs]);
-    setShowLogModal(false);
-    setLokasi('');
-    setUraian('');
-    setFileName(null);
-    setFileSize(null);
-    setNotification(`Entri jam karya (${durasi} Jam) berhasil diajukan dan sedang menunggu verifikasi Dosen Verifikator.`);
-    setTimeout(() => setNotification(null), 5000);
+      setLogs((prev) => [newLog, ...prev]);
+      setShowLogModal(false);
+      setLokasi('');
+      setUraian('');
+      setFileName(null);
+      setFileSize(null);
+      setNotification(`Entri jam karya (${durasi} Jam) berhasil diajukan dan sedang menunggu verifikasi Dosen Verifikator.`);
+      setTimeout(() => setNotification(null), 5000);
+    } catch (err) {
+      console.error('Gagal menyimpan log jam karya:', err);
+      alert('Gagal menyimpan log jam karya.');
+    }
   };
 
   const totalVerified = logs
     .filter((l) => l.status === 'TERVERIFIKASI')
-    .reduce((acc, l) => acc + l.durasi_jam, 0);
+    .reduce((acc, l) => acc + (l.jumlah_jam ?? l.durasi_jam ?? 0), 0);
 
   const totalPending = logs
     .filter((l) => l.status === 'MENUNGGU')
-    .reduce((acc, l) => acc + l.durasi_jam, 0);
+    .reduce((acc, l) => acc + (l.jumlah_jam ?? l.durasi_jam ?? 0), 0);
 
-  const remainingHours = Math.max(0, myRecipient.kewajiban_jam - totalVerified);
-  const progressPercent = Math.min(100, Math.round((totalVerified / myRecipient.kewajiban_jam) * 100));
+  const kewajibanJam = recipient?.kewajiban_jam ?? 50;
+  const remainingHours = Math.max(0, kewajibanJam - totalVerified);
+  const progressPercent = Math.min(100, Math.round((totalVerified / kewajibanJam) * 100));
 
   const filteredLogs = logs.filter((l) => {
     return filterStatus === 'ALL' || l.status === filterStatus;
@@ -116,9 +134,9 @@ export default function PencatatanJamKaryaPage() {
       header: 'Tanggal & Durasi',
       render: (row: ScholarshipWorkLog) => (
         <div className="space-y-0.5">
-          <span className="font-bold text-slate-800 text-xs sm:text-sm">{formatDate(row.tanggal)}</span>
+          <span className="font-bold text-slate-800 text-xs sm:text-sm">{formatDate(row.tanggal_kegiatan || row.tanggal || '')}</span>
           <p className="text-[11px] text-slate-500 font-mono">
-            {row.jam_mulai} - {row.jam_selesai} (<strong className="text-blue-700">{row.durasi_jam} Jam</strong>)
+            <strong className="text-blue-700">{row.jumlah_jam ?? row.durasi_jam} Jam</strong>
           </p>
         </div>
       ),
@@ -129,12 +147,14 @@ export default function PencatatanJamKaryaPage() {
       render: (row: ScholarshipWorkLog) => (
         <div className="space-y-1">
           <span className="text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded">
-            {row.kategori_kegiatan.replace('_', ' ')}
+            {(row.kategori || row.kategori_kegiatan || '').replace('_', ' ')}
           </span>
-          <p className="text-[11px] text-slate-600 flex items-center gap-1">
-            <MapPin className="h-3 w-3 text-slate-400" />
-            <span>{row.lokasi}</span>
-          </p>
+          {row.lokasi && (
+            <p className="text-[11px] text-slate-600 flex items-center gap-1">
+              <MapPin className="h-3 w-3 text-slate-400" />
+              <span>{row.lokasi}</span>
+            </p>
+          )}
         </div>
       ),
     },
@@ -143,7 +163,7 @@ export default function PencatatanJamKaryaPage() {
       header: 'Uraian Kegiatan Jam Karya',
       render: (row: ScholarshipWorkLog) => (
         <div className="space-y-1 max-w-md">
-          <p className="text-xs text-slate-800 line-clamp-2">{row.uraian_kegiatan}</p>
+          <p className="text-xs text-slate-800 line-clamp-2">{row.deskripsi_kegiatan || row.uraian_kegiatan}</p>
           {row.catatan_verifikator && (
             <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 p-1.5 rounded">
               Catatan Dosen: {row.catatan_verifikator}
@@ -230,63 +250,69 @@ export default function PencatatanJamKaryaPage() {
       )}
 
       {/* Student Progress Overview */}
-      <div className="rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50/50 p-6 shadow-xs">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700 bg-white border border-blue-200 px-2.5 py-1 rounded-full">
-                {myRecipient.jenis_beasiswa} • {myRecipient.periode}
-              </span>
-              <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
-                Angkatan {myRecipient.angkatan}
-              </span>
-            </div>
-            <h3 className="text-xl font-bold text-slate-900">
-              {myRecipient.mahasiswa_nama} <span className="text-slate-500 font-normal">({myRecipient.mahasiswa_nim})</span>
-            </h3>
-            <p className="text-xs text-slate-600">
-              Dosen Verifikator Pembina: <strong>{myRecipient.dosen_verifikator_nama}</strong>
-            </p>
-
-            {/* Visual Progress Bar */}
-            <div className="pt-2 max-w-md space-y-1.5">
-              <div className="flex justify-between text-xs font-bold">
-                <span className="text-slate-700">Kemajuan Pemenuhan Kewajiban:</span>
-                <span className={progressPercent >= 100 ? 'text-emerald-700' : 'text-blue-700'}>
-                  {progressPercent}%
+      {recipient ? (
+        <div className="rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50/50 p-6 shadow-xs">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700 bg-white border border-blue-200 px-2.5 py-1 rounded-full">
+                  {recipient.jenis_beasiswa} • {recipient.periode}
+                </span>
+                <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
+                  Angkatan {recipient.angkatan}
                 </span>
               </div>
-              <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    progressPercent >= 100 ? 'bg-emerald-500' : 'bg-blue-600'
-                  }`}
-                  style={{ width: `${progressPercent}%` }}
-                />
+              <h3 className="text-xl font-bold text-slate-900">
+                {recipient.mahasiswa_nama} <span className="text-slate-500 font-normal">({recipient.mahasiswa_nim})</span>
+              </h3>
+              <p className="text-xs text-slate-600">
+                Dosen Verifikator Pembina: <strong>{recipient.dosen_verifikator_nama}</strong>
+              </p>
+
+              {/* Visual Progress Bar */}
+              <div className="pt-2 max-w-md space-y-1.5">
+                <div className="flex justify-between text-xs font-bold">
+                  <span className="text-slate-700">Kemajuan Pemenuhan Kewajiban:</span>
+                  <span className={progressPercent >= 100 ? 'text-emerald-700' : 'text-blue-700'}>
+                    {progressPercent}%
+                  </span>
+                </div>
+                <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      progressPercent >= 100 ? 'bg-emerald-500' : 'bg-blue-600'
+                    }`}
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white/80 p-4 rounded-xl border border-blue-100">
-            <div className="text-center px-2">
-              <span className="text-2xl font-black text-blue-700">{myRecipient.kewajiban_jam}</span>
-              <p className="text-[11px] text-slate-500 font-semibold mt-0.5">Wajib (Jam)</p>
-            </div>
-            <div className="text-center px-2">
-              <span className="text-2xl font-black text-emerald-600">{totalVerified}</span>
-              <p className="text-[11px] text-slate-500 font-semibold mt-0.5">Disetujui</p>
-            </div>
-            <div className="text-center px-2">
-              <span className="text-2xl font-black text-amber-600">{totalPending}</span>
-              <p className="text-[11px] text-slate-500 font-semibold mt-0.5">Menunggu</p>
-            </div>
-            <div className="text-center px-2">
-              <span className="text-2xl font-black text-slate-700">{remainingHours}</span>
-              <p className="text-[11px] text-slate-500 font-semibold mt-0.5">Sisa Jam</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white/80 p-4 rounded-xl border border-blue-100">
+              <div className="text-center px-2">
+                <span className="text-2xl font-black text-blue-700">{recipient.kewajiban_jam}</span>
+                <p className="text-[11px] text-slate-500 font-semibold mt-0.5">Wajib (Jam)</p>
+              </div>
+              <div className="text-center px-2">
+                <span className="text-2xl font-black text-emerald-600">{totalVerified}</span>
+                <p className="text-[11px] text-slate-500 font-semibold mt-0.5">Disetujui</p>
+              </div>
+              <div className="text-center px-2">
+                <span className="text-2xl font-black text-amber-600">{totalPending}</span>
+                <p className="text-[11px] text-slate-500 font-semibold mt-0.5">Menunggu</p>
+              </div>
+              <div className="text-center px-2">
+                <span className="text-2xl font-black text-slate-700">{remainingHours}</span>
+                <p className="text-[11px] text-slate-500 font-semibold mt-0.5">Sisa Jam</p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      ) : loading ? (
+        <div className="p-8 rounded-xl bg-slate-50 border border-slate-200 text-center text-slate-500 text-sm">
+          Memuat data penerima beasiswa...
+        </div>
+      ) : null}
 
       {/* Table of Entries */}
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
@@ -320,7 +346,7 @@ export default function PencatatanJamKaryaPage() {
           data={filteredLogs}
           columns={columns}
           searchPlaceholder="Cari catatan jam karya atau lokasi..."
-          searchKey="uraian_kegiatan"
+          searchKey="deskripsi_kegiatan"
         />
       </div>
 
@@ -468,10 +494,10 @@ export default function PencatatanJamKaryaPage() {
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
                 <h4 className="font-bold text-slate-900 text-sm">
-                  {selectedLogForDetail.kategori_kegiatan.replace('_', ' ')}
+                  {(selectedLogForDetail.kategori || selectedLogForDetail.kategori_kegiatan || '').replace('_', ' ')}
                 </h4>
                 <p className="text-slate-500 text-xs">
-                  {formatDate(selectedLogForDetail.tanggal)} • {selectedLogForDetail.jam_mulai} - {selectedLogForDetail.jam_selesai} ({selectedLogForDetail.durasi_jam} Jam)
+                  {formatDate(selectedLogForDetail.tanggal_kegiatan || selectedLogForDetail.tanggal || '')} • {selectedLogForDetail.jumlah_jam ?? selectedLogForDetail.durasi_jam} Jam
                 </p>
               </div>
               <StatusBadge status={selectedLogForDetail.status} size="md" />
@@ -479,30 +505,22 @@ export default function PencatatanJamKaryaPage() {
 
             <div className="space-y-3 text-xs">
               <div>
-                <span className="font-bold text-slate-700 block mb-0.5">Lokasi Kegiatan:</span>
-                <p className="text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-                  {selectedLogForDetail.lokasi}
-                </p>
-              </div>
-
-              <div>
                 <span className="font-bold text-slate-700 block mb-0.5">Uraian Tugas yang Dilakukan:</span>
                 <p className="text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200 leading-relaxed">
-                  {selectedLogForDetail.uraian_kegiatan}
+                  {selectedLogForDetail.deskripsi_kegiatan || selectedLogForDetail.uraian_kegiatan}
                 </p>
               </div>
 
-              {/* Mock Document Visual */}
               <div>
                 <span className="font-bold text-slate-700 block mb-1">Bukti Berkas yang Dilampirkan:</span>
                 <div className="p-4 bg-slate-100 rounded-xl border border-slate-200 text-center space-y-2">
                   <FileText className="h-8 w-8 text-blue-600 mx-auto" />
                   <p className="font-bold text-slate-800 text-xs">
-                    {selectedLogForDetail.bukti_url?.split('/').pop() || 'dokumen-bukti-kegiatan.pdf'}
+                    {selectedLogForDetail.bukti_nama_berkas || selectedLogForDetail.bukti_url?.split('/').pop() || 'dokumen-bukti-kegiatan.pdf'}
                   </p>
                   <p className="text-[10px] text-slate-500">Berkas Sah Tervalidasi Sistem SIMPRO</p>
                   <button
-                    onClick={() => alert(`Membuka lampiran: ${selectedLogForDetail.bukti_url}`)}
+                    onClick={() => alert(`Membuka lampiran: ${selectedLogForDetail.bukti_nama_berkas || selectedLogForDetail.bukti_url}`)}
                     className="px-3 py-1 bg-white border border-slate-300 text-blue-700 rounded-lg text-xs font-semibold hover:bg-slate-50 shadow-xs inline-flex items-center gap-1"
                   >
                     <span>Unduh / Buka Dokumen</span>
@@ -514,9 +532,9 @@ export default function PencatatanJamKaryaPage() {
                 <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs space-y-1">
                   <span className="font-bold text-amber-900 block">Catatan Dosen Verifikator:</span>
                   <p className="text-amber-800">{selectedLogForDetail.catatan_verifikator}</p>
-                  {selectedLogForDetail.diverifikasi_oleh && (
+                  {(selectedLogForDetail.dosen_verifikator_nama || selectedLogForDetail.diverifikasi_oleh) && (
                     <p className="text-[10px] text-amber-700 pt-0.5">
-                      Ditinjau oleh: {selectedLogForDetail.diverifikasi_oleh}
+                      Ditinjau oleh: {selectedLogForDetail.dosen_verifikator_nama || selectedLogForDetail.diverifikasi_oleh}
                     </p>
                   )}
                 </div>

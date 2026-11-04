@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
 import StatusBadge from '@/components/ui/StatusBadge';
 import StatCard from '@/components/ui/StatCard';
 import Modal from '@/components/ui/Modal';
-import { mockScholarshipRecipients } from '@/lib/mock-data';
+import { supabaseBeasiswa } from '@/lib/supabase';
 import type { ScholarshipRecipient } from '@/lib/types';
 import {
   ArrowLeft,
@@ -26,10 +26,22 @@ import {
 } from 'lucide-react';
 
 export default function RekapBeasiswaPage() {
-  const [recipients, setRecipients] = useState<ScholarshipRecipient[]>(mockScholarshipRecipients);
+  const [recipients, setRecipients] = useState<ScholarshipRecipient[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filterRisiko, setFilterRisiko] = useState<string>('ALL');
   const [filterJenis, setFilterJenis] = useState<string>('ALL');
   const [selectedSemester, setSelectedSemester] = useState<string>('2024/2025 Ganjil');
+
+  useEffect(() => {
+    setLoading(true);
+    supabaseBeasiswa.getPenerimaAll().then((data) => {
+      setRecipients(data);
+      setLoading(false);
+    }).catch((err) => {
+      console.error('Gagal memuat data penerima beasiswa:', err);
+      setLoading(false);
+    });
+  }, []);
 
   const [selectedAtRiskStudent, setSelectedAtRiskStudent] = useState<ScholarshipRecipient | null>(null);
   const [warningMessage, setWarningMessage] = useState('');
