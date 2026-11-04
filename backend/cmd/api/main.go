@@ -16,7 +16,7 @@ func main() {
 	// 1. Load Configurations
 	cfg := config.LoadConfig()
 
-	// 2. Initialize Database / Repositories
+	// 2. Initialize Repositories (Dual-Mode: Supabase with Fallback to In-Memory)
 	var userRepo repository.UserRepository
 	var refRepo repository.ReferenceRepository
 	var surveyRepo repository.SurveyRepository
@@ -26,6 +26,7 @@ func main() {
 	var rkaRepo repository.RkaRepository
 	var rpsRepo repository.RpsRepository
 	var evalRepo repository.EvaluationRepository
+	var attRepo repository.AttachmentRepository
 
 	if cfg.SupabaseURL != "" && cfg.SupabaseServiceKey != "" {
 		log.Println("🔌 Menghubungkan ke Supabase Database...")
@@ -39,6 +40,7 @@ func main() {
 		rkaRepo = repository.NewSupabaseRkaRepository(supabaseClient)
 		rpsRepo = repository.NewSupabaseRpsRepository(supabaseClient)
 		evalRepo = repository.NewSupabaseEvaluationRepository(supabaseClient)
+		attRepo = repository.NewSupabaseAttachmentRepository(supabaseClient)
 		log.Println("✅ Supabase Repositories aktif")
 	} else {
 		log.Println("⚠️ Kredensial Supabase tidak lengkap, menggunakan Memory Repositories (Mock)")
@@ -51,6 +53,7 @@ func main() {
 		rkaRepo = repository.NewMemoryRkaRepository()
 		rpsRepo = repository.NewMemoryRpsRepository()
 		evalRepo = repository.NewMemoryEvaluationRepository()
+		attRepo = repository.NewMemoryAttachmentRepository()
 	}
 
 	// 3. Initialize Usecases
@@ -61,8 +64,9 @@ func main() {
 	pubUsecase := usecase.NewPublicationUsecase(pubRepo)
 	tripUsecase := usecase.NewTripUsecase(tripRepo, rkaRepo)
 	rkaUsecase := usecase.NewRkaUsecase(rkaRepo)
-	rpsUsecase := usecase.NewRpsUsecase(rpsRepo)
+	rpsUsecase := usecase.NewRpsUsecase(rpsRepo, evalRepo)
 	evalUsecase := usecase.NewEvaluationUsecase(evalRepo)
+	attUsecase := usecase.NewAttachmentUsecase(attRepo)
 
 	// 4. Initialize Handlers
 	authHandler := handler.NewAuthHandler(authUsecase)
@@ -77,6 +81,7 @@ func main() {
 	rpsHandler := handler.NewRpsHandler(rpsUsecase)
 	evalHandler := handler.NewEvaluationHandler(evalUsecase)
 	dashboardHandler := handler.NewDashboardHandler(surveyRepo, pubRepo, tripRepo, rkaRepo, rpsRepo, evalRepo, complaintRepo)
+	attHandler := handler.NewAttachmentHandler(attUsecase)
 
 	// 5. Setup Router
 	router := deliveryHttp.SetupRouter(deliveryHttp.RouterParams{
@@ -93,6 +98,7 @@ func main() {
 		RpsHandler:         rpsHandler,
 		EvaluationHandler:  evalHandler,
 		DashboardHandler:   dashboardHandler,
+		AttachmentHandler:  attHandler,
 	})
 
 	// 6. Start Server

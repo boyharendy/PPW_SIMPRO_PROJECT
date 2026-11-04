@@ -66,17 +66,27 @@ func (h *RpsHandler) SubmitForReview(c *gin.Context) {
 func (h *RpsHandler) AssignReviewer(c *gin.Context) {
 	id := c.Param("id")
 	var req struct {
-		ReviewerID string `json:"reviewer_id" binding:"required"`
+		ReviewerID  string   `json:"reviewer_id"`
+		ReviewerIDs []string `json:"reviewer_ids"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "Reviewer ID wajib diisi", err.Error())
+		response.BadRequest(c, "Format data penugasan reviewer tidak valid", err.Error())
 		return
 	}
-	if err := h.usecase.AssignReviewer(id, req.ReviewerID); err != nil {
+	targetIDs := req.ReviewerIDs
+	if len(targetIDs) == 0 && req.ReviewerID != "" {
+		targetIDs = []string{req.ReviewerID}
+	}
+	if len(targetIDs) == 0 {
+		response.BadRequest(c, "Minimal satu reviewer wajib dipilih", nil)
+		return
+	}
+
+	if err := h.usecase.AssignReviewers(id, targetIDs); err != nil {
 		response.BadRequest(c, err.Error(), nil)
 		return
 	}
-	response.Success(c, http.StatusOK, "Reviewer GKM berhasil ditetapkan untuk RPS ini", nil)
+	response.Success(c, http.StatusOK, "Tim Reviewer SPMI berhasil ditetapkan untuk RPS ini", nil)
 }
 
 func (h *RpsHandler) ReviewSubmission(c *gin.Context) {
@@ -100,6 +110,58 @@ func (h *RpsHandler) ReviewSubmission(c *gin.Context) {
 	response.Success(c, http.StatusOK, "Review RPS berhasil disimpan", nil)
 }
 
+// PUT /rps/reviews/:reviewId/items (5 Komponen SPMI Checklist)
+func (h *RpsHandler) UpdateReviewItems(c *gin.Context) {
+	reviewID := c.Param("reviewId")
+	var req struct {
+		Items []*model.RpsReviewItem `json:"items" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Format data 5 komponen instrumen review SPMI tidak valid", err.Error())
+		return
+	}
+	if err := h.usecase.UpdateReviewItems(reviewID, req.Items); err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusOK, "Instrumen 5 komponen review RPS berhasil diperbarui", nil)
+}
+
+// POST /rps/reviews/:reviewId/complete
+func (h *RpsHandler) CompleteReview(c *gin.Context) {
+	reviewID := c.Param("reviewId")
+	var req struct {
+		Rekomendasi string `json:"rekomendasi" binding:"required"`
+		Komentar    string `json:"komentar"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Rekomendasi review wajib dipilih (DISETUJUI / PERLU_REVISI)", err.Error())
+		return
+	}
+	if err := h.usecase.CompleteReview(reviewID, req.Rekomendasi, req.Komentar); err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusOK, "Penilaian review RPS berhasil diselesaikan", nil)
+}
+
+// PUT /rps/submissions/:id/improvement-plans
+func (h *RpsHandler) UpdateImprovementPlans(c *gin.Context) {
+	id := c.Param("id")
+	var req struct {
+		Plans []*model.CourseImprovementPlan `json:"plans" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Format data rencana tindak lanjut perbaikan tidak valid", err.Error())
+		return
+	}
+	if err := h.usecase.UpdateImprovementPlans(id, req.Plans); err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusOK, "Status tindak lanjut perbaikan RPS berhasil diperbarui", nil)
+}
+
 func (h *RpsHandler) RatifySubmission(c *gin.Context) {
 	id := c.Param("id")
 	if err := h.usecase.RatifySubmission(id); err != nil {
@@ -112,8 +174,8 @@ func (h *RpsHandler) RatifySubmission(c *gin.Context) {
 func (h *RpsHandler) GetRecap(c *gin.Context) {
 	recap, err := h.usecase.GetRecap()
 	if err != nil {
-		response.InternalServerError(c, "Gagal mengambil rekap RPS: "+err.Error())
+		response.InternalServerError(c, "Gagal mengambil rekapitulasi: "+err.Error())
 		return
 	}
-	response.Success(c, http.StatusOK, "Rekapitulasi kepatuhan RPS", recap)
+	response.Success(c, http.StatusOK, "Rekapitulasi RPS", recap)
 }

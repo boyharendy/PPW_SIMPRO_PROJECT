@@ -68,7 +68,10 @@ type Complaint struct {
 	TanggalPengaduan          string                  `json:"tanggal_pengaduan"`
 	TanggalDiterima           string                  `json:"tanggal_diterima,omitempty"`
 	TanggalSelesai            string                  `json:"tanggal_selesai,omitempty"`
-	RatingKepuasan            int                     `json:"rating_kepuasan,omitempty"`
+	TanggalPenyelesaian       *string                 `json:"tanggal_penyelesaian,omitempty"`
+	AlasanPenutupan           string                  `json:"alasan_penutupan,omitempty"`
+	SolusiTindakLanjut        string                  `json:"solusi_tindak_lanjut,omitempty"`
+	RatingKepuasan            *int                    `json:"rating_kepuasan,omitempty"`
 	KomentarKepuasan          string                  `json:"komentar_kepuasan,omitempty"`
 	Messages                  []*ComplaintMessage     `json:"messages,omitempty"`
 	Dispositions              []*ComplaintDisposition `json:"dispositions,omitempty"`
@@ -93,6 +96,7 @@ type ComplaintMetadata struct {
 }
 
 type PublicComplaintRequest struct {
+	PermitToken    string            `json:"permit_token,omitempty"`
 	Kategori       ComplaintCategory `json:"kategori" binding:"required"`
 	Judul          string            `json:"judul" binding:"required"`
 	IsiAduan       string            `json:"isi_aduan" binding:"required"`

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"simpro-backend/internal/delivery/http/middleware"
 	"simpro-backend/internal/model"
 	"simpro-backend/internal/usecase"
 	"simpro-backend/pkg/response"
@@ -24,6 +25,16 @@ func (h *EvaluationHandler) GetEvaluations(c *gin.Context) {
 		return
 	}
 	response.Success(c, http.StatusOK, "Daftar evaluasi perkuliahan berhasil diambil", evals)
+}
+
+func (h *EvaluationHandler) GetEvaluationByID(c *gin.Context) {
+	id := c.Param("id")
+	eval, err := h.usecase.GetEvaluationByID(id)
+	if err != nil {
+		response.NotFound(c, "Evaluasi perkuliahan tidak ditemukan")
+		return
+	}
+	response.Success(c, http.StatusOK, "Detail evaluasi perkuliahan berhasil diambil", eval)
 }
 
 func (h *EvaluationHandler) GetEvaluationByClass(c *gin.Context) {
@@ -72,6 +83,7 @@ func (h *EvaluationHandler) GetImprovementPlansByCourse(c *gin.Context) {
 func (h *EvaluationHandler) UpdateImprovementPlan(c *gin.Context) {
 	planID := c.Param("planId")
 	var req struct {
+		Status           string `json:"status"`
 		StatusPenerapan  string `json:"status_penerapan"`
 		AppliedInRpsID   string `json:"applied_in_rps_id"`
 		CatatanPenerapan string `json:"catatan_penerapan"`
@@ -80,7 +92,11 @@ func (h *EvaluationHandler) UpdateImprovementPlan(c *gin.Context) {
 		response.BadRequest(c, "Format update rencana perbaikan tidak valid", err.Error())
 		return
 	}
-	if err := h.usecase.UpdateImprovementPlan(planID, req.StatusPenerapan, req.AppliedInRpsID, req.CatatanPenerapan); err != nil {
+	status := req.Status
+	if status == "" {
+		status = req.StatusPenerapan
+	}
+	if err := h.usecase.UpdateImprovementPlan(planID, status, req.AppliedInRpsID, req.CatatanPenerapan); err != nil {
 		response.BadRequest(c, err.Error(), nil)
 		return
 	}
@@ -94,4 +110,39 @@ func (h *EvaluationHandler) GetRecap(c *gin.Context) {
 		return
 	}
 	response.Success(c, http.StatusOK, "Rekapitulasi post evaluasi perkuliahan", recap)
+}
+
+// PRD Milestone 3 Endpoints:
+
+// GET /evaluations/:id/student-feedback (Umpan Balik EDOM Mahasiswa)
+func (h *EvaluationHandler) GetStudentFeedback(c *gin.Context) {
+	id := c.Param("id")
+	fb, err := h.usecase.GetStudentFeedback(id)
+	if err != nil {
+		response.NotFound(c, "Umpan balik mahasiswa tidak ditemukan: "+err.Error())
+		return
+	}
+	response.Success(c, http.StatusOK, "Umpan balik mahasiswa (EDOM) berhasil diambil", fb)
+}
+
+// POST /evaluations/:id/review (Tinjauan Tim GKM)
+func (h *EvaluationHandler) ReviewEvaluation(c *gin.Context) {
+	id := c.Param("id")
+	reviewerID := c.GetString(middleware.CtxUserID)
+
+	var req struct {
+		CatatanGKM       string                         `json:"catatan_gkm" binding:"required"`
+		Rekomendasi      string                         `json:"rekomendasi"`
+		ImprovementPlans []*model.CourseImprovementPlan `json:"improvement_plans"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Format data tinjauan GKM tidak valid", err.Error())
+		return
+	}
+
+	if err := h.usecase.ReviewEvaluation(id, reviewerID, req.CatatanGKM, req.Rekomendasi, req.ImprovementPlans); err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusOK, "Tinjauan evaluasi perkuliahan oleh tim GKM berhasil disimpan", nil)
 }

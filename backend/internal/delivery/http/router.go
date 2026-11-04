@@ -21,6 +21,7 @@ type RouterParams struct {
 	RpsHandler         *handler.RpsHandler
 	EvaluationHandler  *handler.EvaluationHandler
 	DashboardHandler   *handler.DashboardHandler
+	AttachmentHandler  *handler.AttachmentHandler
 }
 
 func SetupRouter(params RouterParams) *gin.Engine {
@@ -41,12 +42,32 @@ func SetupRouter(params RouterParams) *gin.Engine {
 
 		// Public Routes (No Auth Required)
 		if params.ComplaintHandler != nil {
+			// Format URL lama (/public/complaints)
 			pubComplaints := api.Group("/public/complaints")
 			{
 				pubComplaints.POST("", params.ComplaintHandler.CreatePublicComplaint)
 				pubComplaints.GET("/:ticket", params.ComplaintHandler.GetPublicComplaint)
 				pubComplaints.POST("/:ticket/messages", params.ComplaintHandler.AddPublicMessage)
 				pubComplaints.POST("/:ticket/rating", params.ComplaintHandler.SubmitPublicRating)
+			}
+
+			// Format URL PRD (/public/aduan)
+			pubAduan := api.Group("/public/aduan")
+			{
+				pubAduan.POST("", params.ComplaintHandler.CreatePublicComplaint)
+				pubAduan.GET("/:ticket", params.ComplaintHandler.GetPublicComplaint)
+				pubAduan.POST("/track", params.ComplaintHandler.GetPublicComplaint)
+				pubAduan.POST("/track/messages", params.ComplaintHandler.AddPublicMessage)
+				pubAduan.POST("/track/rating", params.ComplaintHandler.SubmitPublicRating)
+			}
+		}
+
+		// Public Attachments / Sanitized Upload
+		if params.AttachmentHandler != nil {
+			attachments := api.Group("/attachments")
+			{
+				attachments.POST("", params.AttachmentHandler.Upload)
+				attachments.GET("/:id/url", params.AttachmentHandler.GetURL)
 			}
 		}
 
@@ -118,17 +139,30 @@ func SetupRouter(params RouterParams) *gin.Engine {
 
 		// Modul 13: Layanan Aduan (Protected)
 		if params.ComplaintHandler != nil {
+			// Helper registration for both /complaints and /aduan paths
+			registerComplaintRoutes := func(grp *gin.RouterGroup) {
+				grp.POST("/permit", params.ComplaintHandler.IssuePermit)
+				grp.GET("", params.ComplaintHandler.GetComplaints)
+				grp.GET("/recap", params.ComplaintHandler.GetRecap)
+				grp.GET("/escalations", params.ComplaintHandler.GetEscalations)
+				grp.GET("/my-dispositions", params.ComplaintHandler.GetMyDispositions)
+				grp.GET("/:id", params.ComplaintHandler.GetComplaintByID)
+				grp.PATCH("/:id/status", params.ComplaintHandler.UpdateStatus)
+				grp.POST("/:id/verify", params.ComplaintHandler.Verify)
+				grp.POST("/:id/resolve", params.ComplaintHandler.Resolve)
+				grp.POST("/:id/close", params.ComplaintHandler.Close)
+				grp.POST("/:id/messages", params.ComplaintHandler.AddInternalMessage)
+				grp.POST("/:id/dispositions", params.ComplaintHandler.AddDisposition)
+				grp.POST("/:id/forward-satgas", params.ComplaintHandler.ForwardToSatgas)
+			}
+
 			complaints := api.Group("/complaints")
 			complaints.Use(middleware.AuthMiddleware(params.Config.JWTSecret))
-			{
-				complaints.GET("", params.ComplaintHandler.GetComplaints)
-				complaints.GET("/recap", params.ComplaintHandler.GetRecap)
-				complaints.GET("/:id", params.ComplaintHandler.GetComplaintByID)
-				complaints.PATCH("/:id/status", params.ComplaintHandler.UpdateStatus)
-				complaints.POST("/:id/messages", params.ComplaintHandler.AddInternalMessage)
-				complaints.POST("/:id/dispositions", params.ComplaintHandler.AddDisposition)
-				complaints.POST("/:id/forward-satgas", params.ComplaintHandler.ForwardToSatgas)
-			}
+			registerComplaintRoutes(complaints)
+
+			aduan := api.Group("/aduan")
+			aduan.Use(middleware.AuthMiddleware(params.Config.JWTSecret))
+			registerComplaintRoutes(aduan)
 		}
 
 		// Modul 8: Publikasi Ilmiah (Protected)
@@ -203,7 +237,11 @@ func SetupRouter(params RouterParams) *gin.Engine {
 				rps.GET("/:id", params.RpsHandler.GetSubmissionByID)
 				rps.POST("/:id/submit", params.RpsHandler.SubmitForReview)
 				rps.POST("/:id/assign-reviewer", params.RpsHandler.AssignReviewer)
+				rps.POST("/submissions/:id/assign-reviewers", params.RpsHandler.AssignReviewer)
 				rps.POST("/:id/review", params.RpsHandler.ReviewSubmission)
+				rps.PUT("/reviews/:reviewId/items", params.RpsHandler.UpdateReviewItems)
+				rps.POST("/reviews/:reviewId/complete", params.RpsHandler.CompleteReview)
+				rps.PUT("/submissions/:id/improvement-plans", params.RpsHandler.UpdateImprovementPlans)
 				rps.POST("/:id/ratify", params.RpsHandler.RatifySubmission)
 			}
 		}
@@ -216,6 +254,9 @@ func SetupRouter(params RouterParams) *gin.Engine {
 				evals.GET("", params.EvaluationHandler.GetEvaluations)
 				evals.POST("", params.EvaluationHandler.SaveEvaluation)
 				evals.GET("/recap", params.EvaluationHandler.GetRecap)
+				evals.GET("/:id", params.EvaluationHandler.GetEvaluationByID)
+				evals.GET("/:id/student-feedback", params.EvaluationHandler.GetStudentFeedback)
+				evals.POST("/:id/review", params.EvaluationHandler.ReviewEvaluation)
 				evals.GET("/class/:classId", params.EvaluationHandler.GetEvaluationByClass)
 				evals.POST("/class/:classId/submit", params.EvaluationHandler.SubmitEvaluation)
 				evals.GET("/course/:courseId/improvement-plans", params.EvaluationHandler.GetImprovementPlansByCourse)
