@@ -1,13 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { animate, createScope, type Scope } from 'animejs';
+import React, { useState } from 'react';
 import { X } from 'lucide-react';
 
 /**
  * Koordinat atribut SVG untuk state EXPANDED (w-64 / 256px) dan COLLAPSED (w-20 / 80px).
  * Setiap pasangan expanded & collapsed memiliki jumlah titik (<polygon points>)
- * dan urutan instruksi (<path d>) yang identik agar interpolasi morphing Anime.js presisi.
+ * dan urutan instruksi (<path d>) yang identik agar interpolasi morphing presisi.
  */
 export const SIMPRO_SVG_SHAPES = {
   // 1. Area Latar Belakang Biru pada Header Sidebar (<path>) — menyatu mulus dengan bg-blue-600 (#2563EB)
@@ -97,136 +96,18 @@ export default function AnimatedSimproLogo({
   onToggleCollapse,
   onMobileClose,
 }: AnimatedSimproLogoProps) {
-  // Manajemen State boolean isCollapsed menggunakan useState
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(collapsed ?? false);
-
-  // Ref elemen root untuk createScope Anime.js
-  const rootRef = useRef<HTMLDivElement>(null);
-  const scopeRef = useRef<Scope | null>(null);
-  const isFirstRender = useRef<boolean>(true);
-
-  // Sinkronisasi apabila prop `collapsed` berubah dari luar (mis. klik kategori saat sidebar tertutup)
-  useEffect(() => {
-    if (typeof collapsed === 'boolean' && collapsed !== isCollapsed) {
-      setIsCollapsed(collapsed);
-    }
-  }, [collapsed, isCollapsed]);
-
-  // Trigger Animasi SVG Morphing dengan createScope setiap kali `isCollapsed` berubah
-  useEffect(() => {
-    scopeRef.current = createScope({ root: rootRef }).add(() => {
-      if (isFirstRender.current) {
-        isFirstRender.current = false;
-        return;
-      }
-
-      const morphConfig = {
-        duration: 550,
-        ease: 'outExpo',
-      };
-
-      // 1. Morphing Path Latar Biru
-      animate('.simpro-bg-box', {
-        d: isCollapsed
-          ? [SIMPRO_SVG_SHAPES.bgBox.expanded, SIMPRO_SVG_SHAPES.bgBox.collapsed]
-          : [SIMPRO_SVG_SHAPES.bgBox.collapsed, SIMPRO_SVG_SHAPES.bgBox.expanded],
-        ...morphConfig,
-      });
-
-      // 2. Morphing Polygon Sayap Kiri & Kanan Topi Toga (atribut `points`)
-      animate('.simpro-toga-left', {
-        points: isCollapsed
-          ? [SIMPRO_SVG_SHAPES.togaLeftWing.expanded, SIMPRO_SVG_SHAPES.togaLeftWing.collapsed]
-          : [SIMPRO_SVG_SHAPES.togaLeftWing.collapsed, SIMPRO_SVG_SHAPES.togaLeftWing.expanded],
-        ...morphConfig,
-      });
-
-      animate('.simpro-toga-right', {
-        points: isCollapsed
-          ? [SIMPRO_SVG_SHAPES.togaRightWing.expanded, SIMPRO_SVG_SHAPES.togaRightWing.collapsed]
-          : [SIMPRO_SVG_SHAPES.togaRightWing.collapsed, SIMPRO_SVG_SHAPES.togaRightWing.expanded],
-        ...morphConfig,
-      });
-
-      // 3. Morphing Polygon Tali / Kuncir Toga (atribut `points`)
-      animate('.simpro-toga-tassel', {
-        points: isCollapsed
-          ? [SIMPRO_SVG_SHAPES.togaTassel.expanded, SIMPRO_SVG_SHAPES.togaTassel.collapsed]
-          : [SIMPRO_SVG_SHAPES.togaTassel.collapsed, SIMPRO_SVG_SHAPES.togaTassel.expanded],
-        ...morphConfig,
-      });
-
-      // 4. Morphing Path Lembaran Buku, Awan, dan Sirkuit (atribut `d`)
-      animate('.simpro-book-pages', {
-        d: isCollapsed
-          ? [SIMPRO_SVG_SHAPES.bookPages.expanded, SIMPRO_SVG_SHAPES.bookPages.collapsed]
-          : [SIMPRO_SVG_SHAPES.bookPages.collapsed, SIMPRO_SVG_SHAPES.bookPages.expanded],
-        ...morphConfig,
-      });
-
-      animate('.simpro-cloud', {
-        d: isCollapsed
-          ? [SIMPRO_SVG_SHAPES.cloudOutline.expanded, SIMPRO_SVG_SHAPES.cloudOutline.collapsed]
-          : [SIMPRO_SVG_SHAPES.cloudOutline.collapsed, SIMPRO_SVG_SHAPES.cloudOutline.expanded],
-        strokeWidth: isCollapsed ? [4.5, 2.2] : [2.2, 4.5],
-        ...morphConfig,
-      });
-
-      animate('.simpro-circuit', {
-        d: isCollapsed
-          ? [SIMPRO_SVG_SHAPES.circuitLines.expanded, SIMPRO_SVG_SHAPES.circuitLines.collapsed]
-          : [SIMPRO_SVG_SHAPES.circuitLines.collapsed, SIMPRO_SVG_SHAPES.circuitLines.expanded],
-        strokeWidth: isCollapsed ? [2.8, 1.4] : [1.4, 2.8],
-        ...morphConfig,
-      });
-
-      // 5. Morphing Path Perisai "S" dan "i" (atribut `d`)
-      animate('.simpro-shield-s', {
-        d: isCollapsed
-          ? [SIMPRO_SVG_SHAPES.shieldS.expanded, SIMPRO_SVG_SHAPES.shieldS.collapsed]
-          : [SIMPRO_SVG_SHAPES.shieldS.collapsed, SIMPRO_SVG_SHAPES.shieldS.expanded],
-        ...morphConfig,
-      });
-
-      animate('.simpro-shield-i', {
-        d: isCollapsed
-          ? [SIMPRO_SVG_SHAPES.shieldI.expanded, SIMPRO_SVG_SHAPES.shieldI.collapsed]
-          : [SIMPRO_SVG_SHAPES.shieldI.collapsed, SIMPRO_SVG_SHAPES.shieldI.expanded],
-        ...morphConfig,
-      });
-
-      // 6. Morphing Segitiga Kecil pada Tombol Toggle (atribut `points`)
-      animate('.simpro-toggle-triangle', {
-        points: isCollapsed
-          ? [SIMPRO_SVG_SHAPES.toggleTriangle.expanded, SIMPRO_SVG_SHAPES.toggleTriangle.collapsed]
-          : [SIMPRO_SVG_SHAPES.toggleTriangle.collapsed, SIMPRO_SVG_SHAPES.toggleTriangle.expanded],
-        duration: 350,
-        ease: 'outBack',
-      });
-
-      // 7. Fade out / in teks judul SIMPRO
-      animate('.simpro-brand-text', {
-        opacity: isCollapsed ? [1, 0] : [0, 1],
-        duration: 280,
-        ease: 'outQuad',
-      });
-    });
-
-    // Cleanup scope saat unmount / sebelum re-run untuk mencegah memory leak
-    return () => {
-      scopeRef.current?.revert();
-    };
-  }, [isCollapsed]);
+  // Support controlled (dari Sidebar parent) maupun uncontrolled
+  const [internalCollapsed, setInternalCollapsed] = useState<boolean>(false);
+  const isCollapsed = typeof collapsed === 'boolean' ? collapsed : internalCollapsed;
 
   const handleToggleClick = () => {
     const nextState = !isCollapsed;
-    setIsCollapsed(nextState);
+    setInternalCollapsed(nextState);
     onToggleCollapse?.(nextState);
   };
 
   return (
     <div
-      ref={rootRef}
       className={`relative w-full flex-shrink-0 select-none transition-[height] duration-500 ease-out ${
         isCollapsed ? 'h-20' : 'h-48'
       }`}
@@ -253,7 +134,7 @@ export default function AnimatedSimproLogo({
       >
         <svg width="10" height="10" viewBox="0 0 10 10" className="fill-current">
           <polygon
-            className="simpro-toggle-triangle"
+            className="simpro-toggle-triangle transition-all duration-300 ease-out"
             points={
               isCollapsed
                 ? SIMPRO_SVG_SHAPES.toggleTriangle.collapsed
@@ -281,16 +162,16 @@ export default function AnimatedSimproLogo({
 
           {/* 1. Latar Belakang Biru Menyatu Mulus (#2563EB / bg-blue-600) */}
           <path
-            className="simpro-bg-box"
+            className="simpro-bg-box transition-all duration-500 ease-out"
             d={isCollapsed ? SIMPRO_SVG_SHAPES.bgBox.collapsed : SIMPRO_SVG_SHAPES.bgBox.expanded}
             fill="#2563EB"
           />
 
           {/* Grup Ikon Topi Toga SIMPRO */}
-          <g filter="url(#simproDropShadow)">
+          <g filter="url(#simproDropShadow)" className="transition-all duration-500 ease-out">
             {/* 2. Sayap Kiri Atap Topi Toga (<polygon>) */}
             <polygon
-              className="simpro-toga-left"
+              className="simpro-toga-left transition-all duration-500 ease-out"
               points={
                 isCollapsed
                   ? SIMPRO_SVG_SHAPES.togaLeftWing.collapsed
@@ -301,7 +182,7 @@ export default function AnimatedSimproLogo({
 
             {/* 3. Sayap Kanan Atap Topi Toga (<polygon>) */}
             <polygon
-              className="simpro-toga-right"
+              className="simpro-toga-right transition-all duration-500 ease-out"
               points={
                 isCollapsed
                   ? SIMPRO_SVG_SHAPES.togaRightWing.collapsed
@@ -312,7 +193,7 @@ export default function AnimatedSimproLogo({
 
             {/* 4. Tali / Kuncir Toga (<polygon>) */}
             <polygon
-              className="simpro-toga-tassel"
+              className="simpro-toga-tassel transition-all duration-500 ease-out"
               points={
                 isCollapsed
                   ? SIMPRO_SVG_SHAPES.togaTassel.collapsed
@@ -323,14 +204,14 @@ export default function AnimatedSimproLogo({
 
             {/* 5. Lembaran Buku (<path>) */}
             <path
-              className="simpro-book-pages"
+              className="simpro-book-pages transition-all duration-500 ease-out"
               d={isCollapsed ? SIMPRO_SVG_SHAPES.bookPages.collapsed : SIMPRO_SVG_SHAPES.bookPages.expanded}
               fill="#BAE6FD"
             />
 
             {/* 6. Awan Digital (<path>) */}
             <path
-              className="simpro-cloud"
+              className="simpro-cloud transition-all duration-500 ease-out"
               d={
                 isCollapsed
                   ? SIMPRO_SVG_SHAPES.cloudOutline.collapsed
@@ -344,7 +225,7 @@ export default function AnimatedSimproLogo({
 
             {/* 7. Jalur Sirkuit (<path>) */}
             <path
-              className="simpro-circuit"
+              className="simpro-circuit transition-all duration-500 ease-out"
               d={
                 isCollapsed
                   ? SIMPRO_SVG_SHAPES.circuitLines.collapsed
@@ -358,21 +239,24 @@ export default function AnimatedSimproLogo({
 
             {/* 8. Perisai Huruf "S" (<path>) */}
             <path
-              className="simpro-shield-s"
+              className="simpro-shield-s transition-all duration-500 ease-out"
               d={isCollapsed ? SIMPRO_SVG_SHAPES.shieldS.collapsed : SIMPRO_SVG_SHAPES.shieldS.expanded}
               fill="#7CC4FA"
             />
 
             {/* 9. Perisai Huruf "i" (<path>) */}
             <path
-              className="simpro-shield-i"
+              className="simpro-shield-i transition-all duration-500 ease-out"
               d={isCollapsed ? SIMPRO_SVG_SHAPES.shieldI.collapsed : SIMPRO_SVG_SHAPES.shieldI.expanded}
               fill="#3898EC"
             />
           </g>
 
           {/* 10. Teks Judul & Subjudul SIMPRO (Hanya terlihat saat Expanded) */}
-          <g className="simpro-brand-text" style={{ opacity: isCollapsed ? 0 : 1 }}>
+          <g
+            className="simpro-brand-text transition-opacity duration-300 ease-out"
+            style={{ opacity: isCollapsed ? 0 : 1 }}
+          >
             <text
               x="128"
               y="140"
