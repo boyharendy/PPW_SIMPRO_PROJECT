@@ -101,7 +101,7 @@ func (h *SurveyHandler) GetInvitations(c *gin.Context) {
 
 func (h *SurveyHandler) SubmitManualResponse(c *gin.Context) {
 	userID := c.GetString(middleware.CtxUserID)
-	var req model.ManualResponseSubmission
+	var req model.PartnerResponseSubmission
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "Format input manual survei tidak valid", err.Error())
 		return
@@ -150,4 +150,106 @@ func (h *SurveyHandler) GetRecap(c *gin.Context) {
 		return
 	}
 	response.Success(c, http.StatusOK, "Rekapitulasi kepuasan mitra berhasil diambil", recap)
+}
+
+// ActivateTemplate handles POST /api/v1/surveys/templates/:id/activate
+func (h *SurveyHandler) ActivateTemplate(c *gin.Context) {
+	id := c.Param("id")
+	if err := h.usecase.ActivateTemplate(id); err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusOK, "Template instrumen survei berhasil diaktifkan", nil)
+}
+
+// DuplicateTemplate handles POST /api/v1/surveys/templates/:id/duplicate
+func (h *SurveyHandler) DuplicateTemplate(c *gin.Context) {
+	id := c.Param("id")
+	userID := c.GetString(middleware.CtxUserID)
+	dup, err := h.usecase.DuplicateTemplate(id, userID)
+	if err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusCreated, "Template instrumen survei berhasil diduplikasi sebagai draf baru", dup)
+}
+
+// ArchiveTemplate handles POST /api/v1/surveys/templates/:id/archive
+func (h *SurveyHandler) ArchiveTemplate(c *gin.Context) {
+	id := c.Param("id")
+	if err := h.usecase.ArchiveTemplate(id); err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusOK, "Template instrumen survei berhasil diarsipkan", nil)
+}
+
+// SendInvitation handles POST /api/v1/surveys/invitations/:id/send
+func (h *SurveyHandler) SendInvitation(c *gin.Context) {
+	id := c.Param("id")
+	if err := h.usecase.SendInvitation(id); err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusOK, "Undangan survei mitra berhasil dikirim", nil)
+}
+
+// RemindInvitation handles POST /api/v1/surveys/invitations/:id/remind
+func (h *SurveyHandler) RemindInvitation(c *gin.Context) {
+	id := c.Param("id")
+	if err := h.usecase.RemindInvitation(id); err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusOK, "Pengingat kuesioner mitra berhasil dikirimkan", nil)
+}
+
+// ResendInvitation handles POST /api/v1/surveys/invitations/:id/resend
+func (h *SurveyHandler) ResendInvitation(c *gin.Context) {
+	id := c.Param("id")
+	if err := h.usecase.ResendInvitation(id); err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusOK, "Tautan undangan baru berhasil dibuat dan dikirimkan ulang ke mitra", nil)
+}
+
+// CancelInvitation handles POST /api/v1/surveys/invitations/:id/cancel
+func (h *SurveyHandler) CancelInvitation(c *gin.Context) {
+	id := c.Param("id")
+	if err := h.usecase.CancelInvitation(id); err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusOK, "Undangan survei mitra berhasil dibatalkan", nil)
+}
+
+// GetPlacements handles GET /api/v1/surveys/placements
+func (h *SurveyHandler) GetPlacements(c *gin.Context) {
+	program := c.Query("program")
+	academicPeriodID := c.Query("academic_period_id")
+	placements, err := h.usecase.GetPlacements(program, academicPeriodID)
+	if err != nil {
+		response.InternalServerError(c, "Gagal mengambil data penempatan mahasiswa: "+err.Error())
+		return
+	}
+	response.Success(c, http.StatusOK, "Daftar penempatan mahasiswa mitra berhasil diambil", placements)
+}
+
+// VoidResponse handles POST /api/v1/surveys/responses/:id/void
+func (h *SurveyHandler) VoidResponse(c *gin.Context) {
+	id := c.Param("id")
+	userID := c.GetString(middleware.CtxUserID)
+	var req struct {
+		Alasan string `json:"alasan" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Alasan pembatalan (void) respons wajib diisi", err.Error())
+		return
+	}
+	if err := h.usecase.VoidResponse(id, userID, req.Alasan); err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusOK, "Respons survei mitra berhasil dibatalkan (void)", nil)
 }

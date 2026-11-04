@@ -122,24 +122,38 @@ func SetupRouter(params RouterParams) *gin.Engine {
 
 		// Modul 7: Kepuasan Mitra (Protected)
 		if params.SurveyHandler != nil {
+			registerSurveyRoutes := func(grp *gin.RouterGroup) {
+				grp.GET("", params.SurveyHandler.GetSurveys)
+				grp.POST("", params.SurveyHandler.CreateSurvey)
+				grp.POST("/templates/:id/activate", params.SurveyHandler.ActivateTemplate)
+				grp.POST("/templates/:id/duplicate", params.SurveyHandler.DuplicateTemplate)
+				grp.POST("/templates/:id/archive", params.SurveyHandler.ArchiveTemplate)
+				grp.GET("/invitations", params.SurveyHandler.GetInvitations)
+				grp.POST("/invitations", params.SurveyHandler.CreateInvitation)
+				grp.POST("/invitations/:id/send", params.SurveyHandler.SendInvitation)
+				grp.POST("/invitations/:id/remind", params.SurveyHandler.RemindInvitation)
+				grp.POST("/invitations/:id/resend", params.SurveyHandler.ResendInvitation)
+				grp.POST("/invitations/:id/cancel", params.SurveyHandler.CancelInvitation)
+				grp.GET("/placements", params.SurveyHandler.GetPlacements)
+				grp.POST("/responses/:id/void", params.SurveyHandler.VoidResponse)
+				grp.POST("/manual-responses", params.SurveyHandler.SubmitManualResponse)
+				grp.GET("/:id", params.SurveyHandler.GetSurveyByID)
+				grp.PUT("/:id", params.SurveyHandler.UpdateSurvey)
+				grp.DELETE("/:id", params.SurveyHandler.DeleteSurvey)
+				grp.GET("/:id/recap", params.SurveyHandler.GetRecap)
+			}
+
 			surveys := api.Group("/surveys")
 			surveys.Use(middleware.AuthMiddleware(params.Config.JWTSecret))
-			{
-				surveys.GET("", params.SurveyHandler.GetSurveys)
-				surveys.POST("", params.SurveyHandler.CreateSurvey)
-				surveys.GET("/invitations", params.SurveyHandler.GetInvitations)
-				surveys.POST("/invitations", params.SurveyHandler.CreateInvitation)
-				surveys.POST("/manual-responses", params.SurveyHandler.SubmitManualResponse)
-				surveys.GET("/:id", params.SurveyHandler.GetSurveyByID)
-				surveys.PUT("/:id", params.SurveyHandler.UpdateSurvey)
-				surveys.DELETE("/:id", params.SurveyHandler.DeleteSurvey)
-				surveys.GET("/:id/recap", params.SurveyHandler.GetRecap)
-			}
+			registerSurveyRoutes(surveys)
+
+			partnerSurveys := api.Group("/partner-surveys")
+			partnerSurveys.Use(middleware.AuthMiddleware(params.Config.JWTSecret))
+			registerSurveyRoutes(partnerSurveys)
 		}
 
 		// Modul 13: Layanan Aduan (Protected)
 		if params.ComplaintHandler != nil {
-			// Helper registration for both /complaints and /aduan paths
 			registerComplaintRoutes := func(grp *gin.RouterGroup) {
 				grp.POST("/permit", params.ComplaintHandler.IssuePermit)
 				grp.GET("", params.ComplaintHandler.GetComplaints)
@@ -173,13 +187,18 @@ func SetupRouter(params RouterParams) *gin.Engine {
 				pubs.GET("", params.PublicationHandler.GetPublications)
 				pubs.POST("", params.PublicationHandler.CreatePublication)
 				pubs.GET("/recap", params.PublicationHandler.GetRecap)
+				pubs.GET("/verification-queue", params.PublicationHandler.GetVerificationQueue)
 				pubs.GET("/:id", params.PublicationHandler.GetPublicationByID)
 				pubs.PUT("/:id", params.PublicationHandler.UpdatePublication)
 				pubs.DELETE("/:id", params.PublicationHandler.DeletePublication)
+				pubs.PUT("/:id/authors", params.PublicationHandler.UpdateAuthors)
+				pubs.PUT("/:id/verifier", params.PublicationHandler.AssignVerifier)
 				pubs.POST("/:id/submit", params.PublicationHandler.SubmitPublication)
 				pubs.POST("/:id/stages", params.PublicationHandler.AddStageLog)
+				pubs.POST("/stages/:stageId/verify", params.PublicationHandler.VerifyStage)
 				pubs.POST("/:id/verify", params.PublicationHandler.VerifyPublication)
 				pubs.POST("/:id/reviews", params.PublicationHandler.AddReview)
+				pubs.POST("/reviews/:reviewId/complete", params.PublicationHandler.CompleteReview)
 			}
 		}
 

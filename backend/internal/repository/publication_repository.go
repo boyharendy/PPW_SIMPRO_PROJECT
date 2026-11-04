@@ -21,6 +21,11 @@ type PublicationRepository interface {
 	UpdateStatus(id string, status model.PublicationStatus) error
 	AddStageLog(log *model.PublicationStageLog) error
 	AddReview(review *model.PublicationReview) error
+	UpdateAuthors(id string, authors []*model.PublicationAuthor) error
+	GetVerificationQueue(verifierID string) ([]*model.Publication, error)
+	AssignVerifier(id string, verifierID string) error
+	VerifyStage(stageID string, verifierID string, status string, catatan string) error
+	CompleteReview(reviewID string, rekomendasi string, catatan string) error
 	GetRecap() (*model.PublicationRecap, error)
 }
 
@@ -280,6 +285,70 @@ func (r *supabasePublicationRepository) AddReview(review *model.PublicationRevie
 	return r.client.Insert("publication_reviews", payload, nil)
 }
 
+func (r *supabasePublicationRepository) UpdateAuthors(id string, authors []*model.PublicationAuthor) error {
+	_ = r.client.Delete("publication_authors", map[string]string{
+		"publication_id": fmt.Sprintf("eq.%s", id),
+	})
+	for _, a := range authors {
+		if a.ID == "" {
+			a.ID = uuid.New().String()
+		}
+		a.PublicationID = id
+		if err := r.client.Insert("publication_authors", a, nil); err != nil {
+			return fmt.Errorf("gagal insert publication author: %w", err)
+		}
+	}
+	return nil
+}
+
+func (r *supabasePublicationRepository) GetVerificationQueue(verifierID string) ([]*model.Publication, error) {
+	params := map[string]string{
+		"status": fmt.Sprintf("eq.%s", model.PubStatusMenungguVerifikasi),
+		"order":  "created_at.desc",
+	}
+	if verifierID != "" {
+		params["verifikator_id"] = fmt.Sprintf("eq.%s", verifierID)
+	}
+	var list []*model.Publication
+	err := r.client.Select("publications", params, &list)
+	if err != nil {
+		return nil, fmt.Errorf("gagal query antrean verifikasi: %w", err)
+	}
+	return list, nil
+}
+
+func (r *supabasePublicationRepository) AssignVerifier(id string, verifierID string) error {
+	return r.client.Update("publications", map[string]string{
+		"id": fmt.Sprintf("eq.%s", id),
+	}, map[string]interface{}{
+		"verifikator_id": verifierID,
+	}, nil)
+}
+
+func (r *supabasePublicationRepository) VerifyStage(stageID string, verifierID string, status string, catatan string) error {
+	now := time.Now()
+	payload := map[string]interface{}{
+		"status_verifikasi":  status,
+		"diverifikasi_oleh":  verifierID,
+		"diverifikasi_at":    now.Format(time.RFC3339),
+		"catatan_verifikasi": catatan,
+	}
+	return r.client.Update("publication_stage_logs", map[string]string{
+		"id": fmt.Sprintf("eq.%s", stageID),
+	}, payload, nil)
+}
+
+func (r *supabasePublicationRepository) CompleteReview(reviewID string, rekomendasi string, catatan string) error {
+	payload := map[string]interface{}{
+		"status":      "SELESAI_REVIEW",
+		"rekomendasi": rekomendasi,
+		"catatan":     catatan,
+	}
+	return r.client.Update("publication_reviews", map[string]string{
+		"id": fmt.Sprintf("eq.%s", reviewID),
+	}, payload, nil)
+}
+
 func (r *supabasePublicationRepository) GetRecap() (*model.PublicationRecap, error) {
 	var list []*model.Publication
 	_ = r.client.Select("publications", map[string]string{"select": "id,status,tipe,peringkat,tahun_terbit,is_forwarded_to_kinerja"}, &list)
@@ -494,6 +563,87 @@ func (r *memoryPublicationRepository) AddReview(review *model.PublicationReview)
 	review.CreatedAt = time.Now()
 	r.reviews[review.PublicationID] = append(r.reviews[review.PublicationID], review)
 	return nil
+}
+
+func (r *memoryPublicationRepository) UpdateAuthors(id string, authors []*model.PublicationAuthor) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	pub, ok := r.publications[id]
+	if !ok {
+		return errors.New("publikasi tidak ditemukan")
+	}
+	r.authors[id] = authors
+	pub.Authors = authors
+	pub.UpdatedAt = time.Now()
+	return nil
+}
+
+func (r *memoryPublicationRepository) GetVerificationQueue(verifierID string) ([]*model.Publication, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var result []*model.Publication
+	for _, p := range r.publications {
+		if p.Status == model.PubStatusMenungguVerifikasi || p.StatusVerifikasi == "MENUNGGU" {
+			if verifierID == "" || p.VerifikatorID == verifierID {
+				result = append(result, p)
+			}
+		}
+	}
+	return result, nil
+}
+
+func (r *memoryPublicationRepository) AssignVerifier(id string, verifierID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	pub, ok := r.publications[id]
+	if !ok {
+		return errors.New("publikasi tidak ditemukan")
+	}
+	pub.VerifikatorID = verifierID
+	pub.UpdatedAt = time.Now()
+	return nil
+}
+
+func (r *memoryPublicationRepository) VerifyStage(stageID string, verifierID string, status string, catatan string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	now := time.Now()
+	for _, logs := range r.stageLogs {
+		for _, l := range logs {
+			if l.ID == stageID {
+				l.StatusVerifikasi = status
+				l.Catatan = catatan
+				if pub, ok := r.publications[l.PublicationID]; ok {
+					if status == "TERVERIFIKASI" {
+						pub.Status = l.Tahap
+						pub.StatusVerifikasi = "TERVERIFIKASI"
+						pub.DiverifikasiAt = &now
+					} else if status == "DITOLAK" {
+						pub.StatusVerifikasi = "DITOLAK"
+					}
+					pub.UpdatedAt = now
+				}
+				return nil
+			}
+		}
+	}
+	return errors.New("log tahapan publikasi tidak ditemukan")
+}
+
+func (r *memoryPublicationRepository) CompleteReview(reviewID string, rekomendasi string, catatan string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, revs := range r.reviews {
+		for _, rev := range revs {
+			if rev.ID == reviewID {
+				rev.Status = "SELESAI_REVIEW"
+				rev.Rekomendasi = rekomendasi
+				rev.Catatan = catatan
+				return nil
+			}
+		}
+	}
+	return errors.New("review publikasi tidak ditemukan")
 }
 
 func (r *memoryPublicationRepository) GetRecap() (*model.PublicationRecap, error) {

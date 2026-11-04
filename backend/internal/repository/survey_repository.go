@@ -22,6 +22,12 @@ type SurveyRepository interface {
 	CreateInvitation(inv *model.PartnerInvitation) (*model.PartnerInvitation, error)
 	SubmitResponse(sub *model.PartnerResponseSubmission) error
 	SubmitManualResponse(sub *model.PartnerResponseSubmission) error
+	ActivateTemplate(id string) error
+	DuplicateTemplate(id string, createdBy string) (*model.PartnerSurvey, error)
+	ArchiveTemplate(id string) error
+	UpdateInvitationStatus(id string, status string) error
+	FindPlacements(program, academicPeriodID string) ([]*model.StudentPlacement, error)
+	VoidResponse(id string, voidedBy, alasan string) error
 	GetRecap(surveyID string) (*model.SurveyRecap, error)
 }
 
@@ -291,6 +297,95 @@ func (r *supabaseSurveyRepository) SubmitManualResponse(sub *model.PartnerRespon
 	return nil
 }
 
+func (r *supabaseSurveyRepository) ActivateTemplate(id string) error {
+	return r.client.Update("partner_surveys", map[string]string{
+		"id": fmt.Sprintf("eq.%s", id),
+	}, map[string]interface{}{
+		"status":    "AKTIF",
+		"is_active": true,
+	}, nil)
+}
+
+func (r *supabaseSurveyRepository) DuplicateTemplate(id string, createdBy string) (*model.PartnerSurvey, error) {
+	orig, err := r.FindSurveyByID(id)
+	if err != nil {
+		return nil, err
+	}
+	newID := uuid.New().String()
+	newSurvey := &model.PartnerSurvey{
+		ID:            newID,
+		Judul:         orig.Judul + " (Salinan)",
+		Nama:          orig.Judul + " (Salinan)",
+		Program:       orig.Program,
+		TahunAkademik: orig.TahunAkademik,
+		SkalaMaks:     orig.SkalaMaks,
+		Status:        "DRAF",
+		IsActive:      false,
+	}
+	var inserted []*model.PartnerSurvey
+	if err := r.client.Insert("partner_surveys", newSurvey, &inserted); err != nil {
+		return nil, err
+	}
+	for _, q := range orig.Questions {
+		newQ := *q
+		newQ.ID = uuid.New().String()
+		newQ.SurveyID = newID
+		_ = r.client.Insert("survey_questions", newQ, nil)
+	}
+	return r.FindSurveyByID(newID)
+}
+
+func (r *supabaseSurveyRepository) ArchiveTemplate(id string) error {
+	return r.client.Update("partner_surveys", map[string]string{
+		"id": fmt.Sprintf("eq.%s", id),
+	}, map[string]interface{}{
+		"status":    "DIARSIPKAN",
+		"is_active": false,
+	}, nil)
+}
+
+func (r *supabaseSurveyRepository) UpdateInvitationStatus(id string, status string) error {
+	payload := map[string]interface{}{
+		"status": status,
+	}
+	if status == "TERKIRIM" {
+		payload["terkirim_at"] = time.Now().Format(time.RFC3339)
+	}
+	return r.client.Update("partner_invitations", map[string]string{
+		"id": fmt.Sprintf("eq.%s", id),
+	}, payload, nil)
+}
+
+func (r *supabaseSurveyRepository) FindPlacements(program, academicPeriodID string) ([]*model.StudentPlacement, error) {
+	params := map[string]string{
+		"order": "nama_mahasiswa.asc",
+	}
+	if program != "" {
+		params["program"] = fmt.Sprintf("eq.%s", program)
+	}
+	if academicPeriodID != "" {
+		params["academic_period_id"] = fmt.Sprintf("eq.%s", academicPeriodID)
+	}
+	var list []*model.StudentPlacement
+	err := r.client.Select("student_placements", params, &list)
+	if err != nil {
+		return nil, fmt.Errorf("gagal query student placements: %w", err)
+	}
+	return list, nil
+}
+
+func (r *supabaseSurveyRepository) VoidResponse(id string, voidedBy, alasan string) error {
+	now := time.Now()
+	return r.client.Update("partner_responses", map[string]string{
+		"id": fmt.Sprintf("eq.%s", id),
+	}, map[string]interface{}{
+		"is_void":     true,
+		"alasan_void": alasan,
+		"divoid_oleh": voidedBy,
+		"divoid_at":   now.Format(time.RFC3339),
+	}, nil)
+}
+
 func (r *supabaseSurveyRepository) GetRecap(surveyID string) (*model.SurveyRecap, error) {
 	survey, err := r.FindSurveyByID(surveyID)
 	if err != nil {
@@ -510,6 +605,151 @@ func (r *memorySurveyRepository) SubmitManualResponse(sub *model.PartnerResponse
 	key := "manual-" + sub.ID
 	r.submissions[key] = sub
 	return nil
+}
+
+func (r *memorySurveyRepository) ActivateTemplate(id string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	s, ok := r.surveys[id]
+	if !ok {
+		return errors.New("survei template tidak ditemukan")
+	}
+	s.Status = "AKTIF"
+	s.IsActive = true
+	s.UpdatedAt = time.Now()
+	return nil
+}
+
+func (r *memorySurveyRepository) DuplicateTemplate(id string, createdBy string) (*model.PartnerSurvey, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	s, ok := r.surveys[id]
+	if !ok {
+		return nil, errors.New("survei template tidak ditemukan")
+	}
+	newID := uuid.New().String()
+	newSurvey := &model.PartnerSurvey{
+		ID:            newID,
+		Judul:         s.Judul + " (Salinan)",
+		Nama:          s.Judul + " (Salinan)",
+		Program:       s.Program,
+		TahunAkademik: s.TahunAkademik,
+		SkalaMaks:     s.SkalaMaks,
+		Status:        "DRAF",
+		IsActive:      false,
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
+	}
+	var newQuestions []*model.SurveyQuestion
+	for _, q := range s.Questions {
+		newQ := *q
+		newQ.ID = uuid.New().String()
+		newQ.SurveyID = newID
+		newQuestions = append(newQuestions, &newQ)
+	}
+	newSurvey.Questions = newQuestions
+	r.surveys[newID] = newSurvey
+	return newSurvey, nil
+}
+
+func (r *memorySurveyRepository) ArchiveTemplate(id string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	s, ok := r.surveys[id]
+	if !ok {
+		return errors.New("survei template tidak ditemukan")
+	}
+	s.Status = "DIARSIPKAN"
+	s.IsActive = false
+	s.UpdatedAt = time.Now()
+	return nil
+}
+
+func (r *memorySurveyRepository) UpdateInvitationStatus(id string, status string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	inv, ok := r.invitations[id]
+	if !ok {
+		return errors.New("undangan survei tidak ditemukan")
+	}
+	inv.Status = status
+	if status == "DIISI" {
+		inv.IsCompleted = true
+	}
+	return nil
+}
+
+func (r *memorySurveyRepository) FindPlacements(program, academicPeriodID string) ([]*model.StudentPlacement, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	mockPlacements := []*model.StudentPlacement{
+		{
+			ID:               "plc-001",
+			StudentID:        "mhs-101",
+			NamaMahasiswa:    "Fajar Pratama",
+			NIM:              "1202200001",
+			PartnerID:        "part-001",
+			NamaMitra:        "PT Telkom Indonesia (Persero) Tbk",
+			AcademicPeriodID: "2024-ganjil",
+			PeriodeLabel:     "Ganjil 2024/2025",
+			Program:          model.ProgramKP,
+			TanggalMulai:     "2024-07-01",
+			TanggalSelesai:   "2024-09-30",
+		},
+		{
+			ID:               "plc-002",
+			StudentID:        "mhs-102",
+			NamaMahasiswa:    "Nabila Putri",
+			NIM:              "1202200002",
+			PartnerID:        "part-002",
+			NamaMitra:        "Bank Mandiri (Persero) Tbk",
+			AcademicPeriodID: "2024-ganjil",
+			PeriodeLabel:     "Ganjil 2024/2025",
+			Program:          model.ProgramPSI,
+			TanggalMulai:     "2024-08-01",
+			TanggalSelesai:   "2024-11-30",
+		},
+		{
+			ID:               "plc-003",
+			StudentID:        "mhs-103",
+			NamaMahasiswa:    "Budi Santoso",
+			NIM:              "1202200003",
+			PartnerID:        "part-003",
+			NamaMitra:        "PT Astra Graphia Information Technology",
+			AcademicPeriodID: "2024-ganjil",
+			PeriodeLabel:     "Ganjil 2024/2025",
+			Program:          model.ProgramPDLK,
+			TanggalMulai:     "2024-07-15",
+			TanggalSelesai:   "2024-12-15",
+		},
+	}
+	var results []*model.StudentPlacement
+	for _, p := range mockPlacements {
+		if program != "" && string(p.Program) != program {
+			continue
+		}
+		if academicPeriodID != "" && p.AcademicPeriodID != academicPeriodID {
+			continue
+		}
+		results = append(results, p)
+	}
+	return results, nil
+}
+
+func (r *memorySurveyRepository) VoidResponse(id string, voidedBy, alasan string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, resp := range r.responses {
+		if resp.ID == id || resp.InvitationToken == id {
+			now := time.Now()
+			resp.IsVoid = true
+			resp.AlasanVoid = alasan
+			resp.DivoidOleh = voidedBy
+			resp.DivoidAt = &now
+			return nil
+		}
+	}
+	return errors.New("respons survei tidak ditemukan")
 }
 
 func (r *memorySurveyRepository) GetRecap(surveyID string) (*model.SurveyRecap, error) {

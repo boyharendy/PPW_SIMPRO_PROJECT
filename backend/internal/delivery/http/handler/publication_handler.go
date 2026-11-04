@@ -160,6 +160,92 @@ func (h *PublicationHandler) AddReview(c *gin.Context) {
 	response.Success(c, http.StatusCreated, "Review publikasi berhasil ditambahkan", nil)
 }
 
+// UpdateAuthors handles PUT /api/v1/publications/:id/authors
+func (h *PublicationHandler) UpdateAuthors(c *gin.Context) {
+	id := c.Param("id")
+	var req struct {
+		Authors []*model.PublicationAuthor `json:"authors" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Format data daftar penulis tidak valid", err.Error())
+		return
+	}
+
+	if err := h.usecase.UpdateAuthors(id, req.Authors); err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusOK, "Daftar penulis publikasi berhasil diperbarui (total kontribusi tepat 100%)", nil)
+}
+
+// GetVerificationQueue handles GET /api/v1/publications/verification-queue
+func (h *PublicationHandler) GetVerificationQueue(c *gin.Context) {
+	verifierID := c.Query("verifier_id")
+	if verifierID == "" {
+		verifierID = c.GetString(middleware.CtxUserID)
+	}
+	queue, err := h.usecase.GetVerificationQueue(verifierID)
+	if err != nil {
+		response.InternalServerError(c, "Gagal mengambil antrean verifikasi: "+err.Error())
+		return
+	}
+	response.Success(c, http.StatusOK, "Antrean verifikasi publikasi berhasil diambil", queue)
+}
+
+// AssignVerifier handles PUT /api/v1/publications/:id/verifier
+func (h *PublicationHandler) AssignVerifier(c *gin.Context) {
+	id := c.Param("id")
+	var req struct {
+		VerifierID string `json:"verifier_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "verifier_id wajib diisi", err.Error())
+		return
+	}
+	if err := h.usecase.AssignVerifier(id, req.VerifierID); err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusOK, "Dosen verifikator independen berhasil ditetapkan", nil)
+}
+
+// VerifyStage handles POST /api/v1/publications/stages/:stageId/verify
+func (h *PublicationHandler) VerifyStage(c *gin.Context) {
+	stageID := c.Param("stageId")
+	verifierID := c.GetString(middleware.CtxUserID)
+	var req struct {
+		Status  string `json:"status" binding:"required"`
+		Catatan string `json:"catatan"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Status verifikasi (TERVERIFIKASI/DITOLAK) wajib diisi", err.Error())
+		return
+	}
+	if err := h.usecase.VerifyStage(stageID, verifierID, req.Status, req.Catatan); err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusOK, "Tahapan publikasi berhasil diverifikasi", nil)
+}
+
+// CompleteReview handles POST /api/v1/publications/reviews/:reviewId/complete
+func (h *PublicationHandler) CompleteReview(c *gin.Context) {
+	reviewID := c.Param("reviewId")
+	var req struct {
+		Rekomendasi string `json:"rekomendasi" binding:"required"`
+		Catatan     string `json:"catatan"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Rekomendasi review wajib diisi", err.Error())
+		return
+	}
+	if err := h.usecase.CompleteReview(reviewID, req.Rekomendasi, req.Catatan); err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusOK, "Review internal publikasi berhasil diselesaikan", nil)
+}
+
 func (h *PublicationHandler) GetRecap(c *gin.Context) {
 	recap, err := h.usecase.GetRecap()
 	if err != nil {
