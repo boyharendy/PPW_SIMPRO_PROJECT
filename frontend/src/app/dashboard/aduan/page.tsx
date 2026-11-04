@@ -6,6 +6,7 @@ import FileUploader from '@/components/ui/FileUploader';
 import CopyOnceDialog from '@/components/ui/CopyOnceDialog';
 import { generateTicketCode } from '@/lib/utils';
 import { mockComplaints } from '@/lib/mock-data';
+import { complaintService } from '@/lib/api/services/complaint.service';
 import type { ComplaintCategory, Complaint } from '@/lib/types';
 import { ShieldCheck, Send, Lock, AlertTriangle, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
@@ -17,7 +18,7 @@ export default function KirimAduanAnonimPage() {
   const [generatedTicket, setGeneratedTicket] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!judul.trim() || !uraian.trim()) {
       alert('Judul dan uraian aduan wajib diisi.');
@@ -42,7 +43,7 @@ export default function KirimAduanAnonimPage() {
       dispositions: [],
     };
 
-    mockComplaints.unshift(newComplaint);
+    await complaintService.createComplaint(newComplaint);
     setGeneratedTicket(ticketCode);
     setDialogOpen(true);
 

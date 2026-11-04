@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
@@ -8,6 +8,8 @@ import StatusStepper from '@/components/ui/StatusStepper';
 import Modal from '@/components/ui/Modal';
 import FileUploader from '@/components/ui/FileUploader';
 import { mockPublications, mockProfiles } from '@/lib/mock-data';
+import { publicationService } from '@/lib/api/services/publication.service';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import type {
   Publication,
   PublicationStatus,
@@ -42,12 +44,27 @@ export default function DetailPublikasiPage() {
   const params = useParams();
   const pubId = params.id as string;
 
-  const initialPub =
-    mockPublications.find((p) => p.id === pubId) || mockPublications[0];
-
-  const [pub, setPub] = useState<Publication>(initialPub);
+  const [pub, setPub] = useState<Publication>(() => {
+    const list = storageSync.get<Publication[]>(STORAGE_KEYS.PUBLICATIONS, mockPublications);
+    return list.find((p) => p.id === pubId) || mockPublications[0];
+  });
   const [modalStageOpen, setModalStageOpen] = useState(false);
   const [modalReviewerOpen, setModalReviewerOpen] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    publicationService
+      .getPublicationById(pubId)
+      .then((res) => {
+        if (active && res.data) {
+          setPub(res.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [pubId]);
 
   // Stage form
   const [nextStage, setNextStage] = useState<PublicationStatus>('DALAM_REVIEW');
@@ -62,7 +79,7 @@ export default function DetailPublikasiPage() {
     new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   );
 
-  const handleAdvanceStage = (e: React.FormEvent) => {
+  const handleAdvanceStage = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const newLog: PublicationStageLog = {
@@ -79,11 +96,20 @@ export default function DetailPublikasiPage() {
       created_at: new Date().toISOString(),
     };
 
-    setPub({
+    const updatedPub = {
       ...pub,
       status: nextStage,
       stage_logs: [...(pub.stage_logs || []), newLog],
-    });
+    };
+
+    setPub(updatedPub);
+    storageSync.update(STORAGE_KEYS.PUBLICATIONS, pub.id, updatedPub, mockPublications);
+
+    try {
+      await publicationService.updatePublication(pub.id, updatedPub);
+    } catch {
+      // Offline fallback
+    }
 
     setModalStageOpen(false);
     setStageNotes('');

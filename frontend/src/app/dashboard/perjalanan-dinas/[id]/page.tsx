@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 import StatusStepper from '@/components/ui/StatusStepper';
 import { mockBusinessTrips } from '@/lib/mock-data';
+import { tripService } from '@/lib/api/services/trip.service';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import type { BusinessTrip } from '@/lib/types';
 import {
   ArrowLeft,
@@ -33,8 +35,25 @@ export default function DetailPerjalananPage() {
   const params = useParams();
   const tripId = params.id as string;
 
-  const trip =
-    mockBusinessTrips.find((t) => t.id === tripId) || mockBusinessTrips[0];
+  const [trip, setTrip] = useState<BusinessTrip>(() => {
+    const list = storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips);
+    return list.find((t) => t.id === tripId) || mockBusinessTrips[0];
+  });
+
+  useEffect(() => {
+    let active = true;
+    tripService
+      .getTripById(tripId)
+      .then((res) => {
+        if (active && res.data) {
+          setTrip(res.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [tripId]);
 
   const totalEstimasi = trip.costs.reduce((s, c) => s + (c.estimasi_biaya || 0), 0);
   const totalRealisasi = trip.costs.reduce((s, c) => s + (c.realisasi_biaya || 0), 0);

@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { mockSurveyTemplates } from '@/lib/mock-data';
+import { surveyService } from '@/lib/api/services/survey.service';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import type { PartnerSurveyTemplate, PartnerSurveyAspect } from '@/lib/types';
 import { ArrowLeft, Plus, Trash2, Check, AlertCircle, Save } from 'lucide-react';
 import Link from 'next/link';
@@ -14,12 +16,34 @@ export default function DetailInstrumenPage() {
   const router = useRouter();
   const templateId = params.id as string;
 
-  const initialTemplate =
-    mockSurveyTemplates.find((t) => t.id === templateId) || mockSurveyTemplates[0];
-
-  const [template, setTemplate] = useState<PartnerSurveyTemplate>(initialTemplate);
-  const [aspects, setAspects] = useState<PartnerSurveyAspect[]>(initialTemplate.aspek || []);
+  const [template, setTemplate] = useState<PartnerSurveyTemplate>(() => {
+    const list = storageSync.get<PartnerSurveyTemplate[]>(STORAGE_KEYS.SURVEYS, mockSurveyTemplates);
+    return list.find((t) => t.id === templateId) || mockSurveyTemplates[0];
+  });
+  const [aspects, setAspects] = useState<PartnerSurveyAspect[]>(() => {
+    const list = storageSync.get<PartnerSurveyTemplate[]>(STORAGE_KEYS.SURVEYS, mockSurveyTemplates);
+    const found = list.find((t) => t.id === templateId);
+    return found?.aspek || mockSurveyTemplates[0].aspek || [];
+  });
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    surveyService
+      .getSurveyById(templateId)
+      .then((res) => {
+        if (active && res.data) {
+          setTemplate(res.data);
+          if (res.data.aspek && res.data.aspek.length > 0) {
+            setAspects(res.data.aspek);
+          }
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [templateId]);
 
   const totalBobot = aspects.reduce((sum, a) => sum + (Number(a.bobot) || 0), 0);
 
@@ -44,14 +68,28 @@ export default function DetailInstrumenPage() {
     setAspects(aspects.filter((a) => a.id !== id));
   };
 
-  const handleSave = () => {
-    setTemplate({ ...template, aspek: aspects });
+  const handleSave = async () => {
+    const updated = { ...template, aspek: aspects };
+    setTemplate(updated);
+    storageSync.update(STORAGE_KEYS.SURVEYS, template.id, { aspek: aspects }, mockSurveyTemplates);
+    try {
+      await surveyService.updateSurvey(template.id, { aspek: aspects });
+    } catch {
+      // Offline fallback
+    }
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 2500);
   };
 
-  const handleActivate = () => {
-    setTemplate({ ...template, status: 'AKTIF', aspek: aspects });
+  const handleActivate = async () => {
+    const updated: PartnerSurveyTemplate = { ...template, status: 'AKTIF', aspek: aspects };
+    setTemplate(updated);
+    storageSync.update(STORAGE_KEYS.SURVEYS, template.id, { status: 'AKTIF', aspek: aspects }, mockSurveyTemplates);
+    try {
+      await surveyService.updateSurvey(template.id, { status: 'AKTIF', aspek: aspects });
+    } catch {
+      // Offline fallback
+    }
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 2500);
   };

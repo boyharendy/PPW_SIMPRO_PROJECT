@@ -6,6 +6,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import CurrencyInput from '@/components/ui/CurrencyInput';
 import { useApp } from '@/lib/context';
 import { mockProfiles, mockRkaDocuments, mockBusinessTrips } from '@/lib/mock-data';
+import { tripService } from '@/lib/api/services/trip.service';
 import type { BusinessTrip, TripFundingSource } from '@/lib/types';
 import { formatRupiah } from '@/lib/utils';
 import { ArrowLeft, AlertTriangle, Send, Save, Info } from 'lucide-react';
@@ -50,7 +51,7 @@ export default function PengajuanPerjalananPage() {
   const isMendadak = daysDiff < 3;
   const isOverBudget = sumberDana === 'RKA_PRODI' && totalEstimasi > sisaAnggaran;
 
-  const handleSubmit = (statusTarget: 'DRAF' | 'DIAJUKAN') => {
+  const handleSubmit = async (statusTarget: 'DRAF' | 'DIAJUKAN') => {
     if (!tujuan.trim() || !maksudKegiatan.trim()) {
       alert('Tujuan dan maksud kegiatan wajib diisi.');
       return;
@@ -87,7 +88,7 @@ export default function PengajuanPerjalananPage() {
       ],
     };
 
-    mockBusinessTrips.unshift(newTrip);
+    await tripService.createTrip(newTrip);
     router.push('/dashboard/perjalanan-dinas');
   };
 

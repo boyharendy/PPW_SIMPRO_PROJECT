@@ -218,7 +218,7 @@ export default function RekapPerjalananPage() {
       <div className="card">
         <DataTable
           columns={columns}
-          data={trips as unknown as Record<string, unknown>[]}
+          data={trips}
           emptyMessage="Belum ada riwayat perjalanan dinas."
         />
       </div>

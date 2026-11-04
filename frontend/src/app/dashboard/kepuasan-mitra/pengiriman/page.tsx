@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
 import StatusBadge from '@/components/ui/StatusBadge';
@@ -11,8 +11,11 @@ import {
   mockSurveyTemplates,
   mockPartners,
 } from '@/lib/mock-data';
+import { surveyService } from '@/lib/api/services/survey.service';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import type {
   PartnerSurveyInvitation,
+  PartnerSurveyTemplate,
   SurveyDeliveryChannel,
 } from '@/lib/types';
 import {
@@ -25,7 +28,7 @@ import {
   Copy,
   ExternalLink,
 } from 'lucide-react';
-import { formatDateShort } from '@/lib/utils';
+import { formatDateShort, copyToClipboard } from '@/lib/utils';
 
 export default function PengirimanMitraPage() {
   const [invitations, setInvitations] = useState<PartnerSurveyInvitation[]>(mockSurveyInvitations);
@@ -34,6 +37,7 @@ export default function PengirimanMitraPage() {
   const [modalManualOpen, setModalManualOpen] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [availableTemplates, setAvailableTemplates] = useState<PartnerSurveyTemplate[]>(mockSurveyTemplates);
 
   // Manual Form State
   const [manualPartnerName, setManualPartnerName] = useState('');
@@ -46,13 +50,39 @@ export default function PengirimanMitraPage() {
     asp4: 4,
   });
 
-  const activeTemplate = mockSurveyTemplates[0];
+  const activeTemplate = availableTemplates[0] || mockSurveyTemplates[0];
 
-  const handleKirimTautan = (placementId: string) => {
+  useEffect(() => {
+    // 1. Sinkronisasi data lokal dari storageSync saat client mount (mencegah hydration mismatch)
+    const localInvs = storageSync.get<PartnerSurveyInvitation[]>(STORAGE_KEYS.SURVEY_INVITATIONS, mockSurveyInvitations);
+    if (localInvs && localInvs.length > 0) {
+      setInvitations(localInvs);
+    }
+    const localTmpls = storageSync.get<PartnerSurveyTemplate[]>(STORAGE_KEYS.SURVEYS, mockSurveyTemplates);
+    if (localTmpls && localTmpls.length > 0) {
+      setAvailableTemplates(localTmpls);
+    }
+
+    // 2. Muat data dari Backend / Supabase
+    let active = true;
+    surveyService
+      .getInvitations()
+      .then((res) => {
+        if (active && res.data && res.data.length > 0) {
+          setInvitations(res.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleKirimTautan = async (placementId: string) => {
     setSelectedPlacementId(placementId);
     const placement = mockPlacements.find((p) => p.id === placementId);
     const randomToken = `token-${placement?.program?.toLowerCase() || 'survey'}-${Date.now().toString(36)}`;
-    const fullUrl = `${window.location.origin}/mitra/isi/${randomToken}`;
+    const fullUrl = typeof window !== 'undefined' ? `${window.location.origin}/mitra/isi/${randomToken}` : '';
 
     const newInv: PartnerSurveyInvitation = {
       id: `inv-${Date.now()}`,
@@ -71,14 +101,21 @@ export default function PengirimanMitraPage() {
       template: activeTemplate,
     };
 
-    setInvitations([newInv, ...invitations.filter((i) => i.placement_id !== placementId)]);
+    const updated = storageSync.prepend(STORAGE_KEYS.SURVEY_INVITATIONS, newInv, invitations);
+    setInvitations(updated);
     setGeneratedLink(fullUrl);
     setModalKirimOpen(true);
+
+    try {
+      await surveyService.createInvitation(newInv);
+    } catch {
+      // Offline fallback
+    }
   };
 
-  const handleCopyLink = () => {
+  const handleCopyLink = async () => {
     if (generatedLink) {
-      navigator.clipboard.writeText(generatedLink);
+      await copyToClipboard(generatedLink);
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
     }
@@ -92,7 +129,7 @@ export default function PengirimanMitraPage() {
     setModalManualOpen(true);
   };
 
-  const handleSaveManual = (e: React.FormEvent) => {
+  const handleSaveManual = async (e: React.FormEvent) => {
     e.preventDefault();
     const placement = mockPlacements.find((p) => p.id === selectedPlacementId);
 
@@ -112,16 +149,22 @@ export default function PengirimanMitraPage() {
       template: activeTemplate,
     };
 
-    setInvitations([updatedInv, ...invitations.filter((i) => i.placement_id !== selectedPlacementId)]);
+    const updated = storageSync.prepend(STORAGE_KEYS.SURVEY_INVITATIONS, updatedInv, invitations);
+    setInvitations(updated);
     setModalManualOpen(false);
+
+    try {
+      await surveyService.createInvitation(updatedInv);
+    } catch {
+      // Offline fallback
+    }
   };
 
   const columns = [
     {
       key: 'mitra',
       header: 'Mitra & Program',
-      render: (row: Record<string, unknown>) => {
-        const p = row as unknown as typeof mockPlacements[0];
+      render: (p: typeof mockPlacements[0]) => {
         return (
           <div>
             <p className="font-semibold text-slate-800 text-xs sm:text-sm">{p.partner?.nama_mitra}</p>
@@ -136,8 +179,7 @@ export default function PengirimanMitraPage() {
     {
       key: 'mahasiswa',
       header: 'Mahasiswa Penempatan',
-      render: (row: Record<string, unknown>) => {
-        const p = row as unknown as typeof mockPlacements[0];
+      render: (p: typeof mockPlacements[0]) => {
         return (
           <div>
             <p className="font-medium text-slate-800 text-xs">{p.student?.nama_lengkap}</p>
@@ -149,8 +191,7 @@ export default function PengirimanMitraPage() {
     {
       key: 'status',
       header: 'Status Survei',
-      render: (row: Record<string, unknown>) => {
-        const p = row as unknown as typeof mockPlacements[0];
+      render: (p: typeof mockPlacements[0]) => {
         const inv = invitations.find((i) => i.placement_id === p.id);
         const status = inv ? inv.status : 'DIBUAT';
         return (
@@ -169,8 +210,7 @@ export default function PengirimanMitraPage() {
       key: 'actions',
       header: 'Aksi Pengiriman',
       className: 'text-right',
-      render: (row: Record<string, unknown>) => {
-        const p = row as unknown as typeof mockPlacements[0];
+      render: (p: typeof mockPlacements[0]) => {
         const inv = invitations.find((i) => i.placement_id === p.id);
         const isFilled = inv?.status === 'DIISI';
 
@@ -238,7 +278,7 @@ export default function PengirimanMitraPage() {
       <div className="card">
         <DataTable
           columns={columns}
-          data={mockPlacements as unknown as Record<string, unknown>[]}
+          data={mockPlacements}
           emptyMessage="Belum ada penempatan mahasiswa pada periode aktif"
         />
       </div>

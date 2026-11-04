@@ -98,5 +98,77 @@ export interface RegisterPayload {
  */
 export interface AuthResponse {
   user: UserSession;
-  tokens: AuthTokens;
+  token?: string;
+  refresh_token?: string;
+  tokens?: AuthTokens;
+}
+
+// ============================================================
+// Modul 7–13 Recap & Aggregation Types
+// ============================================================
+
+export interface SurveyRecap {
+  template_id: string;
+  total_responden: number;
+  rata_rata_skor: number;
+  skala_maks: number;
+  skor_per_aspek: Record<string, number>;
+}
+
+export interface PublicationRecap {
+  total: number;
+  disetujui: number;
+  menunggu_verifikasi: number;
+  perlu_revisi: number;
+  ditolak: number;
+  kategori_distribusi: Record<string, number>;
+}
+
+export interface TripRecap {
+  total_perjalanan: number;
+  total_estimasi: number;
+  total_realisasi: number;
+  total_efisiensi: number;
+  status_distribusi: Record<string, number>;
+}
+
+export interface RkaSerapan {
+  tahun_anggaran: string;
+  total_pagu: number;
+  total_realisasi: number;
+  persentase_serapan: number;
+  sisa_anggaran: number;
+}
+
+export interface RpsRecap {
+  total_rps: number;
+  disahkan: number;
+  direview: number;
+  draf: number;
+  persentase_kepatuhan: number;
+}
+
+export interface EvaluationRecap {
+  total_evaluasi: number;
+  selesai: number;
+  draf: number;
+  rata_rata_cpmk: number;
+}
+
+export interface ComplaintRecap {
+  total_aduan: number;
+  selesai: number;
+  dalam_proses: number;
+  melewati_sla: number;
+  status_distribusi: Record<string, number>;
+  kategori_distribusi: Record<string, number>;
+}
+
+export interface DashboardStats {
+  kepuasan_mitra: { skor_rata_rata: number; total_responden: number };
+  publikasi: { total: number; disetujui: number };
+  perjalanan_dinas: { total: number; total_realisasi: number };
+  rka: { tahun: string; total_pagu: number; realisasi: number; persentase_serapan: number };
+  rps: { total: number; disahkan: number; persentase_kepatuhan: number };
+  aduan: { total: number; belum_selesai: number };
 }
