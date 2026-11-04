@@ -26,6 +26,7 @@ type RkaActivity struct {
 	PenanggungJawabID string           `json:"penanggung_jawab_id,omitempty"`
 	StatusPelaksanaan string           `json:"status_pelaksanaan,omitempty"` // BELUM_TERLAKSANA | SEDANG_BERJALAN | TERLAKSANA
 	IsOverdue         bool             `json:"is_overdue,omitempty"`
+	IsActive          bool             `json:"is_active"`
 	BudgetItems       []*RkaBudgetItem `json:"budget_items,omitempty"`
 }
 
@@ -41,15 +42,19 @@ type RkaBudgetItem struct {
 	AnggaranAlokasi  float64 `json:"anggaran_alokasi"`
 	AnggaranTerpakai float64 `json:"anggaran_terpakai"`
 	SisaAnggaran     float64 `json:"sisa_anggaran"`
+	IsActive         bool    `json:"is_active"`
 }
 
 type RkaVersion struct {
-	ID               string    `json:"id"`
-	RkaID            string    `json:"rka_id"`
-	NomorVersi       int       `json:"nomor_versi"`
-	CatatanPerubahan string    `json:"catatan_perubahan,omitempty"`
-	CreatedBy        string    `json:"created_by,omitempty"`
-	CreatedAt        time.Time `json:"created_at"`
+	ID               string                 `json:"id"`
+	RkaID            string                 `json:"rka_id"`
+	NomorVersi       int                    `json:"nomor_versi"`
+	Status           string                 `json:"status,omitempty"` // DRAFT | DIAJUKAN | DISETUJUI | DIGANTIKAN | DITOLAK
+	RowVersion       int                    `json:"row_version,omitempty"`
+	CatatanPerubahan string                 `json:"catatan_perubahan,omitempty"`
+	DraftPayload     map[string]interface{} `json:"draft_payload,omitempty"`
+	CreatedBy        string                 `json:"created_by,omitempty"`
+	CreatedAt        time.Time              `json:"created_at"`
 }
 
 type RkaRealization struct {
@@ -73,6 +78,7 @@ type RkaDocument struct {
 	TotalTerpakai     float64          `json:"total_terpakai"`
 	SisaAnggaran      float64          `json:"sisa_anggaran"`
 	PersentaseSerapan float64          `json:"persentase_serapan"`
+	VersiAktifID      string           `json:"versi_aktif_id,omitempty"`
 	CatatanRevisi     string           `json:"catatan_revisi,omitempty"`
 	Activities        []*RkaActivity   `json:"activities,omitempty"`
 	BudgetItems       []*RkaBudgetItem `json:"budget_items,omitempty"`

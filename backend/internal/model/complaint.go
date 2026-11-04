@@ -51,6 +51,7 @@ type Complaint struct {
 	ID                        string                  `json:"id"`
 	NomorAduan                string                  `json:"nomor_aduan,omitempty"`
 	KodeTiket                 string                  `json:"kode_tiket"`
+	KodeTiketHash             string                  `json:"kode_tiket_hash,omitempty"`
 	Kategori                  ComplaintCategory       `json:"kategori"`
 	Judul                     string                  `json:"judul"`
 	IsiAduan                  string                  `json:"isi_aduan"`
@@ -65,6 +66,7 @@ type Complaint struct {
 	EscalatedAt               *time.Time              `json:"escalated_at,omitempty"`
 	PetugasID                 string                  `json:"petugas_id,omitempty"`
 	TanggalPengaduan          string                  `json:"tanggal_pengaduan"`
+	TanggalDiterima           string                  `json:"tanggal_diterima,omitempty"`
 	TanggalSelesai            string                  `json:"tanggal_selesai,omitempty"`
 	RatingKepuasan            int                     `json:"rating_kepuasan,omitempty"`
 	KomentarKepuasan          string                  `json:"komentar_kepuasan,omitempty"`
@@ -72,6 +74,22 @@ type Complaint struct {
 	Dispositions              []*ComplaintDisposition `json:"dispositions,omitempty"`
 	CreatedAt                 time.Time               `json:"created_at"`
 	UpdatedAt                 time.Time               `json:"updated_at"`
+}
+
+// ComplaintMetadata digunakan untuk view v_complaint_metadata khusus Kaprodi
+// Menyembunyikan judul, isi_aduan, dan pesan untuk kategori sensitif
+type ComplaintMetadata struct {
+	ID              string  `json:"id"`
+	NomorAduan      string  `json:"nomor_aduan"`
+	Kategori        string  `json:"kategori"`
+	IsSensitif      bool    `json:"is_sensitif"`
+	Status          string  `json:"status"`
+	TanggalDiterima string  `json:"tanggal_diterima"`
+	TanggalSelesai  *string `json:"tanggal_selesai,omitempty"`
+	UmurHari        int     `json:"umur_hari"`
+	TenggatTerakhir *string `json:"tenggat_terakhir,omitempty"`
+	StatusDisposisi *string `json:"status_disposisi,omitempty"`
+	PenanggungJawab *string `json:"penanggung_jawab,omitempty"`
 }
 
 type PublicComplaintRequest struct {

@@ -73,6 +73,9 @@ type TravelOrder struct {
 	CatatanKelengkapan  string          `json:"catatan_kelengkapan,omitempty"`
 	DiajukanOleh        string          `json:"diajukan_oleh"`
 	DisetujuiOleh       string          `json:"disetujui_oleh,omitempty"`
+	DisetujuiAt         *time.Time      `json:"disetujui_at,omitempty"`
+	DikonfirmasiOleh    string          `json:"dikonfirmasi_oleh,omitempty"`
+	DikonfirmasiAt      *time.Time      `json:"dikonfirmasi_at,omitempty"`
 	Members             []*TravelMember `json:"members,omitempty"`
 	Costs               []*TravelCost   `json:"costs,omitempty"`
 	Proofs              []*TravelProof  `json:"proofs,omitempty"`
@@ -88,12 +91,11 @@ type TripComponentSummary struct {
 }
 
 type TripRecap struct {
-	TotalPerjalanan     int                              `json:"total_perjalanan"`
-	TotalEstimasiBiaya  float64                          `json:"total_estimasi_biaya"`
-	TotalRealisasiBiaya float64                          `json:"total_realisasi_biaya"`
-	BelumLengkapLaporan int                              `json:"belum_lengkap_laporan"`
-	LewatTenggatLaporan int                              `json:"lewat_tenggat_laporan"`
-	StatusDistribusi    map[string]int                   `json:"status_distribusi"`
-	PerKomponen         map[string]*TripComponentSummary `json:"per_komponen"`
-	PerPeserta          map[string]int                   `json:"per_peserta"`
+	TotalPerjalanan   int                             `json:"total_perjalanan"`
+	TotalDisetujui    int                             `json:"total_disetujui"`
+	TotalSelesai      int                             `json:"total_selesai"`
+	TotalBiayaDinas   float64                         `json:"total_biaya_dinas"`
+	TotalEstimasi     float64                         `json:"total_estimasi"`
+	TotalRealisasi    float64                         `json:"total_realisasi"`
+	RingkasanKomponen map[string]TripComponentSummary `json:"ringkasan_komponen"`
 }
