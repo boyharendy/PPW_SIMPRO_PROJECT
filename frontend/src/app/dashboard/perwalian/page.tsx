@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
@@ -8,10 +8,7 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import StatCard from '@/components/ui/StatCard';
 import Modal from '@/components/ui/Modal';
 import { useUser } from '@/lib/context';
-import {
-  mockClassPerwalianReports,
-  mockDosenWaliSessions,
-} from '@/lib/mock-data';
+import { supabasePerwalian } from '@/lib/supabase';
 import type {
   ClassPerwalianReport,
   DosenWaliSessionReport,
@@ -61,8 +58,29 @@ export default function LaporanPerwalianPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
 
   // State data
-  const [classReports, setClassReports] = useState<ClassPerwalianReport[]>(mockClassPerwalianReports);
-  const [dosenSessions, setDosenSessions] = useState<DosenWaliSessionReport[]>(mockDosenWaliSessions);
+  const [classReports, setClassReports] = useState<ClassPerwalianReport[]>([]);
+  const [dosenSessions, setDosenSessions] = useState<DosenWaliSessionReport[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [reports, sessions] = await Promise.all([
+        supabasePerwalian.getLaporanAll(),
+        supabasePerwalian.getSesiAll()
+      ]);
+      setClassReports(reports);
+      setDosenSessions(sessions);
+    } catch (err) {
+      console.error('Gagal memuat data perwalian:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
   const [selectedReport, setSelectedReport] = useState<ClassPerwalianReport | null>(null);
   const [selectedSession, setSelectedSession] = useState<DosenWaliSessionReport | null>(null);
 
@@ -175,100 +193,104 @@ export default function LaporanPerwalianPage() {
   });
 
   // Handle submit Ketua Kelas
-  const handleSaveClassReport = (statusToSave: PerwalianStatus) => {
+  const handleSaveClassReport = async (statusToSave: PerwalianStatus) => {
     const validAttentionStudents = attentionList.filter((s) => s.nim.trim() !== '');
 
-    const newReport: ClassPerwalianReport = {
-      id: `rep-perw-${Date.now()}`,
-      kelas: formKelas,
-      angkatan: parseInt(formAngkatan) || 2024,
-      semester: 'GANJIL',
-      tahun_akademik: '2024/2025',
-      ketua_kelas_nim: '220101001',
-      ketua_kelas_nama: 'Muhammad Farel (Ketua Kelas)',
-      dosen_wali_id: 'u-kaprodi',
-      dosen_wali_nama: 'Dr. Ahmad Fauzi, M.T.',
-      kondisi_umum: formKondisiUmum || 'Perkuliahan berjalan lancar dan mahasiswa aktif mengikuti sesi perkuliahan.',
-      kendala_akademik: formKendalaAkademik || 'Tidak ada kendala akademik mayor.',
-      kendala_non_akademik: formKendalaNonAkademik || 'Tidak ada kendala sarana prasarana.',
-      aspirasi_mahasiswa: formAspirasi || 'Mohon materi kuliah tetap diunggah ke portal tepat waktu.',
-      mahasiswa_perhatian: validAttentionStudents,
-      status: statusToSave,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
+    try {
+      const saved = await supabasePerwalian.createLaporan({
+        kelas: formKelas,
+        angkatan: parseInt(formAngkatan) || 2024,
+        semester: 'GANJIL',
+        tahun_akademik: '2024/2025',
+        ketua_kelas_nim: '220101001',
+        ketua_kelas_nama: 'Muhammad Farel (Ketua Kelas)',
+        dosen_wali_nama: 'Dr. Ahmad Fauzi, M.T.',
+        kondisi_umum: formKondisiUmum || 'Perkuliahan berjalan lancar dan mahasiswa aktif mengikuti sesi perkuliahan.',
+        kendala_akademik: formKendalaAkademik || 'Tidak ada kendala akademik mayor.',
+        kendala_non_akademik: formKendalaNonAkademik || 'Tidak ada kendala sarana prasarana.',
+        aspirasi_mahasiswa: formAspirasi || 'Mohon materi kuliah tetap diunggah ke portal tepat waktu.',
+        mahasiswa_perhatian: validAttentionStudents,
+        status: statusToSave,
+      });
 
-    setClassReports([newReport, ...classReports]);
-    setShowCreateClassModal(false);
+      setClassReports((prev) => [saved, ...prev]);
+      setShowCreateClassModal(false);
 
-    // Reset Form
-    setFormKondisiUmum('');
-    setFormKendalaAkademik('');
-    setFormKendalaNonAkademik('');
-    setFormAspirasi('');
-    setAttentionList([{ nim: '', nama: '', isu: '', persentase_kehadiran: 70, catatan: '' }]);
+      // Reset Form
+      setFormKondisiUmum('');
+      setFormKendalaAkademik('');
+      setFormKendalaNonAkademik('');
+      setFormAspirasi('');
+      setAttentionList([{ nim: '', nama: '', isu: '', persentase_kehadiran: 70, catatan: '' }]);
 
-    const message = statusToSave === 'TERKIRIM'
-      ? `Laporan perwalian kelas ${formKelas} berhasil dikirimkan ke Dosen Wali untuk verifikasi.`
-      : `Draf laporan perwalian kelas ${formKelas} berhasil disimpan.`;
-    setReminderToast(message);
-    setTimeout(() => setReminderToast(null), 6000);
+      const message = statusToSave === 'TERKIRIM'
+        ? `Laporan perwalian kelas ${formKelas} berhasil dikirimkan ke Dosen Wali untuk verifikasi.`
+        : `Draf laporan perwalian kelas ${formKelas} berhasil disimpan.`;
+      setReminderToast(message);
+      setTimeout(() => setReminderToast(null), 6000);
+    } catch (err: any) {
+      console.error('Gagal menyimpan laporan perwalian:', err);
+      alert(`Gagal menyimpan ke database: ${err?.message || err}`);
+    }
   };
 
   // Handle submit Dosen Wali Session
-  const handleSaveSession = () => {
+  const handleSaveSession = async () => {
     const validNotes = sessionStudentNotes.filter((s) => s.nim.trim() !== '');
 
-    const newSession: DosenWaliSessionReport = {
-      id: `sess-perw-${Date.now()}`,
-      dosen_wali_id: 'u-kaprodi',
-      dosen_wali_nama: 'Dr. Ahmad Fauzi, M.T.',
-      kelas: formSessKelas,
-      angkatan: 2022,
-      semester: 'GANJIL',
-      tahun_akademik: '2024/2025',
-      sesi: formSessType,
-      tanggal_sesi: formSessTanggal,
-      total_mahasiswa: parseInt(formSessTotalMhs) || 35,
-      hadir_mahasiswa: parseInt(formSessHadirMhs) || 33,
-      topik_bahasan: formSessTopik || 'Evaluasi Kemajuan Akademik dan Bimbingan Rencana Studi Semester',
-      catatan_per_mahasiswa: validNotes,
-      rekomendasi: formSessRekomendasi || 'Tingkatkan keterlibatan mahasiswa dalam kegiatan akademik dan pengayaan.',
-      rencana_tindak_lanjut: formSessTindakLanjut || 'Konsultasi lanjutan terjadwal pada pekan ke-12 perkuliahan.',
-      status: 'SELESAI',
-      created_at: new Date().toISOString(),
-    };
+    try {
+      const saved = await supabasePerwalian.createSesi({
+        dosen_wali_nama: 'Dr. Ahmad Fauzi, M.T.',
+        kelas: formSessKelas,
+        angkatan: 2022,
+        semester: 'GANJIL',
+        tahun_akademik: '2024/2025',
+        sesi: formSessType,
+        tanggal_sesi: formSessTanggal,
+        total_mahasiswa: parseInt(formSessTotalMhs) || 35,
+        hadir_mahasiswa: parseInt(formSessHadirMhs) || 33,
+        topik_bahasan: formSessTopik || 'Evaluasi Kemajuan Akademik dan Bimbingan Rencana Studi Semester',
+        catatan_per_mahasiswa: validNotes,
+        rekomendasi: formSessRekomendasi || 'Tingkatkan keterlibatan mahasiswa dalam kegiatan akademik dan pengayaan.',
+        rencana_tindak_lanjut: formSessTindakLanjut || 'Konsultasi lanjutan terjadwal pada pekan ke-12 perkuliahan.',
+        status: 'SELESAI',
+      });
 
-    setDosenSessions([newSession, ...dosenSessions]);
-    setShowCreateSessionModal(false);
-    setFormSessTopik('');
-    setFormSessRekomendasi('');
-    setFormSessTindakLanjut('');
-    setSessionStudentNotes([{ nim: '', nama: '', catatan: '', status_akademik: 'Perlu Monitoring', hadir: true }]);
+      setDosenSessions((prev) => [saved, ...prev]);
+      setShowCreateSessionModal(false);
+      setFormSessTopik('');
+      setFormSessRekomendasi('');
+      setFormSessTindakLanjut('');
+      setSessionStudentNotes([{ nim: '', nama: '', catatan: '', status_akademik: 'Perlu Monitoring', hadir: true }]);
 
-    setReminderToast(`Notulen sesi perwalian ${formSessType.replace('_', ' ')} kelas ${formSessKelas} berhasil disimpan.`);
-    setTimeout(() => setReminderToast(null), 6000);
+      setReminderToast(`Notulen sesi perwalian ${formSessType.replace('_', ' ')} kelas ${formSessKelas} berhasil disimpan.`);
+      setTimeout(() => setReminderToast(null), 6000);
+    } catch (err: any) {
+      console.error('Gagal menyimpan sesi bimbingan:', err);
+      alert(`Gagal menyimpan ke database: ${err?.message || err}`);
+    }
   };
 
   // Handle Verifikasi Laporan oleh Dosen Wali
-  const handleVerify = () => {
+  const handleVerify = async () => {
     if (!selectedReport) return;
-    setClassReports(classReports.map((r) =>
-      r.id === selectedReport.id
-        ? {
-            ...r,
-            status: 'TERVERIFIKASI',
-            catatan_verifikasi_dosen: verifyNotes || 'Laporan telah ditinjau dan disetujui Dosen Wali. Rekomendasi diteruskan ke program studi.',
-            diverifikasi_at: new Date().toISOString(),
-          }
-        : r
-    ));
-    setShowVerifyModal(false);
-    setVerifyNotes('');
-    setReminderToast(`Laporan perwalian kelas ${selectedReport.kelas} telah diverifikasi dan disetujui secara resmi.`);
-    setTimeout(() => setReminderToast(null), 6000);
-  };
+    try {
+      const updated = await supabasePerwalian.updateLaporanStatus(selectedReport.id, {
+        status: 'TERVERIFIKASI',
+        catatan_verifikasi_dosen: verifyNotes || 'Laporan telah ditinjau dan disetujui Dosen Wali. Rekomendasi diteruskan ke program studi.',
+        diverifikasi_at: new Date().toISOString(),
+      });
 
+      setClassReports((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+      setShowVerifyModal(false);
+      setVerifyNotes('');
+      setReminderToast(`Laporan perwalian kelas ${selectedReport.kelas} telah diverifikasi dan disetujui secara resmi.`);
+      setTimeout(() => setReminderToast(null), 6000);
+    } catch (err: any) {
+      console.error('Gagal memverifikasi laporan:', err);
+      alert(`Gagal memverifikasi di database: ${err?.message || err}`);
+    }
+  };
   // Kirim Pengingat Pengisian Individual
   const handleSendReminder = (kelasTarget: string) => {
     const newLog: ReminderLog = {

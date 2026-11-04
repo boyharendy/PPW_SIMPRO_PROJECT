@@ -1,5 +1,9 @@
 import { supabase } from '../client';
 
+// Modul 1 & 2 — service terpisah per file
+export { supabasePerwalian } from './perwalian.service';
+export { supabaseBeasiswa }  from './beasiswa.service';
+
 // ============================================================
 // Supabase Data Services for SIMPRO Modules
 // ============================================================

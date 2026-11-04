@@ -1,18 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
 import StatusBadge from '@/components/ui/StatusBadge';
 import StatCard from '@/components/ui/StatCard';
 import Modal from '@/components/ui/Modal';
-import {
-  mockClassPerwalianReports,
-  mockDosenWaliSessions,
-  mockPerwalianRecurringIssues,
-} from '@/lib/mock-data';
-import type { PerwalianRecurringIssue, ClassPerwalianReport } from '@/lib/types';
+import { supabasePerwalian } from '@/lib/supabase';
+import { mockPerwalianRecurringIssues } from '@/lib/mock-data';
+import type { PerwalianRecurringIssue, ClassPerwalianReport, DosenWaliSessionReport } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import {
   ArrowLeft,
@@ -57,7 +54,26 @@ export default function RekapPerwalianPage() {
   const [actionInput, setActionInput] = useState('');
   const [showOfficialDocModal, setShowOfficialDocModal] = useState(false);
 
-  const verifiedReports = mockClassPerwalianReports.filter((r) => r.status === 'TERVERIFIKASI');
+  const [classReports, setClassReports] = useState<ClassPerwalianReport[]>([]);
+  const [dosenSessions, setDosenSessions] = useState<DosenWaliSessionReport[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      supabasePerwalian.getLaporanAll(),
+      supabasePerwalian.getSesiAll()
+    ]).then(([reports, sessions]) => {
+      setClassReports(reports);
+      setDosenSessions(sessions);
+      setLoading(false);
+    }).catch((err) => {
+      console.error('Gagal memuat data rekap perwalian:', err);
+      setLoading(false);
+    });
+  }, []);
+
+  const verifiedReports = classReports.filter((r) => r.status === 'TERVERIFIKASI');
 
   const filteredReports = verifiedReports.filter((r) => {
     return filterAngkatan === 'ALL' || r.angkatan.toString() === filterAngkatan;
@@ -329,7 +345,7 @@ export default function RekapPerwalianPage() {
 
         <div className="space-y-5">
           {filteredReports.map((report) => {
-            const sessions = mockDosenWaliSessions.filter((s) => s.kelas === report.kelas);
+            const sessions = dosenSessions.filter((s) => s.kelas === report.kelas);
             return (
               <div key={report.id} className="p-5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">

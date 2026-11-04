@@ -20,11 +20,10 @@ export type Role =
   | 'PENGELOLA_ADUAN'
   | 'PETUGAS_KEKERASAN'
   | 'MAHASISWA'
-  // Peran Kompatibilitas Data Induk (PRD Bab 6.A poin 2)
-  | 'PENGURUS_HIMPUNAN'
-  | 'DOSEN_WALI'
-  | 'DOSEN_PEMBINA'
-  | 'KETUA_KELAS';
+  | 'HIMPUNAN'
+  | 'KOORD_KP'
+  | 'KOORD_TA'
+  | 'KOORD_MAGANG';
 
 export type Semester = 'GANJIL' | 'GENAP';
 export type StudentStatus = 'AKTIF' | 'CUTI' | 'LULUS' | 'KELUAR';
@@ -799,23 +798,32 @@ export interface ScholarshipRecipient {
   dosen_verifikator_id: string;
   dosen_verifikator_nama: string;
   is_berisiko: boolean;
+  catatan?: string;
   created_at: string;
 }
 
 export interface ScholarshipWorkLog {
   id: string;
-  recipient_id: string;
+  penerima_id?: string;
+  recipient_id?: string;
   mahasiswa_nim: string;
   mahasiswa_nama: string;
-  tanggal: string;
-  jam_mulai: string;
-  jam_selesai: string;
-  durasi_jam: number;
-  lokasi: string;
-  uraian_kegiatan: string;
-  kategori_kegiatan: WorkLogCategory;
+  tanggal_kegiatan?: string;
+  tanggal?: string;
+  jam_mulai?: string;
+  jam_selesai?: string;
+  jumlah_jam?: number;
+  durasi_jam?: number;
+  lokasi?: string;
+  kategori?: WorkLogCategory;
+  kategori_kegiatan?: WorkLogCategory;
+  deskripsi_kegiatan?: string;
+  uraian_kegiatan?: string;
+  bukti_nama_berkas?: string;
   bukti_url?: string;
   status: WorkLogStatus;
+  dosen_verifikator_id?: string;
+  dosen_verifikator_nama?: string;
   catatan_verifikator?: string;
   diverifikasi_oleh?: string;
   diverifikasi_at?: string;
