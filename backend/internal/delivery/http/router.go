@@ -46,6 +46,7 @@ func SetupRouter(params RouterParams) *gin.Engine {
 				pubComplaints.POST("", params.ComplaintHandler.CreatePublicComplaint)
 				pubComplaints.GET("/:ticket", params.ComplaintHandler.GetPublicComplaint)
 				pubComplaints.POST("/:ticket/messages", params.ComplaintHandler.AddPublicMessage)
+				pubComplaints.POST("/:ticket/rating", params.ComplaintHandler.SubmitPublicRating)
 			}
 		}
 
@@ -105,7 +106,9 @@ func SetupRouter(params RouterParams) *gin.Engine {
 			{
 				surveys.GET("", params.SurveyHandler.GetSurveys)
 				surveys.POST("", params.SurveyHandler.CreateSurvey)
+				surveys.GET("/invitations", params.SurveyHandler.GetInvitations)
 				surveys.POST("/invitations", params.SurveyHandler.CreateInvitation)
+				surveys.POST("/manual-responses", params.SurveyHandler.SubmitManualResponse)
 				surveys.GET("/:id", params.SurveyHandler.GetSurveyByID)
 				surveys.PUT("/:id", params.SurveyHandler.UpdateSurvey)
 				surveys.DELETE("/:id", params.SurveyHandler.DeleteSurvey)
@@ -124,6 +127,7 @@ func SetupRouter(params RouterParams) *gin.Engine {
 				complaints.PATCH("/:id/status", params.ComplaintHandler.UpdateStatus)
 				complaints.POST("/:id/messages", params.ComplaintHandler.AddInternalMessage)
 				complaints.POST("/:id/dispositions", params.ComplaintHandler.AddDisposition)
+				complaints.POST("/:id/forward-satgas", params.ComplaintHandler.ForwardToSatgas)
 			}
 		}
 
@@ -139,6 +143,7 @@ func SetupRouter(params RouterParams) *gin.Engine {
 				pubs.PUT("/:id", params.PublicationHandler.UpdatePublication)
 				pubs.DELETE("/:id", params.PublicationHandler.DeletePublication)
 				pubs.POST("/:id/submit", params.PublicationHandler.SubmitPublication)
+				pubs.POST("/:id/stages", params.PublicationHandler.AddStageLog)
 				pubs.POST("/:id/verify", params.PublicationHandler.VerifyPublication)
 				pubs.POST("/:id/reviews", params.PublicationHandler.AddReview)
 			}
@@ -158,6 +163,7 @@ func SetupRouter(params RouterParams) *gin.Engine {
 				trips.POST("/:id/submit", params.TripHandler.SubmitTrip)
 				trips.POST("/:id/approve", params.TripHandler.ApproveTrip)
 				trips.POST("/:id/report", params.TripHandler.SubmitReport)
+				trips.POST("/:id/proofs", params.TripHandler.AddProof)
 			}
 		}
 
@@ -185,6 +191,7 @@ func SetupRouter(params RouterParams) *gin.Engine {
 				rps.GET("/recap", params.RpsHandler.GetRecap)
 				rps.GET("/:id", params.RpsHandler.GetSubmissionByID)
 				rps.POST("/:id/submit", params.RpsHandler.SubmitForReview)
+				rps.POST("/:id/assign-reviewer", params.RpsHandler.AssignReviewer)
 				rps.POST("/:id/review", params.RpsHandler.ReviewSubmission)
 				rps.POST("/:id/ratify", params.RpsHandler.RatifySubmission)
 			}
@@ -200,6 +207,8 @@ func SetupRouter(params RouterParams) *gin.Engine {
 				evals.GET("/recap", params.EvaluationHandler.GetRecap)
 				evals.GET("/class/:classId", params.EvaluationHandler.GetEvaluationByClass)
 				evals.POST("/class/:classId/submit", params.EvaluationHandler.SubmitEvaluation)
+				evals.GET("/course/:courseId/improvement-plans", params.EvaluationHandler.GetImprovementPlansByCourse)
+				evals.PATCH("/improvement-plans/:planId", params.EvaluationHandler.UpdateImprovementPlan)
 			}
 		}
 

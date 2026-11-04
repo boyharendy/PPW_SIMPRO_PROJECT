@@ -104,6 +104,23 @@ func (h *ComplaintHandler) AddPublicMessage(c *gin.Context) {
 	response.Success(c, http.StatusOK, "Pesan berhasil ditambahkan ke tiket aduan", nil)
 }
 
+func (h *ComplaintHandler) SubmitPublicRating(c *gin.Context) {
+	ticket := c.Param("ticket")
+	var req struct {
+		Rating   int    `json:"rating" binding:"required"`
+		Komentar string `json:"komentar"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Rating kepuasan wajib diisi (1-5)", err.Error())
+		return
+	}
+	if err := h.usecase.SubmitPublicRating(ticket, req.Rating, req.Komentar); err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusOK, "Terima kasih atas penilaian kepuasan penanganan aduan Anda", nil)
+}
+
 func (h *ComplaintHandler) UpdateStatus(c *gin.Context) {
 	id := c.Param("id")
 	userID := c.GetString(middleware.CtxUserID)
@@ -173,6 +190,24 @@ func (h *ComplaintHandler) AddDisposition(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusOK, "Aduan berhasil didisposisikan", nil)
+}
+
+func (h *ComplaintHandler) ForwardToSatgas(c *gin.Context) {
+	id := c.Param("id")
+	var req struct {
+		Tanggal        string `json:"tanggal"`
+		NomorReferensi string `json:"nomor_referensi" binding:"required"`
+		PetugasSatgas  string `json:"petugas_satgas" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Nomor referensi dan petugas Satgas PPKPT wajib diisi", err.Error())
+		return
+	}
+	if err := h.usecase.ForwardToSatgas(id, req.Tanggal, req.NomorReferensi, req.PetugasSatgas); err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusOK, "Aduan berhasil diteruskan ke Satgas PPKPT institusi", nil)
 }
 
 func (h *ComplaintHandler) GetRecap(c *gin.Context) {

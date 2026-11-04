@@ -4,12 +4,13 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import { useApp } from '@/lib/context';
-import { mockProfiles, mockPublications } from '@/lib/mock-data';
+import { mockProfiles } from '@/lib/mock-data';
 import { publicationService } from '@/lib/api/services/publication.service';
 import type {
   Publication,
   PublicationType,
   PublicationRank,
+  PublicationStage,
   AuthorType,
   AuthorRole,
   PublicationAuthor,
@@ -25,9 +26,11 @@ export default function TambahPublikasiPage() {
   const [jenis, setJenis] = useState<PublicationType>('JURNAL');
   const [namaTarget, setNamaTarget] = useState('');
   const [peringkat, setPeringkat] = useState<PublicationRank>('SINTA_2');
+  const [tahapAwal, setTahapAwal] = useState<PublicationStage>('IDE');
   const [tahun, setTahun] = useState<number>(new Date().getFullYear());
   const [doi, setDoi] = useState('');
   const [url, setUrl] = useState('');
+  const [catatanTahap, setCatatanTahap] = useState('');
 
   // Initial Authors: default current user as first author
   const [authors, setAuthors] = useState<PublicationAuthor[]>([
@@ -44,6 +47,7 @@ export default function TambahPublikasiPage() {
   const [verifikatorId, setVerifikatorId] = useState<string>('u-dosen1');
 
   const isStudentAuthor = authors.some((a) => a.tipe_penulis === 'MAHASISWA');
+  const hasLecturerCoAuthor = authors.some((a) => a.tipe_penulis === 'DOSEN');
   const availableLecturers = mockProfiles.filter((p) => p.tipe_pengguna === 'DOSEN');
 
   const handleAddAuthor = () => {
@@ -66,11 +70,13 @@ export default function TambahPublikasiPage() {
     setAuthors(authors.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async (statusTarget: 'DRAF' | 'DIAJUKAN') => {
+  const handleSubmit = async (statusTarget: PublicationStage) => {
     if (!judul.trim() || !namaTarget.trim()) {
       alert('Judul dan nama target publikasi wajib diisi.');
       return;
     }
+
+    const finalStage = statusTarget === 'DRAF' ? 'DRAF' : tahapAwal === 'DRAF' ? 'DIAJUKAN' : tahapAwal;
 
     const newPub: Publication = {
       id: `pub-${Date.now()}`,
@@ -78,7 +84,7 @@ export default function TambahPublikasiPage() {
       jenis,
       nama_target: namaTarget,
       peringkat,
-      status: statusTarget,
+      status: finalStage,
       status_verifikasi: isStudentAuthor ? 'MENUNGGU' : 'TIDAK_PERLU',
       doi: doi || undefined,
       url: url || undefined,
@@ -92,8 +98,9 @@ export default function TambahPublikasiPage() {
         {
           id: `psl-${Date.now()}`,
           publication_id: `pub-${Date.now()}`,
-          tahap: statusTarget,
+          tahap: finalStage,
           tanggal_tahap: new Date().toISOString().split('T')[0],
+          catatan: catatanTahap || `Pencatatan awal pada tahap ${finalStage}`,
           dicatat_oleh: user.id,
           status_verifikasi: isStudentAuthor ? 'MENUNGGU' : 'TIDAK_PERLU',
           created_at: new Date().toISOString(),
@@ -119,14 +126,14 @@ export default function TambahPublikasiPage() {
 
       <PageHeader
         title="Pencatatan Publikasi Baru"
-        description="Daftarkan karya ilmiah jurnal, prosiding seminar, buku, atau hak cipta (HKI) dosen dan mahasiswa."
+        description="Daftarkan karya ilmiah jurnal, prosiding seminar, buku, atau hak cipta (HKI) dosen dan mahasiswa beserta tahapan proses publikasinya."
       />
 
       <div className="space-y-6">
         {/* Detail Naskah */}
         <div className="card space-y-4">
           <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2">
-            Informasi Umum Publikasi
+            Informasi Umum & Tahapan Publikasi (FR-29)
           </h3>
 
           <div className="space-y-4">
@@ -142,7 +149,7 @@ export default function TambahPublikasiPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div>
                 <label className="label">Jenis Publikasi</label>
                 <select
@@ -180,6 +187,24 @@ export default function TambahPublikasiPage() {
               </div>
 
               <div>
+                <label className="label">Tahap Saat Ini (SKPL FR-29)</label>
+                <select
+                  value={tahapAwal}
+                  onChange={(e) => setTahapAwal(e.target.value as PublicationStage)}
+                  className="select-field text-xs font-semibold text-blue-700"
+                >
+                  <option value="IDE">1. Ide / Konsep</option>
+                  <option value="PENULISAN">2. Penulisan Naskah</option>
+                  <option value="DRAF">3. Draf Selesai</option>
+                  <option value="SUBMIT">4. Submit ke Jurnal/Seminar</option>
+                  <option value="REVIEW">5. Dalam Review (Peer Review)</option>
+                  <option value="REVISI">6. Revisi Naskah</option>
+                  <option value="ACCEPTED">7. Accepted (LoA)</option>
+                  <option value="TERBIT">8. Terbit / Published</option>
+                </select>
+              </div>
+
+              <div>
                 <label className="label">Tahun</label>
                 <input
                   type="number"
@@ -192,7 +217,7 @@ export default function TambahPublikasiPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="label">Target Publikasi (Nama Jurnal / Konferensi / Penerbit)</label>
                 <input
@@ -206,7 +231,7 @@ export default function TambahPublikasiPage() {
               </div>
 
               <div>
-                <label className="label">Tautan / DOI (Opsional)</label>
+                <label className="label">Nomor DOI (Opsional)</label>
                 <input
                   type="text"
                   value={doi}
@@ -215,6 +240,28 @@ export default function TambahPublikasiPage() {
                   className="input-field text-xs"
                 />
               </div>
+
+              <div>
+                <label className="label">Tautan Artikel / Bukti LoA (Opsional)</label>
+                <input
+                  type="text"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://journal.example.ac.id/article/view/123"
+                  className="input-field text-xs"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="label">Catatan Tahapan Proses (Opsional)</label>
+              <input
+                type="text"
+                value={catatanTahap}
+                onChange={(e) => setCatatanTahap(e.target.value)}
+                placeholder="Contoh: Naskah telah disubmit ke portal OJS jurnal dan menunggu editor assignment..."
+                className="input-field text-xs"
+              />
             </div>
           </div>
         </div>
@@ -225,7 +272,7 @@ export default function TambahPublikasiPage() {
             <div>
               <h3 className="text-sm font-bold text-slate-800">Daftar Penulis & Peran</h3>
               <p className="text-xs text-slate-500">
-                Wajib mencantumkan peran (Penulis Pertama, Korespondensi, Anggota, atau Pembimbing)
+                Mendukung publikasi kolaboratif dosen–mahasiswa maupun publikasi mandiri mahasiswa (FR-31)
               </p>
             </div>
             <button
@@ -306,18 +353,25 @@ export default function TambahPublikasiPage() {
             ))}
           </div>
 
-          {/* Dosen Verifikator Selection if student involved */}
+          {/* Dosen Verifikator Selection if student involved (FR-31) */}
           {isStudentAuthor && (
             <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 text-xs space-y-2 animate-fade-in">
               <div className="flex items-center gap-1.5 text-amber-900 font-semibold">
                 <AlertCircle size={15} className="text-amber-600" />
-                <span>Kewajiban Dosen Verifikator (Aturan D6 PRD)</span>
+                <span>
+                  Verifikasi Publikasi Mahasiswa (SKPL FR-31 —{' '}
+                  {hasLecturerCoAuthor ? 'Kolaboratif Dosen & Mahasiswa' : 'Publikasi Mandiri Mahasiswa'})
+                </span>
               </div>
               <p className="text-slate-600 text-[11px] leading-relaxed">
-                Karena terdapat mahasiswa dalam daftar penulis, publikasi wajib diverifikasi oleh Dosen Penulis Pembimbing atau Dosen Penulis Anggota sebelum masuk ke dalam rekap resmi prodi.
+                {hasLecturerCoAuthor
+                  ? 'Publikasi yang melibatkan mahasiswa memerlukan verifikasi dari Dosen Pembimbing atau Dosen Penulis Pendamping sebelum masuk ke rekap resmi prodi.'
+                  : 'Untuk publikasi mandiri mahasiswa (tanpa dosen sebagai penulis pendamping), pilih Dosen Pembimbing, Dosen Wali, atau Dosen Verifikator yang ditunjuk Kaprodi untuk memverifikasi publikasi ini.'}
               </p>
               <div className="max-w-md pt-1">
-                <label className="label text-[11px] text-amber-900 font-bold">Pilih Dosen Verifikator</label>
+                <label className="label text-[11px] text-amber-900 font-bold">
+                  Pilih Dosen Verifikator (Pembimbing / Dosen Wali / Verifikator Prodi)
+                </label>
                 <select
                   value={verifikatorId}
                   onChange={(e) => setVerifikatorId(e.target.value)}
@@ -347,15 +401,14 @@ export default function TambahPublikasiPage() {
 
           <button
             type="button"
-            onClick={() => handleSubmit('DIAJUKAN')}
+            onClick={() => handleSubmit(tahapAwal)}
             className="btn-primary text-xs py-2 px-5 flex items-center gap-1.5"
           >
             <Send size={14} />
-            <span>Ajukan Publikasi</span>
+            <span>Simpan & Catat Tahapan Publikasi</span>
           </button>
         </div>
       </div>
     </div>
   );
 }
-

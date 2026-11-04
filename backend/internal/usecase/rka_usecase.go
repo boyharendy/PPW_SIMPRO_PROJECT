@@ -37,11 +37,27 @@ func (u *rkaUsecase) CreateRka(doc *model.RkaDocument) (*model.RkaDocument, erro
 	if strings.TrimSpace(doc.TahunAnggaran) == "" {
 		return nil, errors.New("tahun anggaran wajib diisi")
 	}
+	if doc.TotalAlokasi < 0 {
+		return nil, errors.New("total alokasi tidak boleh bernilai negatif")
+	}
+	for _, item := range doc.Items {
+		if item.AlokasiAnggaran < 0 || item.HargaSatuan < 0 {
+			return nil, errors.New("alokasi anggaran atau harga satuan tidak boleh bernilai negatif")
+		}
+	}
 	doc.Status = model.BudgetStatusDraft
 	return u.repo.Create(doc)
 }
 
 func (u *rkaUsecase) UpdateRka(tahun string, doc *model.RkaDocument) (*model.RkaDocument, error) {
+	if doc.TotalAlokasi < 0 {
+		return nil, errors.New("total alokasi tidak boleh bernilai negatif")
+	}
+	for _, item := range doc.Items {
+		if item.AlokasiAnggaran < 0 || item.HargaSatuan < 0 {
+			return nil, errors.New("alokasi anggaran atau harga satuan tidak boleh bernilai negatif")
+		}
+	}
 	return u.repo.Update(tahun, doc)
 }
 

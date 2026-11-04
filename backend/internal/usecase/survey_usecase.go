@@ -15,8 +15,10 @@ type SurveyUsecase interface {
 	UpdateSurvey(id string, survey *model.PartnerSurvey) (*model.PartnerSurvey, error)
 	DeleteSurvey(id string) error
 	CreateInvitation(inv *model.PartnerInvitation) (*model.PartnerInvitation, error)
+	GetInvitations(surveyID string) ([]*model.PartnerInvitation, error)
 	GetPublicSurvey(token string) (*model.PartnerSurvey, *model.PartnerInvitation, error)
 	SubmitPublicResponse(sub *model.PartnerResponseSubmission) error
+	SubmitManualResponse(userID string, sub *model.ManualResponseSubmission) error
 	GetRecap(surveyID string) (*model.SurveyRecap, error)
 }
 
@@ -62,6 +64,10 @@ func (u *surveyUsecase) CreateInvitation(inv *model.PartnerInvitation) (*model.P
 	return u.repo.CreateInvitation(inv)
 }
 
+func (u *surveyUsecase) GetInvitations(surveyID string) ([]*model.PartnerInvitation, error) {
+	return u.repo.FindInvitations(surveyID)
+}
+
 func (u *surveyUsecase) GetPublicSurvey(token string) (*model.PartnerSurvey, *model.PartnerInvitation, error) {
 	inv, err := u.repo.FindInvitationByToken(token)
 	if err != nil {
@@ -79,6 +85,14 @@ func (u *surveyUsecase) SubmitPublicResponse(sub *model.PartnerResponseSubmissio
 		return errors.New("token undangan wajib disertakan")
 	}
 	return u.repo.SubmitResponse(sub)
+}
+
+func (u *surveyUsecase) SubmitManualResponse(userID string, sub *model.ManualResponseSubmission) error {
+	if sub.SurveyID == "" {
+		return errors.New("survey_id wajib disertakan")
+	}
+	sub.DiinputOleh = userID
+	return u.repo.SubmitManualResponse(sub)
 }
 
 func (u *surveyUsecase) GetRecap(surveyID string) (*model.SurveyRecap, error) {

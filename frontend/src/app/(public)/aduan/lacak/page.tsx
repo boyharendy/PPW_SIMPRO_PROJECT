@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PublicShell from '@/components/layout/PublicShell';
 import StatusBadge from '@/components/ui/StatusBadge';
 import StatusStepper from '@/components/ui/StatusStepper';
 import ThreadChat from '@/components/ui/ThreadChat';
 import { mockComplaints } from '@/lib/mock-data';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import type { Complaint, ComplaintMessage } from '@/lib/types';
-import { Search, ShieldAlert, Star, Send, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Search, Star, CheckCircle2, AlertCircle } from 'lucide-react';
 import { formatDateShort } from '@/lib/utils';
 
 const COMPLAINT_STEPS = [
@@ -19,6 +20,7 @@ const COMPLAINT_STEPS = [
 ];
 
 export default function PublicLacakAduanPage() {
+  const [allComplaints, setAllComplaints] = useState<Complaint[]>(mockComplaints);
   const [ticketInput, setTicketInput] = useState('ADU-9K4B-7W2P-MN8X');
   const [searched, setSearched] = useState(true);
   const [activeComplaint, setActiveComplaint] = useState<Complaint | null>(mockComplaints[0]);
@@ -29,18 +31,28 @@ export default function PublicLacakAduanPage() {
   const [ratingComment, setRatingComment] = useState('');
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
 
+  useEffect(() => {
+    const localList = storageSync.get<Complaint[]>(STORAGE_KEYS.COMPLAINTS, mockComplaints);
+    if (localList && localList.length > 0) {
+      setAllComplaints(localList);
+      setActiveComplaint(localList[0]);
+    }
+  }, []);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     const cleaned = ticketInput.trim().toUpperCase();
+    const latestList = storageSync.get<Complaint[]>(STORAGE_KEYS.COMPLAINTS, allComplaints);
 
-    const found = mockComplaints.find(
+    const found = latestList.find(
       (c) => c.kode_tiket?.toUpperCase() === cleaned || c.nomor_aduan.toUpperCase() === cleaned
     );
 
     if (found) {
       setActiveComplaint(found);
       setSearched(true);
+      setRatingSubmitted(Boolean(found.rating_kepuasan));
     } else {
       setActiveComplaint(null);
       setErrorMsg('Kode tiket tidak ditemukan. Pastikan format penulisan ADU-XXXX-XXXX-XXXX benar.');
@@ -69,21 +81,26 @@ export default function PublicLacakAduanPage() {
       nextStatus = 'DITINDAKLANJUTI';
     }
 
-    setActiveComplaint({
+    const updated: Complaint = {
       ...activeComplaint,
       status: nextStatus,
       messages: nextMessages,
-    });
+    };
+
+    setActiveComplaint(updated);
+    storageSync.update(STORAGE_KEYS.COMPLAINTS, activeComplaint.id, updated, allComplaints);
   };
 
   const handleRatingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeComplaint) return;
-    setActiveComplaint({
+    const updated: Complaint = {
       ...activeComplaint,
       rating_kepuasan: rating,
       komentar_kepuasan: ratingComment,
-    });
+    };
+    setActiveComplaint(updated);
+    storageSync.update(STORAGE_KEYS.COMPLAINTS, activeComplaint.id, updated, allComplaints);
     setRatingSubmitted(true);
   };
 
@@ -235,4 +252,3 @@ export default function PublicLacakAduanPage() {
     </PublicShell>
   );
 }
-

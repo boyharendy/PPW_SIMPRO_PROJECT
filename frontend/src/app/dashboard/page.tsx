@@ -9,15 +9,9 @@ import {
   Coins,
   BookCheck,
   MessageSquareHeart,
-  TrendingUp,
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-  ArrowRight,
   PlusCircle,
   FileText,
   ShieldCheck,
-  Star,
   ExternalLink,
   Calendar,
   Award,
@@ -25,13 +19,14 @@ import {
   FileBadge,
   Users,
   ShieldAlert,
+  ChevronRight,
+  Sparkles,
 } from 'lucide-react';
 import { useUser } from '@/lib/context';
 import {
   mockDashboardStats,
   mockNotifications,
   mockComplaints,
-  mockTrips,
   mockBusinessTrips,
   mockPublications,
   mockRpsSubmissions,
@@ -39,7 +34,6 @@ import {
 import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import type { BusinessTrip, Publication, RpsSubmission, Complaint } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
-import { StatusBadge } from '@/components/ui/StatusBadge';
 
 export default function DashboardPage() {
   const { user, currentRole } = useUser();
@@ -59,7 +53,6 @@ export default function DashboardPage() {
   );
 
   useEffect(() => {
-    // Re-check storageSync if another tab or navigation updated it
     setTrips(storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips));
     setPublications(storageSync.get<Publication[]>(STORAGE_KEYS.PUBLICATIONS, mockPublications));
     setRpsList(storageSync.get<RpsSubmission[]>(STORAGE_KEYS.RPS_SUBMISSIONS, mockRpsSubmissions));
@@ -77,67 +70,66 @@ export default function DashboardPage() {
   );
 
   return (
-    <div className="space-y-6">
-      {/* Welcome Banner */}
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="max-w-2xl space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 border border-slate-200">
+    <div className="space-y-3.5">
+      {/* 1. LoopAI Top Welcome & Context Bar */}
+      <div className="rounded-[20px] border border-slate-200/80 bg-white p-4 sm:p-4.5 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)]">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="space-y-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs sm:text-sm font-medium text-slate-700 border border-slate-200/80">
                 <Calendar className="h-3.5 w-3.5 text-slate-500" />
                 Semester Ganjil 2024/2025
               </span>
-              <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 border border-blue-200">
-                Role: {currentRole.replace('_', ' ')}
+              <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs sm:text-sm font-bold text-indigo-700 border border-indigo-200">
+                Peran: {currentRole.replace('_', ' ')}
               </span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 truncate">
               Selamat Datang, {user?.name || 'Civitas Akademika'}!
             </h1>
-            <p className="text-sm md:text-base text-slate-600 leading-relaxed">
-              Sistem Informasi Manajemen Program Studi (SIMPRO) mengintegrasikan layanan kemahasiswaan (perwalian, beasiswa, sanksi, UKM, himpunan, sertifikat) serta tata kelola, mutu &amp; akreditasi program studi.
-
+            <p className="text-xs sm:text-sm text-slate-500 line-clamp-1">
+              Sistem Informasi Manajemen Program Studi (SIMPRO) mengintegrasikan layanan kemahasiswaan serta tata kelola, mutu &amp; akreditasi.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             {currentRole === 'MAHASISWA' ? (
               <>
                 <Link
                   href="/dashboard/aduan"
-                  className="rounded-lg bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-blue-700 transition-colors inline-flex items-center gap-1.5 shadow-xs"
+                  className="btn-primary text-sm py-2 px-4"
                 >
                   <MessageSquareHeart className="h-4 w-4" />
-                  Kirim Aduan Anonim
+                  Kirim Aduan
                 </Link>
                 <Link
                   href="/aduan/lacak"
                   target="_blank"
-                  className="rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors inline-flex items-center gap-1"
+                  className="btn-secondary text-sm py-2 px-3.5"
                 >
-                  Lacak Tiket Aduan
-                  <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+                  Lacak Tiket
+                  <ExternalLink className="h-4 w-4 text-slate-400" />
                 </Link>
               </>
             ) : (
               <>
                 <Link
                   href="/dashboard/publikasi/baru"
-                  className="rounded-lg bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-blue-700 transition-colors inline-flex items-center gap-1.5 shadow-xs"
+                  className="btn-primary text-sm py-2 px-4"
                 >
                   <PlusCircle className="h-4 w-4" />
                   Publikasi Baru
                 </Link>
                 <Link
                   href="/dashboard/perjalanan-dinas/baru"
-                  className="rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors inline-flex items-center gap-1.5"
+                  className="btn-secondary text-sm py-2 px-3.5"
                 >
-                  <Plane className="h-4 w-4 text-blue-600" />
+                  <Plane className="h-4 w-4 text-indigo-600" />
                   Ajukan Dinas
                 </Link>
                 <Link
                   href="/dashboard/rps/ajukan"
-                  className="rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors inline-flex items-center gap-1.5"
+                  className="btn-secondary text-sm py-2 px-3.5"
                 >
                   <BookCheck className="h-4 w-4 text-emerald-600" />
                   Ajukan RPS
@@ -148,455 +140,470 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* KPI Metric Cards (Symmetrical 3x2 Grid for spacious, modern enterprise typography) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      {/* 2. KPI Metric Cards (2 Baris x 3 Kolom - LoopAI Style: Title Left + Pill Right, Big Number Left + Compare Right) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
         {/* Metric 1: Kepuasan Mitra */}
         <Link
           href="/dashboard/kepuasan-mitra"
-          className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs hover:border-blue-300 hover:shadow-xs transition-all flex flex-col justify-between"
+          className="rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] hover:border-indigo-300 transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Kepuasan Mitra</span>
-            <div className="rounded-lg bg-blue-50 p-2 text-blue-600">
-              <Building2 className="h-4 w-4" />
-            </div>
+            <span className="text-sm sm:text-base font-semibold text-slate-800">Kepuasan Mitra</span>
+            <span className="rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 px-2.5 py-0.5 text-xs sm:text-sm font-semibold">
+              +0.16
+            </span>
           </div>
-          <div className="my-2">
-            <p className="text-3xl font-bold text-slate-900 tracking-tight flex items-baseline gap-1.5">
+          <div className="mt-3 flex items-baseline justify-between gap-2">
+            <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               {stats.indeksKepuasanMitra}
-              <span className="text-sm font-normal text-slate-400">/ 5.0</span>
+              <span className="text-sm font-normal text-slate-400"> / 5.0</span>
             </p>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-emerald-700 font-medium">
-            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
-            <span>Predikat Sangat Puas (KP &amp; PSI)</span>
+            <span className="text-xs sm:text-sm text-slate-400 font-medium truncate">
+              Sangat Puas (KP &amp; PSI)
+            </span>
           </div>
         </Link>
 
         {/* Metric 2: Publikasi */}
         <Link
           href="/dashboard/publikasi"
-          className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs hover:border-blue-300 hover:shadow-xs transition-all flex flex-col justify-between"
+          className="rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] hover:border-indigo-300 transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Publikasi 2025</span>
-            <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600">
-              <BookOpen className="h-4 w-4" />
-            </div>
+            <span className="text-sm sm:text-base font-semibold text-slate-800">Publikasi 2025</span>
+            <span className="rounded-full bg-amber-50 text-amber-600 border border-amber-200 px-2.5 py-0.5 text-xs sm:text-sm font-semibold">
+              {stats.publikasiMenungguVerifikasi} Menunggu
+            </span>
           </div>
-          <div className="my-2">
-            <p className="text-3xl font-bold text-slate-900 tracking-tight">
+          <div className="mt-3 flex items-baseline justify-between gap-2">
+            <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               {stats.totalPublikasiTahunIni}
-              <span className="text-sm font-normal text-slate-400 ml-1.5">Karya Terbit</span>
+              <span className="text-sm font-normal text-slate-400 ml-1.5">Karya</span>
             </p>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-amber-700 font-medium">
-            <Clock className="h-3.5 w-3.5 text-amber-600" />
-            <span>{stats.publikasiMenungguVerifikasi} Menunggu Verifikasi</span>
+            <span className="text-xs sm:text-sm text-slate-400 font-medium truncate">
+              Bandingkan 18 (tahun lalu)
+            </span>
           </div>
         </Link>
 
         {/* Metric 3: Perjalanan Dinas */}
         <Link
           href="/dashboard/perjalanan-dinas"
-          className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs hover:border-blue-300 hover:shadow-xs transition-all flex flex-col justify-between"
+          className="rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] hover:border-indigo-300 transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Perjalanan Dinas</span>
-            <div className="rounded-lg bg-sky-50 p-2 text-sky-600">
-              <Plane className="h-4 w-4" />
-            </div>
+            <span className="text-sm sm:text-base font-semibold text-slate-800">Perjalanan Dinas</span>
+            <span className="rounded-full bg-indigo-50 text-indigo-600 border border-indigo-200 px-2.5 py-0.5 text-xs sm:text-sm font-semibold">
+              Aktif &amp; SPJ
+            </span>
           </div>
-          <div className="my-2">
-            <p className="text-3xl font-bold text-slate-900 tracking-tight">
+          <div className="mt-3 flex items-baseline justify-between gap-2">
+            <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               {stats.perjalananDinasAktif}
-              <span className="text-sm font-normal text-slate-400 ml-1.5">Penugasan</span>
+              <span className="text-sm font-normal text-slate-400 ml-1.5">Tugas</span>
             </p>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
-            <CheckCircle2 className="h-3.5 w-3.5 text-blue-600" />
-            <span>Tugas Aktif &amp; Verifikasi SPJ</span>
+            <span className="text-xs sm:text-sm text-slate-400 font-medium truncate">
+              Surat Tugas &amp; Laporan
+            </span>
           </div>
         </Link>
 
         {/* Metric 4: Serapan RKA */}
         <Link
           href="/dashboard/rka/2025/serapan"
-          className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs hover:border-blue-300 hover:shadow-xs transition-all flex flex-col justify-between"
+          className="rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] hover:border-indigo-300 transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Serapan Anggaran RKA</span>
-            <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600">
-              <Coins className="h-4 w-4" />
-            </div>
+            <span className="text-sm sm:text-base font-semibold text-slate-800">Serapan Anggaran RKA</span>
+            <span className="rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 px-2.5 py-0.5 text-xs sm:text-sm font-semibold">
+              +15% TW III
+            </span>
           </div>
-          <div className="my-2">
-            <p className="text-3xl font-bold text-emerald-700 tracking-tight">
+          <div className="mt-3 flex items-baseline justify-between gap-2">
+            <p className="text-2xl sm:text-3xl font-extrabold text-emerald-600 tracking-tight">
               {stats.serapanRkaPersen}%
-              <span className="text-sm font-normal text-slate-400 ml-1.5">Terealisasi</span>
             </p>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
-            <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
-            <span>Target Triwulan III On-Track</span>
+            <span className="text-xs sm:text-sm text-slate-400 font-medium truncate">
+              Target Triwulan III On-Track
+            </span>
           </div>
         </Link>
 
         {/* Metric 5: RPS Tuntas */}
         <Link
           href="/dashboard/rps/rekap"
-          className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs hover:border-blue-300 hover:shadow-xs transition-all flex flex-col justify-between"
+          className="rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] hover:border-indigo-300 transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">RPS &amp; Kurikulum</span>
-            <div className="rounded-lg bg-blue-50 p-2 text-blue-600">
-              <BookCheck className="h-4 w-4" />
-            </div>
+            <span className="text-sm sm:text-base font-semibold text-slate-800">RPS &amp; Kurikulum</span>
+            <span className="rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 px-2.5 py-0.5 text-xs sm:text-sm font-semibold">
+              Standar SPMI
+            </span>
           </div>
-          <div className="my-2">
-            <p className="text-3xl font-bold text-blue-700 tracking-tight">
+          <div className="mt-3 flex items-baseline justify-between gap-2">
+            <p className="text-2xl sm:text-3xl font-extrabold text-indigo-600 tracking-tight">
               {stats.rpsTuntasPersen}%
               <span className="text-sm font-normal text-slate-400 ml-1.5">Disahkan</span>
             </p>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-emerald-700 font-medium">
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-            <span>Memenuhi Standar Mutu SPMI</span>
+            <span className="text-xs sm:text-sm text-slate-400 font-medium truncate">
+              18/19 MK Siap Kuliah
+            </span>
           </div>
         </Link>
 
         {/* Metric 6: Aduan Terbuka */}
         <Link
           href="/dashboard/kelola/aduan"
-          className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs hover:border-blue-300 hover:shadow-xs transition-all flex flex-col justify-between"
+          className="rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] hover:border-indigo-300 transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Aduan Mahasiswa</span>
-            <div className="rounded-lg bg-rose-50 p-2 text-rose-600">
-              <MessageSquareHeart className="h-4 w-4" />
-            </div>
+            <span className="text-sm sm:text-base font-semibold text-slate-800">Aduan Mahasiswa</span>
+            <span className="rounded-full bg-rose-50 text-rose-600 border border-rose-200 px-2.5 py-0.5 text-xs sm:text-sm font-semibold">
+              SLA ≤ 3 Hari
+            </span>
           </div>
-          <div className="my-2">
-            <p className="text-3xl font-bold text-slate-900 tracking-tight">
+          <div className="mt-3 flex items-baseline justify-between gap-2">
+            <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               {stats.aduanTerbuka}
               <span className="text-sm font-normal text-slate-400 ml-1.5">Tiket Aktif</span>
             </p>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-blue-700 font-medium">
-            <ShieldCheck className="h-3.5 w-3.5 text-blue-600" />
-            <span>Dalam Penanganan SLA Terkendali</span>
+            <span className="text-xs sm:text-sm text-slate-400 font-medium truncate">
+              Dalam Penanganan Petugas
+            </span>
           </div>
         </Link>
       </div>
 
-      {/* Main Two Columns (Symmetrical 50/50 Balanced Grid) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        {/* Left Column: Operational Queues & Module Shortcuts */}
-        <div className="space-y-6">
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-blue-600" />
-                <h3 className="text-sm font-bold text-slate-900">Antrean Tindak Lanjut &amp; Verifikasi</h3>
-              </div>
-              <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-200">
+      {/* 3. Operational 3-Column LoopAI Bento Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 items-stretch">
+        {/* Kolom 1: Priority Tasks Style (Antrean Tindak Lanjut) */}
+        <div className="rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-2.5 mb-2">
+              <h3 className="text-base sm:text-lg font-bold text-slate-900">Tugas Prioritas</h3>
+              <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-bold text-indigo-700 border border-indigo-200">
                 4 Menunggu
               </span>
             </div>
 
-            <div className="space-y-3">
-              {/* Trip Approval */}
-              {pendingTrips.map((trip) => (
-                <div
+            <div className="space-y-2">
+              {/* Trip Approval (Highlighted First Card in Lavender Tint) */}
+              {pendingTrips.slice(0, 1).map((trip) => (
+                <Link
                   key={trip.id}
-                  className="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 text-xs flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors"
+                  href="/dashboard/perjalanan-dinas/persetujuan"
+                  className="block rounded-2xl bg-indigo-50/60 border border-indigo-100/80 p-2.5 transition-all hover:border-indigo-200"
                 >
-                  <div className="space-y-1 min-w-0 flex-1">
-                    <span className="inline-block rounded bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
-                      Persetujuan Dinas
-                    </span>
-                    <p className="font-semibold text-slate-900 text-sm truncate">{trip.maksud_kegiatan}</p>
-                    <p className="text-slate-500 text-[11px] truncate">
-                      {trip.tujuan} &bull; Tgl: {formatDate(trip.tanggal_berangkat)}
-                    </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-4 h-4 rounded-full border-2 border-indigo-600 border-t-transparent inline-block shrink-0" />
+                      <span className="font-bold text-slate-900 text-sm truncate">
+                        Persetujuan Dinas &bull; {trip.tujuan}
+                      </span>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
                   </div>
-                  <Link
-                    href={`/dashboard/perjalanan-dinas/persetujuan`}
-                    className="shrink-0 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 font-medium text-blue-700 hover:bg-blue-100 transition-colors inline-flex items-center gap-1 shadow-xs"
-                  >
-                    Proses
-                    <ArrowRight className="h-3 w-3" />
-                  </Link>
-                </div>
+                  <p className="text-xs text-slate-600 truncate pl-6 mt-0.5">
+                    {trip.maksud_kegiatan} ({formatDate(trip.tanggal_berangkat)})
+                  </p>
+                </Link>
               ))}
 
               {/* Publication Verification */}
-              {pendingPublications.map((pub) => (
-                <div
+              {pendingPublications.slice(0, 1).map((pub) => (
+                <Link
                   key={pub.id}
-                  className="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 text-xs flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors"
+                  href="/dashboard/publikasi/verifikasi"
+                  className="block rounded-2xl border border-slate-100 bg-slate-50/50 p-2.5 transition-all hover:bg-indigo-50/30 hover:border-indigo-200"
                 >
-                  <div className="space-y-1 min-w-0 flex-1">
-                    <span className="inline-block rounded bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-800">
-                      Verifikasi Publikasi
-                    </span>
-                    <p className="font-semibold text-slate-900 text-sm truncate">{pub.judul}</p>
-                    <p className="text-slate-500 text-[11px] truncate">
-                      Penulis: {pub.authors[0]?.nama_penulis} &bull; Target: {pub.nama_target} ({pub.peringkat})
-                    </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-4 h-4 rounded-full border-2 border-emerald-500 border-t-transparent inline-block shrink-0" />
+                      <span className="font-bold text-slate-900 text-sm truncate">
+                        Verifikasi Publikasi Mahasiswa
+                      </span>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
                   </div>
-                  <Link
-                    href={`/dashboard/publikasi/verifikasi`}
-                    className="shrink-0 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 font-medium text-blue-700 hover:bg-blue-100 transition-colors inline-flex items-center gap-1 shadow-xs"
-                  >
-                    Verifikasi
-                    <ArrowRight className="h-3 w-3" />
-                  </Link>
-                </div>
+                  <p className="text-xs text-slate-500 truncate pl-6 mt-0.5">
+                    {pub.judul}
+                  </p>
+                </Link>
               ))}
 
               {/* RPS Review */}
-              {pendingRps.map((rps) => (
-                <div
+              {pendingRps.slice(0, 1).map((rps) => (
+                <Link
                   key={rps.id}
-                  className="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 text-xs flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors"
+                  href="/dashboard/rps/review-saya"
+                  className="block rounded-2xl border border-slate-100 bg-slate-50/50 p-2.5 transition-all hover:bg-indigo-50/30 hover:border-indigo-200"
                 >
-                  <div className="space-y-1 min-w-0 flex-1">
-                    <span className="inline-block rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
-                      Review RPS &amp; Kurikulum
-                    </span>
-                    <p className="font-semibold text-slate-900 text-sm truncate">
-                      {rps.course?.nama_mk || 'Mata Kuliah'} ({rps.course?.kode_mk || rps.course_id})
-                    </p>
-                    <p className="text-slate-500 text-[11px] truncate">
-                      Pengampu: {rps.dosen_pengampu?.nama_lengkap || 'Dosen'} &bull; Periode: {rps.academic_period?.tahun_ajaran || '2024/2025'} ({rps.academic_period?.semester || 'GANJIL'})
-                    </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-4 h-4 rounded-full border-2 border-sky-500 border-t-transparent inline-block shrink-0" />
+                      <span className="font-bold text-slate-900 text-sm truncate">
+                        Review RPS: {rps.course?.nama_mk || 'Mata Kuliah'}
+                      </span>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
                   </div>
-                  <Link
-                    href={`/dashboard/rps/review-saya`}
-                    className="shrink-0 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 font-medium text-blue-700 hover:bg-blue-100 transition-colors inline-flex items-center gap-1 shadow-xs"
-                  >
-                    Review
-                    <ArrowRight className="h-3 w-3" />
-                  </Link>
-                </div>
+                  <p className="text-xs text-slate-500 truncate pl-6 mt-0.5">
+                    Kode {rps.course?.kode_mk || rps.course_id} &bull; Pengampu: {rps.dosen_pengampu?.nama_lengkap || 'Dosen'}
+                  </p>
+                </Link>
               ))}
 
               {/* Active Complaints */}
-              {activeComplaints.slice(0, 2).map((comp) => (
-                <div
+              {activeComplaints.slice(0, 1).map((comp) => (
+                <Link
                   key={comp.id}
-                  className="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 text-xs flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors"
+                  href={`/dashboard/kelola/aduan/${comp.id}`}
+                  className="block rounded-2xl border border-slate-100 bg-slate-50/50 p-2.5 transition-all hover:bg-indigo-50/30 hover:border-indigo-200"
                 >
-                  <div className="space-y-1 min-w-0 flex-1">
-                    <span className="inline-block rounded bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-800">
-                      Aduan Mahasiswa
-                    </span>
-                    <p className="font-semibold text-slate-900 text-sm truncate">{comp.judul}</p>
-                    <p className="text-slate-500 font-mono text-[11px] truncate">
-                      {comp.nomor_aduan} &bull; Masuk: {formatDate(comp.tanggal_diterima)}
-                    </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-4 h-4 rounded-full border-2 border-rose-500 border-t-transparent inline-block shrink-0" />
+                      <span className="font-bold text-slate-900 text-sm truncate">
+                        Aduan: {comp.nomor_aduan}
+                      </span>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
                   </div>
-                  <Link
-                    href={`/dashboard/kelola/aduan/${comp.id}`}
-                    className="shrink-0 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 font-medium text-blue-700 hover:bg-blue-100 transition-colors inline-flex items-center gap-1 shadow-xs"
-                  >
-                    Tindak Lanjut
-                    <ArrowRight className="h-3 w-3" />
-                  </Link>
-                </div>
+                  <p className="text-xs text-slate-500 truncate pl-6 mt-0.5">
+                    {comp.judul}
+                  </p>
+                </Link>
               ))}
-            </div>
-          </div>
-
-          {/* Quick Shortcuts to Modules 1-6 */}
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-bold text-slate-900">Akses Modul Kemahasiswaan</h3>
-              <span className="text-xs text-slate-400 font-medium">Modul 1–6</span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <Link
-                href="/dashboard/perwalian"
-                className="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 text-xs hover:bg-blue-50 hover:border-blue-200 transition-colors"
-              >
-                <Users className="h-4 w-4 text-blue-600 mb-2" />
-                <p className="font-semibold text-slate-800">Laporan Perwalian</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">Ketua Kelas &amp; Dosen</p>
-              </Link>
-
-              <Link
-                href="/dashboard/beasiswa"
-                className="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 text-xs hover:bg-blue-50 hover:border-blue-200 transition-colors"
-              >
-                <Award className="h-4 w-4 text-blue-600 mb-2" />
-                <p className="font-semibold text-slate-800">Beasiswa &amp; Jam Karya</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">Log Jam &amp; Verifikasi</p>
-              </Link>
-
-              <Link
-                href="/dashboard/pelanggaran"
-                className="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 text-xs hover:bg-blue-50 hover:border-blue-200 transition-colors"
-              >
-                <ShieldAlert className="h-4 w-4 text-rose-600 mb-2" />
-                <p className="font-semibold text-slate-800">Pelanggaran &amp; Sanksi</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">Jam Sanksi Sosial</p>
-              </Link>
-
-              <Link
-                href="/dashboard/ukm"
-                className="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 text-xs hover:bg-blue-50 hover:border-blue-200 transition-colors"
-              >
-                <Compass className="h-4 w-4 text-blue-600 mb-2" />
-                <p className="font-semibold text-slate-800">Kegiatan UKM</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">Direktori &amp; Anggota</p>
-              </Link>
-
-              <Link
-                href="/dashboard/himpunan/proker"
-                className="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 text-xs hover:bg-blue-50 hover:border-blue-200 transition-colors"
-              >
-                <Calendar className="h-4 w-4 text-blue-600 mb-2" />
-                <p className="font-semibold text-slate-800">Proker Himpunan</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">Proposal &amp; LPJ</p>
-              </Link>
-
-              <Link
-                href="/dashboard/sertifikat"
-                className="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 text-xs hover:bg-blue-50 hover:border-blue-200 transition-colors"
-              >
-                <FileBadge className="h-4 w-4 text-blue-600 mb-2" />
-                <p className="font-semibold text-slate-800">Sertifikat Mahasiswa</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">Bahasa &amp; Profesi</p>
-              </Link>
-            </div>
-          </div>
-
-          {/* Quick Shortcuts to Modules 7-13 */}
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-bold text-slate-900">Akses Modul Tata Kelola &amp; Mutu Prodi</h3>
-              <span className="text-xs text-slate-400 font-medium">Modul 7–13</span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <Link
-                href="/dashboard/kepuasan-mitra"
-                className="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 text-xs hover:bg-blue-50 hover:border-blue-200 transition-colors"
-              >
-                <Building2 className="h-4 w-4 text-blue-600 mb-2" />
-                <p className="font-semibold text-slate-800">Kepuasan Mitra</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">Instrumen &amp; Rekap</p>
-              </Link>
-
-              <Link
-                href="/dashboard/publikasi/rekap"
-                className="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 text-xs hover:bg-blue-50 hover:border-blue-200 transition-colors"
-              >
-                <BookOpen className="h-4 w-4 text-blue-600 mb-2" />
-                <p className="font-semibold text-slate-800">Rekap Publikasi</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">Akreditasi &amp; IKU</p>
-              </Link>
-
-              <Link
-                href="/dashboard/perjalanan-dinas/rekap"
-                className="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 text-xs hover:bg-blue-50 hover:border-blue-200 transition-colors"
-              >
-                <Plane className="h-4 w-4 text-blue-600 mb-2" />
-                <p className="font-semibold text-slate-800">SPJ Dinas</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">Estimasi vs Realisasi</p>
-              </Link>
-
-              <Link
-                href="/dashboard/rka"
-                className="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 text-xs hover:bg-blue-50 hover:border-blue-200 transition-colors"
-              >
-                <Coins className="h-4 w-4 text-blue-600 mb-2" />
-                <p className="font-semibold text-slate-800">RKA &amp; Anggaran</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">Versi Kerja &amp; Serapan</p>
-              </Link>
-
-              <Link
-                href="/dashboard/rps"
-                className="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 text-xs hover:bg-blue-50 hover:border-blue-200 transition-colors"
-              >
-                <BookCheck className="h-4 w-4 text-blue-600 mb-2" />
-                <p className="font-semibold text-slate-800">Review RPS</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">Checklist 5 Komponen</p>
-              </Link>
-
-              <Link
-                href="/dashboard/evaluasi-perkuliahan"
-                className="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 text-xs hover:bg-blue-50 hover:border-blue-200 transition-colors"
-              >
-                <FileText className="h-4 w-4 text-blue-600 mb-2" />
-                <p className="font-semibold text-slate-800">Evaluasi Kuliah</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">Analisis CPMK Kelas</p>
-              </Link>
             </div>
           </div>
         </div>
 
-        {/* Right Column: Notifications & Public Portals */}
-        <div className="space-y-6">
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-bold text-slate-900">Notifikasi &amp; Pembaruan Sistem</h3>
-              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-700 border border-slate-200">
+        {/* Kolom 2: Notifikasi Sistem & Portal Publik */}
+        <div className="rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] flex flex-col justify-between space-y-3">
+          <div>
+            <div className="flex items-center justify-between pb-2.5 mb-2">
+              <h3 className="text-base sm:text-lg font-bold text-slate-900">Notifikasi &amp; Pembaruan</h3>
+              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700 border border-slate-200">
                 {mockNotifications.length} Aktivitas
               </span>
             </div>
 
-            <div className="space-y-3">
-              {mockNotifications.map((notif) => (
+            <div className="space-y-2">
+              {mockNotifications.map((notif, idx) => (
                 <Link
                   key={notif.id}
                   href={`/dashboard${notif.tautan}`}
-                  className="block rounded-lg border border-slate-200 bg-white p-3.5 text-xs hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                  className={`block rounded-2xl p-2.5 text-xs sm:text-sm transition-all ${
+                    idx === 0
+                      ? 'bg-indigo-50/50 border border-indigo-100/80'
+                      : 'border border-slate-100 bg-slate-50/50 hover:bg-indigo-50/30'
+                  }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-900 text-xs">{notif.judul}</span>
-                    <span className="text-[10px] text-slate-400">Baru saja</span>
+                    <span className="font-bold text-slate-900 text-sm truncate max-w-[210px]">{notif.judul}</span>
+                    <span className="text-xs text-slate-400 shrink-0">Baru saja</span>
                   </div>
-                  <p className="mt-1 text-slate-600 leading-relaxed text-xs">{notif.isi}</p>
+                  <p className="mt-0.5 text-slate-500 text-xs sm:text-sm line-clamp-1">{notif.isi}</p>
                 </Link>
               ))}
             </div>
           </div>
 
-          {/* Quick Links to Public Portals */}
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
-            <div className="border-b border-slate-100 pb-3">
-              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                Portal Publik Terintegrasi (Akses Tanpa Login)
-              </h4>
-              <p className="text-xs text-slate-500 mt-1">
-                Alur pengisian kuesioner mitra mandiri dan pelacakan tiket aduan responsif:
-              </p>
-            </div>
+          {/* Bagian Bawah: Portal Publik */}
+          <div className="pt-2.5 border-t border-slate-100">
+            <h4 className="text-xs sm:text-sm font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center justify-between">
+              <span>Portal Publik Terintegrasi</span>
+              <span className="text-xs text-indigo-600 font-semibold">Tanpa Login</span>
+            </h4>
 
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <Link
                 href="/mitra/isi/tok-telkom-2025"
                 target="_blank"
-                className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50/40 p-3.5 text-xs hover:border-blue-300 hover:bg-blue-50/30 transition-all"
+                className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/60 p-2.5 text-xs sm:text-sm hover:border-indigo-300 hover:bg-indigo-50/40 transition-all"
               >
-                <div>
-                  <p className="font-semibold text-slate-800 text-sm">Kuesioner Mitra Publik</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">PT Telkom Indonesia (Akses Token Langsung)</p>
+                <div className="min-w-0 pr-1">
+                  <p className="font-bold text-slate-800 text-sm truncate">Kuesioner Mitra</p>
+                  <p className="text-xs text-slate-500 truncate">PT Telkom Indonesia</p>
                 </div>
-                <ExternalLink className="h-4 w-4 text-slate-400" />
+                <ExternalLink className="h-4 w-4 text-slate-400 shrink-0" />
               </Link>
 
               <Link
                 href="/aduan/lacak"
                 target="_blank"
-                className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50/40 p-3.5 text-xs hover:border-blue-300 hover:bg-blue-50/30 transition-all"
+                className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/60 p-2.5 text-xs sm:text-sm hover:border-indigo-300 hover:bg-indigo-50/40 transition-all"
               >
-                <div>
-                  <p className="font-semibold text-slate-800 text-sm">Pelacak Tiket Aduan Mahasiswa</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Pemeriksaan Status Anonim &amp; Utas Chat Balasan</p>
+                <div className="min-w-0 pr-1">
+                  <p className="font-bold text-slate-800 text-sm truncate">Lacak Tiket Aduan</p>
+                  <p className="text-xs text-slate-500 truncate">Status Anonim &amp; Utas</p>
                 </div>
-                <ExternalLink className="h-4 w-4 text-slate-400" />
+                <ExternalLink className="h-4 w-4 text-slate-400 shrink-0" />
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Kolom 3: LoopAI Pastel Hub (Direktori Modul 1-6 & 7-13) */}
+        <div className="rounded-[20px] bg-gradient-to-b from-indigo-100/60 via-blue-50/50 to-slate-50/90 border border-indigo-100/90 p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] flex flex-col justify-between space-y-2.5">
+          {/* Sub-header Kemahasiswaan (Modul 1-6) */}
+          <div>
+            <div className="flex items-center justify-between pb-1.5 mb-1.5">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-indigo-600" />
+                <h3 className="text-sm sm:text-base font-bold text-slate-900">Kemahasiswaan</h3>
+              </div>
+              <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-bold text-indigo-700 border border-indigo-100">
+                Modul 1–6
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-1.5">
+              <Link
+                href="/dashboard/perwalian"
+                className="flex items-center gap-2 p-2 rounded-xl border border-slate-100 bg-white hover:border-indigo-300 transition-all shadow-2xs"
+              >
+                <Users className="h-4 w-4 text-emerald-600 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm font-bold text-slate-800 truncate">Perwalian</p>
+                  <p className="text-xs text-slate-400 truncate">Laporan Kelas</p>
+                </div>
+              </Link>
+
+              <Link
+                href="/dashboard/beasiswa"
+                className="flex items-center gap-2 p-2 rounded-xl border border-slate-100 bg-white hover:border-indigo-300 transition-all shadow-2xs"
+              >
+                <Award className="h-4 w-4 text-indigo-600 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm font-bold text-slate-800 truncate">Beasiswa</p>
+                  <p className="text-xs text-slate-400 truncate">Jam Karya</p>
+                </div>
+              </Link>
+
+              <Link
+                href="/dashboard/pelanggaran"
+                className="flex items-center gap-2 p-2 rounded-xl border border-slate-100 bg-white hover:border-indigo-300 transition-all shadow-2xs"
+              >
+                <ShieldAlert className="h-4 w-4 text-rose-600 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm font-bold text-slate-800 truncate">Sanksi</p>
+                  <p className="text-xs text-slate-400 truncate">Sanksi Sosial</p>
+                </div>
+              </Link>
+
+              <Link
+                href="/dashboard/ukm"
+                className="flex items-center gap-2 p-2 rounded-xl border border-slate-100 bg-white hover:border-indigo-300 transition-all shadow-2xs"
+              >
+                <Compass className="h-4 w-4 text-sky-600 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm font-bold text-slate-800 truncate">UKM</p>
+                  <p className="text-xs text-slate-400 truncate">Kegiatan</p>
+                </div>
+              </Link>
+
+              <Link
+                href="/dashboard/himpunan/proker"
+                className="flex items-center gap-2 p-2 rounded-xl border border-slate-100 bg-white hover:border-indigo-300 transition-all shadow-2xs"
+              >
+                <Calendar className="h-4 w-4 text-amber-600 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm font-bold text-slate-800 truncate">Proker</p>
+                  <p className="text-xs text-slate-400 truncate">Himpunan</p>
+                </div>
+              </Link>
+
+              <Link
+                href="/dashboard/sertifikat"
+                className="flex items-center gap-2 p-2 rounded-xl border border-slate-100 bg-white hover:border-indigo-300 transition-all shadow-2xs"
+              >
+                <FileBadge className="h-4 w-4 text-purple-600 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm font-bold text-slate-800 truncate">Sertifikat</p>
+                  <p className="text-xs text-slate-400 truncate">Mahasiswa</p>
+                </div>
+              </Link>
+            </div>
+          </div>
+
+          {/* Sub-header Tata Kelola & Mutu (Modul 7-13) */}
+          <div className="pt-2 border-t border-indigo-100/80">
+            <div className="flex items-center justify-between pb-1.5 mb-1.5">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-indigo-600" />
+                <h3 className="text-sm sm:text-base font-bold text-slate-900">Tata Kelola &amp; Mutu</h3>
+              </div>
+              <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-bold text-indigo-700 border border-indigo-100">
+                Modul 7–13
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-1.5">
+              <Link
+                href="/dashboard/kepuasan-mitra"
+                className="flex items-center gap-2 p-2 rounded-xl border border-slate-100 bg-white hover:border-indigo-300 transition-all shadow-2xs"
+              >
+                <Building2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm font-bold text-slate-800 truncate">Kepuasan Mitra</p>
+                  <p className="text-xs text-slate-400 truncate">KP, PSI, PDLK</p>
+                </div>
+              </Link>
+
+              <Link
+                href="/dashboard/publikasi/rekap"
+                className="flex items-center gap-2 p-2 rounded-xl border border-slate-100 bg-white hover:border-indigo-300 transition-all shadow-2xs"
+              >
+                <BookOpen className="h-4 w-4 text-indigo-600 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm font-bold text-slate-800 truncate">Publikasi IKU</p>
+                  <p className="text-xs text-slate-400 truncate">Karya &amp; Sitasi</p>
+                </div>
+              </Link>
+
+              <Link
+                href="/dashboard/perjalanan-dinas/rekap"
+                className="flex items-center gap-2 p-2 rounded-xl border border-slate-100 bg-white hover:border-indigo-300 transition-all shadow-2xs"
+              >
+                <Plane className="h-4 w-4 text-sky-600 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm font-bold text-slate-800 truncate">SPJ Dinas</p>
+                  <p className="text-xs text-slate-400 truncate">Estimasi &amp; Riil</p>
+                </div>
+              </Link>
+
+              <Link
+                href="/dashboard/rka"
+                className="flex items-center gap-2 p-2 rounded-xl border border-slate-100 bg-white hover:border-indigo-300 transition-all shadow-2xs"
+              >
+                <Coins className="h-4 w-4 text-amber-600 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm font-bold text-slate-800 truncate">RKA &amp; Anggaran</p>
+                  <p className="text-xs text-slate-400 truncate">Pagu &amp; Serapan</p>
+                </div>
+              </Link>
+
+              <Link
+                href="/dashboard/rps"
+                className="flex items-center gap-2 p-2 rounded-xl border border-slate-100 bg-white hover:border-indigo-300 transition-all shadow-2xs"
+              >
+                <BookCheck className="h-4 w-4 text-rose-600 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm font-bold text-slate-800 truncate">Review RPS</p>
+                  <p className="text-xs text-slate-400 truncate">Standar SPMI</p>
+                </div>
+              </Link>
+
+              <Link
+                href="/dashboard/evaluasi-perkuliahan"
+                className="flex items-center gap-2 p-2 rounded-xl border border-slate-100 bg-white hover:border-indigo-300 transition-all shadow-2xs"
+              >
+                <FileText className="h-4 w-4 text-purple-600 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm font-bold text-slate-800 truncate">Evaluasi Kuliah</p>
+                  <p className="text-xs text-slate-400 truncate">Ketercapaian CPMK</p>
+                </div>
               </Link>
             </div>
           </div>

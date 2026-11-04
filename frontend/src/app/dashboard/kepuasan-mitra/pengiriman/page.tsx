@@ -9,21 +9,18 @@ import {
   mockPlacements,
   mockSurveyInvitations,
   mockSurveyTemplates,
-  mockPartners,
 } from '@/lib/mock-data';
 import { surveyService } from '@/lib/api/services/survey.service';
 import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import type {
   PartnerSurveyInvitation,
   PartnerSurveyTemplate,
-  SurveyDeliveryChannel,
+  PartnerSurveyResponse,
 } from '@/lib/types';
 import {
   Send,
   MessageCircle,
-  Clock,
   CheckCircle2,
-  AlertTriangle,
   FileEdit,
   Copy,
   ExternalLink,
@@ -53,7 +50,6 @@ export default function PengirimanMitraPage() {
   const activeTemplate = availableTemplates[0] || mockSurveyTemplates[0];
 
   useEffect(() => {
-    // 1. Sinkronisasi data lokal dari storageSync saat client mount (mencegah hydration mismatch)
     const localInvs = storageSync.get<PartnerSurveyInvitation[]>(STORAGE_KEYS.SURVEY_INVITATIONS, mockSurveyInvitations);
     if (localInvs && localInvs.length > 0) {
       setInvitations(localInvs);
@@ -63,7 +59,6 @@ export default function PengirimanMitraPage() {
       setAvailableTemplates(localTmpls);
     }
 
-    // 2. Muat data dari Backend / Supabase
     let active = true;
     surveyService
       .getInvitations()
@@ -132,9 +127,11 @@ export default function PengirimanMitraPage() {
   const handleSaveManual = async (e: React.FormEvent) => {
     e.preventDefault();
     const placement = mockPlacements.find((p) => p.id === selectedPlacementId);
+    const invId = `inv-manual-${Date.now()}`;
+    const respId = `resp-manual-${Date.now()}`;
 
     const updatedInv: PartnerSurveyInvitation = {
-      id: `inv-manual-${Date.now()}`,
+      id: invId,
       template_id: activeTemplate.id,
       placement_id: selectedPlacementId,
       token_hash: 'manual_input',
@@ -149,9 +146,33 @@ export default function PengirimanMitraPage() {
       template: activeTemplate,
     };
 
+    // Simpan respons penilaian manual ke dalam daftar respons kepuasan mitra (FR-27)
+    const manualResponse: PartnerSurveyResponse = {
+      id: respId,
+      invitation_id: invId,
+      template_id: activeTemplate.id,
+      placement_id: selectedPlacementId,
+      nama_pengisi: manualPartnerName,
+      jabatan_pengisi: manualPosition,
+      komentar: manualComment || undefined,
+      sumber: 'INPUT_KOORDINATOR',
+      status: 'TERKIRIM',
+      diinput_oleh: 'u-koordinator',
+      submitted_at: new Date().toISOString(),
+      placement: placement,
+      answers: (activeTemplate.aspek || []).map((asp, i) => ({
+        id: `ans-${Date.now()}-${i}`,
+        response_id: respId,
+        aspect_id: asp.id,
+        skor: manualScores[`asp${i + 1}`] || 5,
+      })),
+    };
+
+    surveyService.saveResponseLocal(manualResponse);
     const updated = storageSync.prepend(STORAGE_KEYS.SURVEY_INVITATIONS, updatedInv, invitations);
     setInvitations(updated);
     setModalManualOpen(false);
+    setManualComment('');
 
     try {
       await surveyService.createInvitation(updatedInv);
@@ -404,4 +425,3 @@ export default function PengirimanMitraPage() {
     </div>
   );
 }
-

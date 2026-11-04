@@ -12,6 +12,8 @@ type EvaluationUsecase interface {
 	GetEvaluationByClass(classID string) (*model.CourseEvaluation, error)
 	SaveEvaluation(eval *model.CourseEvaluation) (*model.CourseEvaluation, error)
 	SubmitEvaluation(classID string) error
+	GetImprovementPlansByCourse(courseID string) ([]*model.CourseImprovementPlan, error)
+	UpdateImprovementPlan(planID, status, rpsID, catatan string) error
 	GetRecap() (*model.EvaluationRecap, error)
 }
 
@@ -44,8 +46,20 @@ func (u *evaluationUsecase) SubmitEvaluation(classID string) error {
 		return err
 	}
 	existing.IsSubmitted = true
+	existing.Status = "TERKIRIM"
 	_, err = u.repo.Save(existing)
 	return err
+}
+
+func (u *evaluationUsecase) GetImprovementPlansByCourse(courseID string) ([]*model.CourseImprovementPlan, error) {
+	return u.repo.FindImprovementPlansByCourse(courseID)
+}
+
+func (u *evaluationUsecase) UpdateImprovementPlan(planID, status, rpsID, catatan string) error {
+	if status == "" {
+		status = "SUDAH_DITERAPKAN"
+	}
+	return u.repo.UpdateImprovementPlan(planID, status, rpsID, catatan)
 }
 
 func (u *evaluationUsecase) GetRecap() (*model.EvaluationRecap, error) {

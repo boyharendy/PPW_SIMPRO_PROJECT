@@ -63,20 +63,37 @@ func (h *RpsHandler) SubmitForReview(c *gin.Context) {
 	response.Success(c, http.StatusOK, "RPS berhasil diajukan untuk ditinjau GKM", nil)
 }
 
+func (h *RpsHandler) AssignReviewer(c *gin.Context) {
+	id := c.Param("id")
+	var req struct {
+		ReviewerID string `json:"reviewer_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Reviewer ID wajib diisi", err.Error())
+		return
+	}
+	if err := h.usecase.AssignReviewer(id, req.ReviewerID); err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusOK, "Reviewer GKM berhasil ditetapkan untuk RPS ini", nil)
+}
+
 func (h *RpsHandler) ReviewSubmission(c *gin.Context) {
 	id := c.Param("id")
 	reviewerID := c.GetString(middleware.CtxUserID)
 
 	var req struct {
-		Komentar    string `json:"komentar" binding:"required"`
-		Rekomendasi string `json:"rekomendasi" binding:"required"`
+		Komentar    string                 `json:"komentar" binding:"required"`
+		Rekomendasi string                 `json:"rekomendasi" binding:"required"`
+		Items       []*model.RpsReviewItem `json:"items"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "Komentar dan rekomendasi review wajib diisi", err.Error())
 		return
 	}
 
-	if err := h.usecase.ReviewSubmission(id, reviewerID, req.Komentar, req.Rekomendasi); err != nil {
+	if err := h.usecase.ReviewSubmissionWithChecklist(id, reviewerID, req.Komentar, req.Rekomendasi, req.Items); err != nil {
 		response.BadRequest(c, err.Error(), nil)
 		return
 	}

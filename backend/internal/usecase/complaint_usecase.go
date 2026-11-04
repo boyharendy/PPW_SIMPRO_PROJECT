@@ -17,9 +17,11 @@ type ComplaintUsecase interface {
 	GetPublicComplaint(ticket string) (*model.Complaint, error)
 	CreatePublicComplaint(req *model.PublicComplaintRequest) (*model.Complaint, error)
 	AddPublicMessage(ticket string, pesan string) error
+	SubmitPublicRating(ticket string, rating int, komentar string) error
 	UpdateComplaintStatus(id string, status model.ComplaintStatus, petugasID string) error
 	AddInternalMessage(id string, senderID string, senderRole model.Role, pesan string) error
 	AddDisposition(id string, dariPetugasID, kepadaPetugasID, catatan string, deadline *time.Time) error
+	ForwardToSatgas(id, tanggal, nomorReferensi, petugasSatgas string) error
 	GetRecap() (*model.ComplaintRecap, error)
 }
 
@@ -90,11 +92,14 @@ func (u *complaintUsecase) CreatePublicComplaint(req *model.PublicComplaintReque
 	kodeTiket := fmt.Sprintf("ADU-%d-%04d", year, randNum)
 
 	c := &model.Complaint{
-		KodeTiket:  kodeTiket,
-		Kategori:   req.Kategori,
-		Judul:      req.Judul,
-		IsiAduan:   req.IsiAduan,
-		IsSensitif: req.IsSensitif || req.Kategori == model.ComplaintCatPerundunganKekerasan,
+		KodeTiket:      kodeTiket,
+		NomorAduan:     kodeTiket,
+		Kategori:       req.Kategori,
+		Judul:          req.Judul,
+		IsiAduan:       req.IsiAduan,
+		LampiranURL:    req.LampiranURL,
+		KontakSukarela: req.KontakSukarela,
+		IsSensitif:     req.IsSensitif || req.Kategori == model.ComplaintCatPerundunganKekerasan,
 	}
 
 	return u.repo.Create(c)
@@ -112,6 +117,13 @@ func (u *complaintUsecase) AddPublicMessage(ticket string, pesan string) error {
 		Pesan:       pesan,
 	}
 	return u.repo.AddMessage(msg)
+}
+
+func (u *complaintUsecase) SubmitPublicRating(ticket string, rating int, komentar string) error {
+	if rating < 1 || rating > 5 {
+		return errors.New("rating kepuasan harus bernilai antara 1 hingga 5")
+	}
+	return u.repo.SubmitRating(ticket, rating, komentar)
 }
 
 func (u *complaintUsecase) UpdateComplaintStatus(id string, status model.ComplaintStatus, petugasID string) error {
@@ -140,6 +152,13 @@ func (u *complaintUsecase) AddDisposition(id string, dariPetugasID, kepadaPetuga
 		return err
 	}
 	return u.repo.UpdateStatus(id, model.ComplaintStatusDidisposisikan, "")
+}
+
+func (u *complaintUsecase) ForwardToSatgas(id, tanggal, nomorReferensi, petugasSatgas string) error {
+	if tanggal == "" {
+		tanggal = time.Now().Format("2006-01-02")
+	}
+	return u.repo.ForwardToSatgas(id, tanggal, nomorReferensi, petugasSatgas)
 }
 
 func (u *complaintUsecase) GetRecap() (*model.ComplaintRecap, error) {

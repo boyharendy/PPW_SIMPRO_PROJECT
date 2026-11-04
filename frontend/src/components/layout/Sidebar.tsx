@@ -203,7 +203,7 @@ export default function Sidebar() {
                       if (typeof window !== 'undefined' && window.innerWidth < 1024) setSidebarOpen(false);
                     }}
                     className={`
-                      group flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold
+                      group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold
                       transition-all duration-150 mb-1
                       ${isActive
                         ? 'bg-blue-600 text-white shadow-sm'
@@ -235,7 +235,7 @@ export default function Sidebar() {
                     type="button"
                     onClick={() => toggleCategory(cat)}
                     className={`
-                      w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold
+                      w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold
                       transition-all duration-150 text-left cursor-pointer
                       ${isChildActive
                         ? 'text-blue-700 bg-blue-50/70 font-bold'
@@ -257,7 +257,7 @@ export default function Sidebar() {
                     {sidebarOpen && (
                       <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
                         {!isCatOpen && totalCategoryBadge > 0 && (
-                          <span className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                          <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                             {totalCategoryBadge}
                           </span>
                         )}
@@ -286,7 +286,7 @@ export default function Sidebar() {
                               if (typeof window !== 'undefined' && window.innerWidth < 1024) setSidebarOpen(false);
                             }}
                             className={`
-                              group flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium
+                              group flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium
                               transition-all duration-150 cursor-pointer
                               ${isExactActive
                                 ? 'bg-blue-600 text-white font-semibold shadow-xs'
@@ -296,7 +296,7 @@ export default function Sidebar() {
                             title={item.title}
                           >
                             <Icon
-                              className={`w-3.5 h-3.5 flex-shrink-0 transition-colors ${
+                              className={`w-4 h-4 flex-shrink-0 transition-colors ${
                                 isExactActive ? 'text-white' : 'text-slate-400 group-hover:text-blue-600'
                               }`}
                             />
@@ -305,7 +305,7 @@ export default function Sidebar() {
                             </span>
                             {item.badge && item.badge > 0 && (
                               <span
-                                className={`ml-1.5 flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                                className={`ml-1.5 flex-shrink-0 text-xs font-bold px-2 py-0.5 rounded-full ${
                                   isExactActive ? 'bg-white text-blue-600' : 'bg-red-600 text-white'
                                 }`}
                               >
@@ -324,23 +324,23 @@ export default function Sidebar() {
             {/* Public Links Shortcut */}
             {sidebarOpen && (
               <div className="pt-2 border-t border-slate-100 space-y-1">
-                <p className="px-3.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                <p className="px-3.5 text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
                   Akses Publik (Non-Login)
                 </p>
                 <Link
                   href="/mitra/isi/tok-telkom-2025"
-                  className="flex items-center gap-2 px-3.5 py-2 text-xs text-slate-500 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-colors"
+                  className="flex items-center gap-2 px-3.5 py-2 text-sm text-slate-600 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-colors"
                   target="_blank"
                 >
-                  <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                  <ExternalLink className="w-4 h-4 text-slate-400" />
                   <span>Kuesioner Mitra (Demo)</span>
                 </Link>
                 <Link
                   href="/aduan/lacak"
-                  className="flex items-center gap-2 px-3.5 py-2 text-xs text-slate-500 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-colors"
+                  className="flex items-center gap-2 px-3.5 py-2 text-sm text-slate-600 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-colors"
                   target="_blank"
                 >
-                  <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                  <ExternalLink className="w-4 h-4 text-slate-400" />
                   <span>Lacak Tiket Aduan</span>
                 </Link>
               </div>
@@ -351,7 +351,7 @@ export default function Sidebar() {
           <div className="p-3 border-t border-slate-100 bg-white">
             <Link
               href="/"
-              className="flex items-center gap-2.5 px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors w-full font-semibold text-xs"
+              className="flex items-center gap-2.5 px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors w-full font-semibold text-sm"
             >
               <LogOut className="w-4 h-4 flex-shrink-0" />
               {sidebarOpen && <span>Keluar Sistem</span>}
