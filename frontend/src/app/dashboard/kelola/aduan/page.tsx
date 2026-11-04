@@ -175,18 +175,7 @@ export default function AntreanAduanPage() {
       <PageHeader
         title="Antrean & Disposisi Aduan Mahasiswa Anonim"
         subtitle="Kelola, disposisi, dan tindak lanjuti laporan sarana, akademik, dan layanan administrasi secara terenkripsi."
-        actions={
-          <div className="flex items-center gap-2">
-            <Link
-              href="/dashboard/kelola/aduan/sensitif"
-              className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs sm:text-sm font-semibold text-rose-700 hover:bg-rose-100 transition-colors"
-            >
-              <ShieldAlert className="h-4 w-4 text-rose-600" />
-              <span>Aduan Sensitif Satgas</span>
-            </Link>
-            <ExportMenu filename="antrean-aduan-mahasiswa" title="Ekspor Aduan" />
-          </div>
-        }
+        actions={<ExportMenu filename="antrean-aduan-mahasiswa" title="Ekspor Aduan" />}
       />
 
       {successToast && (

@@ -76,34 +76,16 @@ export default function DetailRkaPage() {
         title={doc.judul}
         description={`Tahun Anggaran ${doc.tahun_anggaran} • Dokumen Resmi Penganggaran Operasional Prodi SI`}
         action={
-          <div className="flex items-center gap-2">
-            <Link
-              href={`/dashboard/rka/${doc.tahun_anggaran}/serapan`}
-              className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5 font-semibold text-slate-700 hover:text-blue-600"
+          doc.status === 'AKTIF' ? (
+            <button
+              type="button"
+              onClick={() => setModalRevisiOpen(true)}
+              className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5"
             >
-              <PieChart size={14} className="text-slate-500" />
-              <span>Monitoring Serapan</span>
-            </Link>
-
-            <Link
-              href={`/dashboard/rka/${doc.tahun_anggaran}/realisasi`}
-              className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5 font-semibold text-slate-700 hover:text-blue-600"
-            >
-              <FileText size={14} className="text-slate-500" />
-              <span>Catat Realisasi</span>
-            </Link>
-
-            {doc.status === 'AKTIF' && (
-              <button
-                type="button"
-                onClick={() => setModalRevisiOpen(true)}
-                className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5"
-              >
-                <Edit size={14} />
-                <span>Buka Revisi RKA</span>
-              </button>
-            )}
-          </div>
+              <Edit size={14} />
+              <span>Buka Revisi RKA</span>
+            </button>
+          ) : undefined
         }
       />
 
