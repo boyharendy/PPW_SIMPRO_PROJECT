@@ -59,7 +59,7 @@ func main() {
 	surveyUsecase := usecase.NewSurveyUsecase(surveyRepo)
 	complaintUsecase := usecase.NewComplaintUsecase(complaintRepo)
 	pubUsecase := usecase.NewPublicationUsecase(pubRepo)
-	tripUsecase := usecase.NewTripUsecase(tripRepo)
+	tripUsecase := usecase.NewTripUsecase(tripRepo, rkaRepo)
 	rkaUsecase := usecase.NewRkaUsecase(rkaRepo)
 	rpsUsecase := usecase.NewRpsUsecase(rpsRepo)
 	evalUsecase := usecase.NewEvaluationUsecase(evalRepo)

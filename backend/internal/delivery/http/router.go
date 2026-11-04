@@ -157,6 +157,7 @@ func SetupRouter(params RouterParams) *gin.Engine {
 				trips.GET("", params.TripHandler.GetTrips)
 				trips.POST("", params.TripHandler.CreateTrip)
 				trips.GET("/recap", params.TripHandler.GetRecap)
+				trips.GET("/flags", params.TripHandler.GetFlags)
 				trips.GET("/:id", params.TripHandler.GetTripByID)
 				trips.PUT("/:id", params.TripHandler.UpdateTrip)
 				trips.DELETE("/:id", params.TripHandler.DeleteTrip)
@@ -164,6 +165,10 @@ func SetupRouter(params RouterParams) *gin.Engine {
 				trips.POST("/:id/approve", params.TripHandler.ApproveTrip)
 				trips.POST("/:id/report", params.TripHandler.SubmitReport)
 				trips.POST("/:id/proofs", params.TripHandler.AddProof)
+				trips.PUT("/:id/costs", params.TripHandler.UpdateCosts)
+				trips.PUT("/:id/costs/realization", params.TripHandler.UpdateRealizationCosts)
+				trips.POST("/:id/confirm", params.TripHandler.ConfirmTrip)
+				trips.GET("/:id/completeness", params.TripHandler.GetCompleteness)
 			}
 		}
 
@@ -178,6 +183,12 @@ func SetupRouter(params RouterParams) *gin.Engine {
 				rka.PUT("/:tahun", params.RkaHandler.UpdateRka)
 				rka.POST("/:tahun/realizations", params.RkaHandler.AddRealization)
 				rka.GET("/:tahun/serapan", params.RkaHandler.GetSerapan)
+				rka.GET("/:id/working-version", params.RkaHandler.GetWorkingVersion)
+				rka.PUT("/:id/working-version", params.RkaHandler.UpdateWorkingVersion)
+				rka.POST("/:id/working-version/submit", params.RkaHandler.SubmitWorkingVersion)
+				rka.GET("/:id/versions/:nomor/diff", params.RkaHandler.GetVersionDiff)
+				rka.POST("/:id/versions/:nomor/decision", params.RkaHandler.DecideVersion)
+				rka.POST("/:id/close", params.RkaHandler.CloseRka)
 			}
 		}
 

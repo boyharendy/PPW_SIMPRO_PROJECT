@@ -91,11 +91,18 @@ type TripComponentSummary struct {
 }
 
 type TripRecap struct {
-	TotalPerjalanan   int                             `json:"total_perjalanan"`
-	TotalDisetujui    int                             `json:"total_disetujui"`
-	TotalSelesai      int                             `json:"total_selesai"`
-	TotalBiayaDinas   float64                         `json:"total_biaya_dinas"`
-	TotalEstimasi     float64                         `json:"total_estimasi"`
-	TotalRealisasi    float64                         `json:"total_realisasi"`
-	RingkasanKomponen map[string]TripComponentSummary `json:"ringkasan_komponen"`
+	TotalPerjalanan     int                             `json:"total_perjalanan"`
+	TotalDisetujui      int                             `json:"total_disetujui"`
+	TotalSelesai        int                             `json:"total_selesai"`
+	TotalBiayaDinas     float64                         `json:"total_biaya_dinas"`
+	TotalEstimasi       float64                         `json:"total_estimasi"`
+	TotalRealisasi      float64                         `json:"total_realisasi"`
+	TotalEstimasiBiaya  float64                         `json:"total_estimasi_biaya,omitempty"`
+	TotalRealisasiBiaya float64                         `json:"total_realisasi_biaya,omitempty"`
+	BelumLengkapLaporan int                             `json:"belum_lengkap_laporan,omitempty"`
+	LewatTenggatLaporan int                             `json:"lewat_tenggat_laporan,omitempty"`
+	StatusDistribusi    map[string]int                  `json:"status_distribusi,omitempty"`
+	PerKomponen         map[string]*TripComponentSummary `json:"per_komponen,omitempty"`
+	RingkasanKomponen   map[string]TripComponentSummary `json:"ringkasan_komponen,omitempty"`
+	PerPeserta          map[string]int                  `json:"per_peserta,omitempty"`
 }
