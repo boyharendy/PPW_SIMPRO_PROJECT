@@ -242,3 +242,36 @@ export function getStatusLabel(status: string): string {
 
   return map[status] || status;
 }
+
+/**
+ * Salin teks ke papan klip secara aman dengan fallback untuk konteks non-HTTPS (mis. IP lokal)
+ */
+export async function copyToClipboard(text: string): Promise<boolean> {
+  if (typeof window === 'undefined' || !text) return false;
+
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Abaikan error permission/insecure context dan lanjutkan ke fallback
+  }
+
+  try {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    textArea.style.top = '0';
+    textArea.style.opacity = '0';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    const successful = document.execCommand('copy');
+    document.body.removeChild(textArea);
+    return Boolean(successful);
+  } catch {
+    return false;
+  }
+}

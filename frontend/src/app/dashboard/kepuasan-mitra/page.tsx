@@ -4,34 +4,38 @@ import React, { useState } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import StatCard from '@/components/ui/StatCard';
 import ExportMenu from '@/components/ui/ExportMenu';
+import InteractiveBarChart, { BarSeriesConfig } from '@/components/ui/InteractiveBarChart';
 import { mockSurveyTemplates, mockSurveyResponses, mockPartners } from '@/lib/mock-data';
 import { Smile, Award, Users, TrendingUp } from 'lucide-react';
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend
-} from 'recharts';
+
+const ASPECT_STATS = [
+  { aspek: 'Integritas & Etika', skor: 4.8, skala: 5 },
+  { aspek: 'Kompetensi Teknis', skor: 4.5, skala: 5 },
+  { aspek: 'Komunikasi & Tim', skor: 4.7, skala: 5 },
+  { aspek: 'Koordinasi Prodi', skor: 4.4, skala: 5 },
+];
+
+const TREND_DATA = [
+  { periode: '2023/2024 Genap', KP: 4.35, PSI: 4.20, RataRata: 4.28 },
+  { periode: '2024/2025 Ganjil', KP: 4.50, PSI: 4.38, RataRata: 4.44 },
+  { periode: '2024/2025 Genap', KP: 4.58, PSI: 4.45, RataRata: 4.52 },
+  { periode: '2025/2026 Ganjil', KP: 4.65, PSI: 4.55, RataRata: 4.60 },
+];
+
+const TREND_SERIES: BarSeriesConfig[] = [
+  { dataKey: 'KP', fill: '#2563EB', name: 'Kerja Praktik' },
+  { dataKey: 'PSI', fill: '#10B981', name: 'Proyek SI' },
+  { dataKey: 'RataRata', fill: '#F59E0B', name: 'Rata-rata Prodi' },
+];
+
+const TREND_DOMAIN: [number, number] = [0, 5];
+const TREND_TICKS = [0, 1, 2, 3, 4, 5];
 
 export default function KepuasanMitraDashboard() {
   const [selectedProgram, setSelectedProgram] = useState<string>('ALL');
 
   // Rekap Data Skor
   const templateKP = mockSurveyTemplates[0];
-  const templatePSI = mockSurveyTemplates[1];
-
-  // Average per aspect
-  const aspectStats = [
-    { aspek: 'Integritas & Etika', skor: 4.8, skala: 5 },
-    { aspek: 'Kompetensi Teknis', skor: 4.5, skala: 5 },
-    { aspek: 'Komunikasi & Tim', skor: 4.7, skala: 5 },
-    { aspek: 'Koordinasi Prodi', skor: 4.4, skala: 5 },
-  ];
-
-  // Trend Antar Periode
-  const trendData = [
-    { periode: '2023/2024 Genap', KP: 4.35, PSI: 4.20, RataRata: 4.28 },
-    { periode: '2024/2025 Ganjil', KP: 4.50, PSI: 4.38, RataRata: 4.44 },
-    { periode: '2024/2025 Genap', KP: 4.58, PSI: 4.45, RataRata: 4.52 },
-    { periode: '2025/2026 Ganjil', KP: 4.65, PSI: 4.55, RataRata: 4.60 },
-  ];
 
   const overallScore = 4.62;
   const maxScore = 5.0;
@@ -106,26 +110,15 @@ export default function KepuasanMitraDashboard() {
           </div>
 
           <div className="h-72 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis dataKey="periode" tick={{ fill: '#64748B', fontSize: 11 }} />
-                <YAxis domain={[0, 5]} ticks={[1, 2, 3, 4, 5]} tick={{ fill: '#64748B', fontSize: 11 }} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#FFFFFF',
-                    borderRadius: '12px',
-                    border: '1px solid #E2E8F0',
-                    fontSize: '12px',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                  }}
-                />
-                <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                <Bar dataKey="KP" fill="#2563EB" radius={[4, 4, 0, 0]} name="Kerja Praktik" />
-                <Bar dataKey="PSI" fill="#10B981" radius={[4, 4, 0, 0]} name="Proyek SI" />
-                <Bar dataKey="RataRata" fill="#F59E0B" radius={[4, 4, 0, 0]} name="Rata-rata Prodi" />
-              </BarChart>
-            </ResponsiveContainer>
+            <InteractiveBarChart
+              data={TREND_DATA}
+              xKey="periode"
+              series={TREND_SERIES}
+              domain={TREND_DOMAIN}
+              ticks={TREND_TICKS}
+              tooltipFormatter={(val) => val.toFixed(2)}
+              showLegend
+            />
           </div>
         </div>
 
@@ -137,7 +130,7 @@ export default function KepuasanMitraDashboard() {
           </div>
 
           <div className="space-y-4">
-            {aspectStats.map((item, idx) => {
+            {ASPECT_STATS.map((item, idx) => {
               const pct = (item.skor / item.skala) * 100;
               return (
                 <div key={idx} className="space-y-1.5">
@@ -208,4 +201,3 @@ export default function KepuasanMitraDashboard() {
     </div>
   );
 }
-

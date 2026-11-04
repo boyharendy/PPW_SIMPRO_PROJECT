@@ -121,7 +121,7 @@ export default function ReviewSayaPublikasiPage() {
       <div className="card">
         <DataTable
           columns={columns}
-          data={assigned as unknown as Record<string, unknown>[]}
+          data={assigned}
           emptyMessage="Tidak ada penugasan review naskah yang aktif saat ini."
         />
       </div>

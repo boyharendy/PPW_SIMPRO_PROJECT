@@ -4,22 +4,27 @@ import React, { useState } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import StatCard from '@/components/ui/StatCard';
 import ExportMenu from '@/components/ui/ExportMenu';
-import { mockCourseEvaluations, mockCourses } from '@/lib/mock-data';
+import InteractiveBarChart, { BarSeriesConfig } from '@/components/ui/InteractiveBarChart';
 import { GraduationCap, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend
-} from 'recharts';
+
+const CPMK_CHART_DATA = [
+  { mk: 'Pengantar SI', Target: 75, Capaian: 84.5 },
+  { mk: 'Basis Data', Target: 70, Capaian: 76.2 },
+  { mk: 'Rekayasa PL', Target: 70, Capaian: 72.8 },
+  { mk: 'Manajemen Proyek TI', Target: 75, Capaian: 79.0 },
+  { mk: 'Audit & Tata Kelola SI', Target: 70, Capaian: 68.5 },
+];
+
+const CPMK_SERIES: BarSeriesConfig[] = [
+  { dataKey: 'Target', fill: '#94A3B8', name: 'Target (%)' },
+  { dataKey: 'Capaian', fill: '#2563EB', name: 'Capaian Aktual (%)' },
+];
+
+const CPMK_DOMAIN: [number, number] = [0, 100];
+const CPMK_TICKS = [0, 25, 50, 75, 100];
 
 export default function RekapEvaluasiPage() {
   const [selectedSemester, setSelectedSemester] = useState('period-2024-genap');
-
-  const cpmkChartData = [
-    { mk: 'Pengantar SI', Target: 75, Capaian: 84.5 },
-    { mk: 'Basis Data', Target: 70, Capaian: 76.2 },
-    { mk: 'Rekayasa PL', Target: 70, Capaian: 72.8 },
-    { mk: 'Manajemen Proyek TI', Target: 75, Capaian: 79.0 },
-    { mk: 'Audit & Tata Kelola SI', Target: 70, Capaian: 68.5 },
-  ];
 
   return (
     <div className="space-y-6">
@@ -85,28 +90,17 @@ export default function RekapEvaluasiPage() {
         </div>
 
         <div className="h-72 w-full pt-2">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={cpmkChartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-              <XAxis dataKey="mk" tick={{ fill: '#64748B', fontSize: 11 }} />
-              <YAxis domain={[0, 100]} tick={{ fill: '#64748B', fontSize: 11 }} />
-              <Tooltip
-                formatter={(val) => [`${val}%`, '']}
-                contentStyle={{
-                  backgroundColor: '#FFFFFF',
-                  borderRadius: '12px',
-                  border: '1px solid #E2E8F0',
-                  fontSize: '12px',
-                }}
-              />
-              <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-              <Bar dataKey="Target" fill="#94A3B8" radius={[4, 4, 0, 0]} name="Target (%)" />
-              <Bar dataKey="Capaian" fill="#2563EB" radius={[4, 4, 0, 0]} name="Capaian Aktual (%)" />
-            </BarChart>
-          </ResponsiveContainer>
+          <InteractiveBarChart
+            data={CPMK_CHART_DATA}
+            xKey="mk"
+            series={CPMK_SERIES}
+            domain={CPMK_DOMAIN}
+            ticks={CPMK_TICKS}
+            tooltipFormatter={(val) => `${val}%`}
+            showLegend
+          />
         </div>
       </div>
     </div>
   );
 }
-

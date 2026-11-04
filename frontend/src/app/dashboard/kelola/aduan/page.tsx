@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   MessageSquareHeart,
@@ -22,16 +22,37 @@ import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ExportMenu } from '@/components/ui/ExportMenu';
 import { mockComplaints, mockProfiles } from '@/lib/mock-data';
+import { complaintService } from '@/lib/api/services/complaint.service';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import { formatDate } from '@/lib/utils';
 import type { Complaint, ComplaintStatus } from '@/lib/types';
 
 export default function AntreanAduanPage() {
-  const [complaints, setComplaints] = useState<Complaint[]>(
-    mockComplaints.filter((c) => !c.is_sensitif)
-  );
+  const [complaints, setComplaints] = useState<Complaint[]>(() => mockComplaints.filter((c) => !c.is_sensitif));
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('SEMUA');
   const [kategoriFilter, setKategoriFilter] = useState<string>('SEMUA');
+
+  useEffect(() => {
+    // Sinkronisasi data lokal saat mount di client
+    const local = storageSync.get<Complaint[]>(STORAGE_KEYS.COMPLAINTS, mockComplaints);
+    if (local && local.length > 0) {
+      setComplaints(local.filter((c) => !c.is_sensitif));
+    }
+
+    let active = true;
+    complaintService
+      .getComplaints()
+      .then((res) => {
+        if (active && res.data && res.data.length > 0) {
+          setComplaints(res.data.filter((c) => !c.is_sensitif));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Modal Disposisi Cepat
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
@@ -74,7 +95,7 @@ export default function AntreanAduanPage() {
     });
   };
 
-  const handleSimpanDisposisi = (e: React.FormEvent) => {
+  const handleSimpanDisposisi = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedComplaint) return;
 
@@ -89,19 +110,33 @@ export default function AntreanAduanPage() {
       created_at: new Date().toISOString(),
     };
 
-    setComplaints((prev) =>
-      prev.map((item) => {
-        if (item.id === selectedComplaint.id) {
-          const updatedDispositions = [...(item.dispositions || []), newDisposition];
-          return {
-            ...item,
-            status: 'DITINDAKLANJUTI' as ComplaintStatus,
-            dispositions: updatedDispositions,
-          };
-        }
-        return item;
-      })
-    );
+    const updatedComplaints = complaints.map((item) => {
+      if (item.id === selectedComplaint.id) {
+        const updatedDispositions = [...(item.dispositions || []), newDisposition];
+        return {
+          ...item,
+          status: 'DITINDAKLANJUTI' as ComplaintStatus,
+          dispositions: updatedDispositions,
+        };
+      }
+      return item;
+    });
+
+    setComplaints(updatedComplaints);
+    storageSync.update(STORAGE_KEYS.COMPLAINTS, selectedComplaint.id, {
+      status: 'DITINDAKLANJUTI',
+      dispositions: [...(selectedComplaint.dispositions || []), newDisposition],
+    }, mockComplaints);
+
+    try {
+      await complaintService.createDisposition(selectedComplaint.id, {
+        penanggung_jawab_id: disposisiForm.penanggung_jawab_id,
+        catatan: disposisiForm.catatan,
+        tenggat: disposisiForm.tenggat,
+      });
+    } catch {
+      // Offline fallback
+    }
 
     setSuccessToast(`Disposisi untuk aduan ${selectedComplaint.nomor_aduan} berhasil disimpan!`);
     setSelectedComplaint(null);

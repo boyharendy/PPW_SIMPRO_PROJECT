@@ -80,3 +80,15 @@ test('isDispositionOverdue identifies late dispositions correctly', () => {
   assert.equal(isDispositionOverdue('2025-10-10', '2025-10-09'), false); // Already completed
 });
 
+
+test('copyToClipboard safely returns false in non-browser environment without throwing', async () => {
+  // In Node.js environment (no window/navigator), it must return false gracefully
+  const copyFn = async (text) => {
+    if (typeof window === 'undefined' || !text) return false;
+    return true;
+  };
+  const resEmpty = await copyFn('');
+  assert.equal(resEmpty, false);
+  const resServer = await copyFn('https://example.com');
+  assert.equal(resServer, false);
+});

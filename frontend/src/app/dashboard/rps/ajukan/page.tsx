@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import FileUploader from '@/components/ui/FileUploader';
 import { mockCourses, mockPeriods, mockRpsSubmissions } from '@/lib/mock-data';
+import { rpsService } from '@/lib/api/services/rps.service';
 import type { RpsSubmission } from '@/lib/types';
 import { ArrowLeft, Send, CheckCircle2, AlertCircle, Save } from 'lucide-react';
 import Link from 'next/link';
@@ -36,7 +37,7 @@ export default function AjukanRpsPage() {
     setPlans(plans.map((p) => (p.id === id ? { ...p, status, catatan } : p)));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const selectedCourse = mockCourses.find((c) => c.id === courseId);
@@ -76,7 +77,7 @@ export default function AjukanRpsPage() {
       })),
     };
 
-    mockRpsSubmissions.unshift(newSub);
+    await rpsService.createSubmission(newSub);
     router.push('/dashboard/rps');
   };
 

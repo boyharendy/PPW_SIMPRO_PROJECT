@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 import Modal from '@/components/ui/Modal';
 import { mockCourseEvaluations } from '@/lib/mock-data';
+import { evaluationService } from '@/lib/api/services/evaluation.service';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import type { CourseEvaluation, PlanCategory } from '@/lib/types';
 import {
   ArrowLeft,
@@ -26,20 +28,34 @@ export default function DetailEvaluasiPerkuliahanPage() {
   const params = useParams();
   const kelasId = params.kelasId as string;
 
-  const initialEval =
-    mockCourseEvaluations.find((e) => e.course_class_id === kelasId) ||
-    mockCourseEvaluations[0];
-
-  const [evaluation, setEvaluation] = useState<CourseEvaluation>(initialEval);
+  const [evaluation, setEvaluation] = useState<CourseEvaluation>(() => {
+    const list = storageSync.get<CourseEvaluation[]>(STORAGE_KEYS.EVALUATIONS, mockCourseEvaluations);
+    return list.find((e) => e.course_class_id === kelasId) || mockCourseEvaluations[0];
+  });
   const [modalGkmOpen, setModalGkmOpen] = useState(false);
   const [catatanGkm, setCatatanGkm] = useState('');
   const [modalPlanOpen, setModalPlanOpen] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    evaluationService
+      .getEvaluationById(kelasId)
+      .then((res) => {
+        if (active && res.data) {
+          setEvaluation(res.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [kelasId]);
 
   // New Plan Form
   const [planUraian, setPlanUraian] = useState('');
   const [planKategori, setPlanKategori] = useState<PlanCategory>('METODE_PEMBELAJARAN');
 
-  const handleAddPlan = (e: React.FormEvent) => {
+  const handleAddPlan = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!planUraian.trim()) return;
 
@@ -52,24 +68,43 @@ export default function DetailEvaluasiPerkuliahanPage() {
       created_at: new Date().toISOString(),
     };
 
-    setEvaluation({
+    const updated = {
       ...evaluation,
       improvement_plans: [...evaluation.improvement_plans, newPlan],
-    });
+    };
+
+    setEvaluation(updated);
+    storageSync.update(STORAGE_KEYS.EVALUATIONS, evaluation.id, updated, mockCourseEvaluations);
+
+    try {
+      await evaluationService.saveEvaluation(updated);
+    } catch {
+      // Offline fallback
+    }
 
     setModalPlanOpen(false);
     setPlanUraian('');
   };
 
-  const handleTinjauGkm = (e: React.FormEvent) => {
+  const handleTinjauGkm = async (e: React.FormEvent) => {
     e.preventDefault();
-    setEvaluation({
+    const updated = {
       ...evaluation,
-      status: 'DITINJAU',
+      status: 'DITINJAU' as const,
       ditinjau_oleh: 'u-gkm',
       ditinjau_at: new Date().toISOString(),
       catatan_gkm: catatanGkm || 'Evaluasi telah ditinjau dan dicatat oleh GKM.',
-    });
+    };
+
+    setEvaluation(updated);
+    storageSync.update(STORAGE_KEYS.EVALUATIONS, evaluation.id, updated, mockCourseEvaluations);
+
+    try {
+      await evaluationService.saveEvaluation(updated);
+    } catch {
+      // Offline fallback
+    }
+
     setModalGkmOpen(false);
   };
 

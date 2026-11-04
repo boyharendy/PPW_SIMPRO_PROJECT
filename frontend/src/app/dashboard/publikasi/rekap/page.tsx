@@ -4,27 +4,32 @@ import React, { useState } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import StatCard from '@/components/ui/StatCard';
 import ExportMenu from '@/components/ui/ExportMenu';
+import InteractiveBarChart, { BarSeriesConfig } from '@/components/ui/InteractiveBarChart';
 import { BookOpen, Award, Users, TrendingUp } from 'lucide-react';
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, PieChart, Pie, Cell
-} from 'recharts';
+
+const JENIS_DATA = [
+  { name: 'Jurnal Ilmiah', jumlah: 14, color: '#2563EB' },
+  { name: 'Prosiding Seminar', jumlah: 8, color: '#10B981' },
+  { name: 'Buku Ajar / Monograf', jumlah: 2, color: '#F59E0B' },
+  { name: 'Hak Cipta (HKI)', jumlah: 5, color: '#8B5CF6' },
+];
+
+const PERINGKAT_DATA = [
+  { peringkat: 'Scopus Q1/Q2', jumlah: 3 },
+  { peringkat: 'Sinta 1/2', jumlah: 7 },
+  { peringkat: 'Sinta 3/4', jumlah: 4 },
+  { peringkat: 'Non-Peringkat', jumlah: 5 },
+];
+
+const PERINGKAT_SERIES: BarSeriesConfig[] = [
+  { dataKey: 'jumlah', fill: '#2563EB', name: 'Jumlah Publikasi' },
+];
+
+const PERINGKAT_DOMAIN: [number, number] = [0, 8];
+const PERINGKAT_TICKS = [0, 2, 4, 6, 8];
 
 export default function RekapPublikasiPage() {
   const [selectedYear, setSelectedYear] = useState<number>(2025);
-
-  const jenisData = [
-    { name: 'Jurnal Ilmiah', jumlah: 14, color: '#2563EB' },
-    { name: 'Prosiding Seminar', jumlah: 8, color: '#10B981' },
-    { name: 'Buku Ajar / Monograf', jumlah: 2, color: '#F59E0B' },
-    { name: 'Hak Cipta (HKI)', jumlah: 5, color: '#8B5CF6' },
-  ];
-
-  const peringkatData = [
-    { peringkat: 'Scopus Q1/Q2', jumlah: 3 },
-    { peringkat: 'Sinta 1/2', jumlah: 7 },
-    { peringkat: 'Sinta 3/4', jumlah: 4 },
-    { peringkat: 'Non-Peringkat', jumlah: 5 },
-  ];
 
   return (
     <div className="space-y-6">
@@ -90,22 +95,15 @@ export default function RekapPublikasiPage() {
           </div>
 
           <div className="h-64 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={peringkatData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis dataKey="peringkat" tick={{ fill: '#64748B', fontSize: 11 }} />
-                <YAxis allowDecimals={false} tick={{ fill: '#64748B', fontSize: 11 }} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#FFFFFF',
-                    borderRadius: '12px',
-                    border: '1px solid #E2E8F0',
-                    fontSize: '12px',
-                  }}
-                />
-                <Bar dataKey="jumlah" fill="#2563EB" radius={[6, 6, 0, 0]} name="Jumlah Publikasi" />
-              </BarChart>
-            </ResponsiveContainer>
+            <InteractiveBarChart
+              data={PERINGKAT_DATA}
+              xKey="peringkat"
+              series={PERINGKAT_SERIES}
+              domain={PERINGKAT_DOMAIN}
+              ticks={PERINGKAT_TICKS}
+              tooltipFormatter={(val) => `${val} Artikel`}
+              showLegend={false}
+            />
           </div>
         </div>
 
@@ -117,7 +115,7 @@ export default function RekapPublikasiPage() {
           </div>
 
           <div className="space-y-3 pt-2">
-            {jenisData.map((j) => (
+            {JENIS_DATA.map((j) => (
               <div key={j.name} className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-slate-50 text-xs">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: j.color }} />
@@ -136,4 +134,3 @@ export default function RekapPublikasiPage() {
     </div>
   );
 }
-
