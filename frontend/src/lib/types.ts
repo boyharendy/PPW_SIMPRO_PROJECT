@@ -27,7 +27,7 @@ export type Role =
   | 'HIMPUNAN'
   | 'KOORD_KP'
   | 'KOORD_TA'
-  | 'KOORD_MAGANG';
+  | 'KOORD_MAGANG'
   | 'MITRA_EKSTERNAL'
   | 'HIMPUNAN';
 

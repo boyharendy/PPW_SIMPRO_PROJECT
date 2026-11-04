@@ -23,7 +23,6 @@ export const CANONICAL_ROLES: Role[] = [
 ];
 
 export const ROLE_LABELS: Record<Role, string> = {
-  // 13 Aktor Utama SIMPRO (Spesifikasi Resmi Pengguna)
   KAPRODI: 'Kaprodi',
   GKM: 'GKM',
   ADMIN_PRODI: 'Admin Prodi',
@@ -37,32 +36,15 @@ export const ROLE_LABELS: Record<Role, string> = {
   KOORDINATOR_KP_PSI_PDLK: 'Koordinator KP / PSI / PDLK',
   PENGELOLA_ADUAN: 'Pengelola Aduan',
   MITRA: 'Mitra (eksternal)',
-
-  // Alias Kompatibilitas Sistem & Data Induk
   KOORDINATOR_KP: 'Koordinator KP',
   KOORDINATOR_PSI: 'Koordinator PSI',
   KOORDINATOR_PDLK: 'Koordinator PDLK',
-
-  PENGELOLA_ADUAN: 'Pengelola Aduan',
   PETUGAS_KEKERASAN: 'Petugas Kekerasan (Satgas)',
-  MAHASISWA: 'Mahasiswa',
-
-
   KOORD_KP: 'Koordinator KP',
   KOORD_TA: 'Koordinator TA',
   KOORD_MAGANG: 'Koordinator Magang',
   HIMPUNAN: 'Himpunan Mahasiswa',
-  // Peran Kompatibilitas Data Induk (PRD Bab 6.A poin 2)
-  PENGURUS_HIMPUNAN: 'Pengurus Himpunan',
-  DOSEN_WALI: 'Dosen Wali',
-  DOSEN_PEMBINA: 'Dosen Pembina',
-  KETUA_KELAS: 'Ketua Kelas',
-
-
-  PETUGAS_KEKERASAN: 'Pengelola Aduan',
   MITRA_EKSTERNAL: 'Mitra (eksternal)',
-  HIMPUNAN: 'Pengurus Himpunan',
-
 };
 
 export default function Header() {
