@@ -1,23 +1,42 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
 import StatusBadge from '@/components/ui/StatusBadge';
 import Modal from '@/components/ui/Modal';
 import { mockBusinessTrips } from '@/lib/mock-data';
+import { tripService } from '@/lib/api/services/trip.service';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import type { BusinessTrip } from '@/lib/types';
 import { CheckCircle2, AlertTriangle, XCircle, FileEdit, Eye } from 'lucide-react';
 import Link from 'next/link';
 import { formatDateShort, formatRupiah } from '@/lib/utils';
 
 export default function PersetujuanPerjalananPage() {
-  const [trips, setTrips] = useState<BusinessTrip[]>(mockBusinessTrips);
+  const [trips, setTrips] = useState<BusinessTrip[]>(() =>
+    storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips)
+  );
   const [selectedTrip, setSelectedTrip] = useState<BusinessTrip | null>(null);
   const [decisionType, setDecisionType] = useState<'SETUJU' | 'REVISI' | 'TOLAK'>('SETUJU');
   const [nomorST, setNomorST] = useState('');
   const [catatan, setCatatan] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    tripService
+      .getTrips()
+      .then((res) => {
+        if (active && res.data && res.data.length > 0) {
+          setTrips(res.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const pendingTrips = trips.filter((t) => t.status === 'DIAJUKAN');
 
@@ -29,7 +48,7 @@ export default function PersetujuanPerjalananPage() {
     setModalOpen(true);
   };
 
-  const handleConfirmDecision = (e: React.FormEvent) => {
+  const handleConfirmDecision = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTrip) return;
 
@@ -55,7 +74,18 @@ export default function PersetujuanPerjalananPage() {
     });
 
     setTrips(updated);
+    storageSync.set(STORAGE_KEYS.TRIPS, updated);
     setModalOpen(false);
+
+    try {
+      if (decisionType === 'SETUJU') {
+        await tripService.approveTrip(selectedTrip.id, { nomor_surat_tugas: nomorST, catatan });
+      } else if (decisionType === 'TOLAK') {
+        await tripService.rejectTrip(selectedTrip.id, catatan);
+      }
+    } catch {
+      // Offline fallback
+    }
   };
 
   const columns = [

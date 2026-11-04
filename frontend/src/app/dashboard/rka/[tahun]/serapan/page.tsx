@@ -1,17 +1,30 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useParams } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import StatCard from '@/components/ui/StatCard';
 import ExportMenu from '@/components/ui/ExportMenu';
+import InteractiveBarChart, { BarSeriesConfig } from '@/components/ui/InteractiveBarChart';
 import { mockRkaDocuments } from '@/lib/mock-data';
 import { Wallet, TrendingUp, AlertTriangle, Clock, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend
-} from 'recharts';
 import { formatRupiah, calculateAbsorptionPercentage } from '@/lib/utils';
+
+const QUARTER_DATA = [
+  { triwulan: 'TW 1 (Jan-Mar)', Target: 50000000, Realisasi: 42000000 },
+  { triwulan: 'TW 2 (Apr-Jun)', Target: 75000000, Realisasi: 68500000 },
+  { triwulan: 'TW 3 (Jul-Sep)', Target: 65000000, Realisasi: 52000000 },
+  { triwulan: 'TW 4 (Okt-Des)', Target: 60000000, Realisasi: 25000000 },
+];
+
+const QUARTER_SERIES: BarSeriesConfig[] = [
+  { dataKey: 'Target', fill: '#94A3B8', name: 'Target Anggaran' },
+  { dataKey: 'Realisasi', fill: '#2563EB', name: 'Realisasi Riil' },
+];
+
+const QUARTER_DOMAIN: [number, number] = [0, 80000000];
+const QUARTER_TICKS = [0, 20000000, 40000000, 60000000, 80000000];
 
 export default function RkaSerapanPage() {
   const params = useParams();
@@ -19,14 +32,6 @@ export default function RkaSerapanPage() {
 
   const doc =
     mockRkaDocuments.find((d) => d.tahun_anggaran === tahun) || mockRkaDocuments[0];
-
-  // Triwulan Absorption Data
-  const quarterData = [
-    { triwulan: 'TW 1 (Jan-Mar)', Target: 50000000, Realisasi: 42000000 },
-    { triwulan: 'TW 2 (Apr-Jun)', Target: 75000000, Realisasi: 68500000 },
-    { triwulan: 'TW 3 (Jul-Sep)', Target: 65000000, Realisasi: 52000000 },
-    { triwulan: 'TW 4 (Okt-Des)', Target: 60000000, Realisasi: 25000000 },
-  ];
 
   const serapanPct = calculateAbsorptionPercentage(doc.total_realisasi || 0, doc.total_anggaran);
 
@@ -93,28 +98,16 @@ export default function RkaSerapanPage() {
           </div>
 
           <div className="h-72 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={quarterData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis dataKey="triwulan" tick={{ fill: '#64748B', fontSize: 11 }} />
-                <YAxis
-                  tickFormatter={(val) => `Rp ${(val / 1000000).toFixed(0)}jt`}
-                  tick={{ fill: '#64748B', fontSize: 11 }}
-                />
-                <Tooltip
-                  formatter={(value: unknown) => [formatRupiah(Number(value) || 0), '']}
-                  contentStyle={{
-                    backgroundColor: '#FFFFFF',
-                    borderRadius: '12px',
-                    border: '1px solid #E2E8F0',
-                    fontSize: '12px',
-                  }}
-                />
-                <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                <Bar dataKey="Target" fill="#94A3B8" radius={[4, 4, 0, 0]} name="Target Anggaran" />
-                <Bar dataKey="Realisasi" fill="#2563EB" radius={[4, 4, 0, 0]} name="Realisasi Riil" />
-              </BarChart>
-            </ResponsiveContainer>
+            <InteractiveBarChart
+              data={QUARTER_DATA}
+              xKey="triwulan"
+              series={QUARTER_SERIES}
+              domain={QUARTER_DOMAIN}
+              ticks={QUARTER_TICKS}
+              yAxisFormatter={(val) => `Rp ${(val / 1000000).toFixed(0)}jt`}
+              tooltipFormatter={(val) => formatRupiah(val)}
+              showLegend
+            />
           </div>
         </div>
 
@@ -160,4 +153,3 @@ export default function RkaSerapanPage() {
     </div>
   );
 }
-

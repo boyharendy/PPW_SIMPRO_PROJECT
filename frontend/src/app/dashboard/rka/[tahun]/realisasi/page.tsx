@@ -9,6 +9,8 @@ import Modal from '@/components/ui/Modal';
 import CurrencyInput from '@/components/ui/CurrencyInput';
 import FileUploader from '@/components/ui/FileUploader';
 import { mockRkaRealizations, mockRkaDocuments } from '@/lib/mock-data';
+import { rkaService } from '@/lib/api/services/rka.service';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import type { RkaRealization } from '@/lib/types';
 import { Plus, Wallet, ArrowLeft, FileText, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
@@ -21,7 +23,9 @@ export default function RkaRealisasiPage() {
   const doc =
     mockRkaDocuments.find((d) => d.tahun_anggaran === tahun) || mockRkaDocuments[0];
 
-  const [realizations, setRealizations] = useState<RkaRealization[]>(mockRkaRealizations);
+  const [realizations, setRealizations] = useState<RkaRealization[]>(() =>
+    storageSync.get<RkaRealization[]>(STORAGE_KEYS.RKA_REALIZATIONS, mockRkaRealizations)
+  );
   const [modalOpen, setModalOpen] = useState(false);
 
   // Form State
@@ -30,7 +34,7 @@ export default function RkaRealisasiPage() {
   const [nominal, setNominal] = useState(2500000);
   const [uraian, setUraian] = useState('');
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!uraian.trim()) {
       alert('Uraian realisasi wajib diisi.');
@@ -49,9 +53,22 @@ export default function RkaRealisasiPage() {
       created_at: new Date().toISOString(),
     };
 
-    setRealizations([newReal, ...realizations]);
+    const updated = storageSync.prepend(STORAGE_KEYS.RKA_REALIZATIONS, newReal, realizations);
+    setRealizations(updated);
     setModalOpen(false);
     setUraian('');
+
+    try {
+      await rkaService.addRealization({
+        rka_budget_item_id: selectedPosId,
+        tanggal_realisasi: tglRealisasi,
+        nominal_realisasi: nominal,
+        uraian,
+        sumber_pencatatan: 'MANUAL',
+      });
+    } catch {
+      // Offline fallback
+    }
   };
 
   const columns = [
@@ -127,7 +144,7 @@ export default function RkaRealisasiPage() {
       <div className="card">
         <DataTable
           columns={columns}
-          data={realizations as unknown as Record<string, unknown>[]}
+          data={realizations}
           emptyMessage="Belum ada riwayat realisasi anggaran."
         />
       </div>

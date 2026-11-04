@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { mockPublications } from '@/lib/mock-data';
+import { publicationService } from '@/lib/api/services/publication.service';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import type { Publication, PublicationType } from '@/lib/types';
 import { Plus, Search, BookOpen, ExternalLink, Eye, ArrowRight } from 'lucide-react';
 
@@ -13,6 +15,27 @@ export default function PublikasiListPage() {
   const [publications, setPublications] = useState<Publication[]>(mockPublications);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedJenis, setSelectedJenis] = useState<string>('ALL');
+
+  useEffect(() => {
+    // Sinkronisasi data lokal saat mount di client
+    const local = storageSync.get<Publication[]>(STORAGE_KEYS.PUBLICATIONS, mockPublications);
+    if (local && local.length > 0) {
+      setPublications(local);
+    }
+
+    let active = true;
+    publicationService
+      .getPublications()
+      .then((res) => {
+        if (active && res.data && res.data.length > 0) {
+          setPublications(res.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const filtered = publications.filter((p) => {
     const matchSearch =
@@ -167,7 +190,7 @@ export default function PublikasiListPage() {
       <div className="card">
         <DataTable
           columns={columns}
-          data={filtered as unknown as Record<string, unknown>[]}
+          data={filtered}
           emptyMessage="Tidak ada publikasi yang sesuai pencarian"
         />
       </div>

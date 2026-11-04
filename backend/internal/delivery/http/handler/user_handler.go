@@ -79,3 +79,29 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 
 	response.Success(c, http.StatusOK, "Pengguna berhasil dihapus", nil)
 }
+
+func (h *UserHandler) CreateUser(c *gin.Context) {
+	var req model.User
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Format data pengguna tidak valid", err.Error())
+		return
+	}
+
+	if req.NamaLengkap == "" || req.Email == "" {
+		response.BadRequest(c, "Nama lengkap dan email wajib diisi", nil)
+		return
+	}
+
+	created, err := h.userUsecase.CreateUser(&req)
+	if err != nil {
+		response.InternalServerError(c, "Gagal membuat pengguna baru: "+err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusCreated, "Pengguna berhasil ditambahkan", created)
+}
+
+func (h *UserHandler) GetRoles(c *gin.Context) {
+	roles := h.userUsecase.GetAvailableRoles()
+	response.Success(c, http.StatusOK, "Daftar peran sistem SIMPRO", roles)
+}

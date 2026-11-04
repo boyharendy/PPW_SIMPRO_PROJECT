@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Modal from '@/components/ui/Modal';
+import { copyToClipboard } from '@/lib/utils';
 import { Copy, Check, Download, AlertTriangle } from 'lucide-react';
 
 interface CopyOnceDialogProps {
@@ -13,10 +14,12 @@ interface CopyOnceDialogProps {
 export default function CopyOnceDialog({ open, onClose, ticketCode }: CopyOnceDialogProps) {
   const [copied, setCopied] = useState(false);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(ticketCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+  const handleCopy = async () => {
+    const ok = await copyToClipboard(ticketCode);
+    if (ok) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }
   };
 
   const handleDownload = () => {

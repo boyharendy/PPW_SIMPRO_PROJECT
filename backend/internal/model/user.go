@@ -5,23 +5,28 @@ import "time"
 type Role string
 
 const (
-	// 10 Peran Tetap Utama (PRD Bab 8.1)
+	// 13 Aktor Utama SIMPRO (Spesifikasi Resmi Pengguna)
 	RoleKaprodi          Role = "KAPRODI"
 	RoleGKM              Role = "GKM"
 	RoleAdminProdi       Role = "ADMIN_PRODI"
 	RoleDosen            Role = "DOSEN"
-	RoleKoordKP          Role = "KOORDINATOR_KP"
-	RoleKoordPSI         Role = "KOORDINATOR_PSI"
-	RoleKoordPDLK        Role = "KOORDINATOR_PDLK"
-	RolePengelolaAduan   Role = "PENGELOLA_ADUAN"
-	RolePetugasKekerasan Role = "PETUGAS_KEKERASAN"
-	RoleMahasiswa        Role = "MAHASISWA"
-
-	// Peran Kompatibilitas Data Induk (PRD Bab 6.A poin 2)
-	RolePengurusHimpunan Role = "PENGURUS_HIMPUNAN"
+	RoleDosenVerifikator Role = "DOSEN_VERIFIKATOR"
 	RoleDosenWali        Role = "DOSEN_WALI"
 	RoleDosenPembina     Role = "DOSEN_PEMBINA"
 	RoleKetuaKelas       Role = "KETUA_KELAS"
+	RoleMahasiswa        Role = "MAHASISWA"
+	RolePengurusHimpunan Role = "PENGURUS_HIMPUNAN"
+	RoleKoordKP_PSI_PDLK Role = "KOORDINATOR_KP_PSI_PDLK"
+	RolePengelolaAduan   Role = "PENGELOLA_ADUAN"
+	RoleMitra            Role = "MITRA"
+
+	// Alias Kompatibilitas Sistem & Data Induk
+	RoleKoordKP          Role = "KOORDINATOR_KP"
+	RoleKoordPSI         Role = "KOORDINATOR_PSI"
+	RoleKoordPDLK        Role = "KOORDINATOR_PDLK"
+	RolePetugasKekerasan Role = "PETUGAS_KEKERASAN"
+	RoleMitraEksternal   Role = "MITRA_EKSTERNAL"
+	RoleHimpunan         Role = "HIMPUNAN"
 )
 
 type User struct {

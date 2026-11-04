@@ -3,58 +3,54 @@
 import React from 'react';
 import Link from 'next/link';
 import {
-  PieChart as PieChartIcon,
   Clock,
   CheckCircle2,
   AlertTriangle,
   Star,
-  ShieldAlert,
   ArrowRight,
   TrendingUp,
-  FileSpreadsheet,
   Lock,
 } from 'lucide-react';
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { DataTable } from '@/components/ui/DataTable';
-import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ExportMenu } from '@/components/ui/ExportMenu';
+import InteractiveBarChart, { BarSeriesConfig } from '@/components/ui/InteractiveBarChart';
 import { mockComplaints, mockProfiles } from '@/lib/mock-data';
 import { formatDate } from '@/lib/utils';
-import type { Complaint } from '@/lib/types';
+
+const CATEGORY_DATA = [
+  { name: 'Fasilitas & Lab', count: 8, fill: '#3b82f6' },
+  { name: 'Layanan Admin', count: 5, fill: '#10b981' },
+  { name: 'Akademik & Nilai', count: 3, fill: '#f59e0b' },
+  { name: 'Sensitif (Satgas)', count: 2, fill: '#ef4444' },
+  { name: 'Lainnya', count: 1, fill: '#64748b' },
+];
+
+const CATEGORY_SERIES: BarSeriesConfig[] = [
+  { dataKey: 'count', name: 'Jumlah Aduan', fill: '#3b82f6', colorKey: 'fill' },
+];
+
+const CATEGORY_DOMAIN: [number, number] = [0, 10];
+const CATEGORY_TICKS = [0, 2, 4, 6, 8, 10];
+
+const MONTHLY_TREND = [
+  { bulan: 'Mei', masuk: 2, tuntas: 2 },
+  { bulan: 'Jun', masuk: 4, tuntas: 3 },
+  { bulan: 'Jul', masuk: 3, tuntas: 3 },
+  { bulan: 'Agu', masuk: 5, tuntas: 4 },
+  { bulan: 'Sep', masuk: 6, tuntas: 5 },
+  { bulan: 'Okt', masuk: 4, tuntas: 3 },
+];
+
+const MONTHLY_SERIES: BarSeriesConfig[] = [
+  { dataKey: 'masuk', name: 'Aduan Masuk', fill: '#93c5fd' },
+  { dataKey: 'tuntas', name: 'Aduan Tuntas', fill: '#2563eb' },
+];
+
+const MONTHLY_DOMAIN: [number, number] = [0, 8];
+const MONTHLY_TICKS = [0, 2, 4, 6, 8];
 
 export default function RekapAduanPage() {
-  // Chart Data: Distribusi Kategori
-  const categoryData = [
-    { name: 'Fasilitas & Lab', count: 8, fill: '#3b82f6' },
-    { name: 'Layanan Admin', count: 5, fill: '#10b981' },
-    { name: 'Akademik & Nilai', count: 3, fill: '#f59e0b' },
-    { name: 'Sensitif (Satgas)', count: 2, fill: '#ef4444' },
-    { name: 'Lainnya', count: 1, fill: '#64748b' },
-  ];
-
-  // Chart Data: Tren Bulanan
-  const monthlyTrend = [
-    { bulan: 'Mei', masuk: 2, tuntas: 2 },
-    { bulan: 'Jun', masuk: 4, tuntas: 3 },
-    { bulan: 'Jul', masuk: 3, tuntas: 3 },
-    { bulan: 'Agu', masuk: 5, tuntas: 4 },
-    { bulan: 'Sep', masuk: 6, tuntas: 5 },
-    { bulan: 'Okt', masuk: 4, tuntas: 3 },
-  ];
-
   // Overdue / Escalation Dispositions
   const overdueDispositions = mockComplaints.flatMap((c) => {
     if (!c.dispositions) return [];
@@ -202,22 +198,15 @@ export default function RekapAduanPage() {
           <h3 className="text-sm font-bold text-slate-900 mb-1">Distribusi Aduan Berdasarkan Kategori</h3>
           <p className="text-xs text-slate-500 mb-4">Pemetaan jenis kendala yang paling sering dilaporkan mahasiswa</p>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={categoryData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} angle={-15} textAnchor="end" />
-                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} allowDecimals={false} />
-                <Tooltip
-                  formatter={(value: any) => [`${value} Laporan`, 'Jumlah Aduan']}
-                  contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '12px' }}
-                />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                  {categoryData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <InteractiveBarChart
+              data={CATEGORY_DATA}
+              xKey="name"
+              series={CATEGORY_SERIES}
+              domain={CATEGORY_DOMAIN}
+              ticks={CATEGORY_TICKS}
+              tooltipFormatter={(val) => `${val} Laporan`}
+              showLegend={false}
+            />
           </div>
         </div>
 
@@ -226,19 +215,14 @@ export default function RekapAduanPage() {
           <h3 className="text-sm font-bold text-slate-900 mb-1">Tren Aduan Masuk vs Tuntas Bulanan</h3>
           <p className="text-xs text-slate-500 mb-4">Konsistensi tindak lanjut laporan sepanjang semester</p>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="bulan" tick={{ fontSize: 11, fill: '#64748b' }} />
-                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '12px' }}
-                />
-                <Legend wrapperStyle={{ fontSize: '12px' }} />
-                <Bar dataKey="masuk" name="Aduan Masuk" fill="#93c5fd" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="tuntas" name="Aduan Tuntas" fill="#2563eb" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <InteractiveBarChart
+              data={MONTHLY_TREND}
+              xKey="bulan"
+              series={MONTHLY_SERIES}
+              domain={MONTHLY_DOMAIN}
+              ticks={MONTHLY_TICKS}
+              showLegend
+            />
           </div>
         </div>
       </div>
@@ -278,4 +262,3 @@ export default function RekapAduanPage() {
     </div>
   );
 }
-

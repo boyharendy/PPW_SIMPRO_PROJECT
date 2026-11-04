@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 import StatusStepper from '@/components/ui/StatusStepper';
 import Modal from '@/components/ui/Modal';
 import { mockRpsSubmissions, mockProfiles } from '@/lib/mock-data';
+import { rpsService } from '@/lib/api/services/rps.service';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import type { RpsSubmission } from '@/lib/types';
 import {
   ArrowLeft,
@@ -33,12 +35,27 @@ export default function DetailRpsPage() {
   const params = useParams();
   const subId = params.id as string;
 
-  const initialSub =
-    mockRpsSubmissions.find((s) => s.id === subId) || mockRpsSubmissions[0];
-
-  const [sub, setSub] = useState<RpsSubmission>(initialSub);
+  const [sub, setSub] = useState<RpsSubmission>(() => {
+    const list = storageSync.get<RpsSubmission[]>(STORAGE_KEYS.RPS_SUBMISSIONS, mockRpsSubmissions);
+    return list.find((s) => s.id === subId) || mockRpsSubmissions[0];
+  });
   const [modalReviewerOpen, setModalReviewerOpen] = useState(false);
   const [modalSahkanOpen, setModalSahkanOpen] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    rpsService
+      .getSubmissionById(subId)
+      .then((res) => {
+        if (active && res.data) {
+          setSub(res.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [subId]);
 
   // Reviewer assignment state
   const [selectedReviewerId, setSelectedReviewerId] = useState('u-dosen2');
@@ -47,24 +64,38 @@ export default function DetailRpsPage() {
   );
   const [catatanPengesahan, setCatatanPengesahan] = useState('');
 
-  const handleAssignReviewer = (e: React.FormEvent) => {
+  const handleAssignReviewer = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSub({
+    const updated = {
       ...sub,
-      status: 'DIREVIEW',
-    });
+      status: 'DIREVIEW' as const,
+    };
+    setSub(updated);
+    storageSync.update(STORAGE_KEYS.RPS_SUBMISSIONS, sub.id, updated, mockRpsSubmissions);
+    try {
+      await rpsService.assignReviewer(sub.id, selectedReviewerId);
+    } catch {
+      // Offline fallback
+    }
     setModalReviewerOpen(false);
   };
 
-  const handleSahkan = (e: React.FormEvent) => {
+  const handleSahkan = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSub({
+    const updated = {
       ...sub,
-      status: 'DISAHKAN',
+      status: 'DISAHKAN' as const,
       disahkan_oleh: 'u-kaprodi',
       disahkan_at: new Date().toISOString(),
       catatan_pengesahan: catatanPengesahan || 'RPS disahkan resmi untuk perkuliahan semester berjalan.',
-    });
+    };
+    setSub(updated);
+    storageSync.update(STORAGE_KEYS.RPS_SUBMISSIONS, sub.id, updated, mockRpsSubmissions);
+    try {
+      await rpsService.approveSubmission(sub.id, catatanPengesahan);
+    } catch {
+      // Offline fallback
+    }
     setModalSahkanOpen(false);
   };
 

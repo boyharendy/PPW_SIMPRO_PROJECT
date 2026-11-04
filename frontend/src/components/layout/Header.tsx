@@ -6,21 +6,43 @@ import { useState, useRef, useEffect } from 'react';
 import type { Role } from '@/lib/types';
 import { formatDateTime } from '@/lib/utils';
 
+export const CANONICAL_ROLES: Role[] = [
+  'KAPRODI',
+  'GKM',
+  'ADMIN_PRODI',
+  'DOSEN',
+  'DOSEN_VERIFIKATOR',
+  'DOSEN_WALI',
+  'DOSEN_PEMBINA',
+  'KETUA_KELAS',
+  'MAHASISWA',
+  'PENGURUS_HIMPUNAN',
+  'KOORDINATOR_KP_PSI_PDLK',
+  'PENGELOLA_ADUAN',
+  'MITRA',
+];
+
 export const ROLE_LABELS: Record<Role, string> = {
-  // 10 Peran Tetap (PRD Bab 8.1)
+  // 13 Aktor Utama SIMPRO (Spesifikasi Resmi Pengguna)
   KAPRODI: 'Kaprodi',
-  GKM: 'GKM (Gugus Kendali Mutu)',
+  GKM: 'GKM',
   ADMIN_PRODI: 'Admin Prodi',
   DOSEN: 'Dosen',
-  DOSEN_WALI: 'Dosen Wali',
-  DOSEN_PEMBINA: 'Dosen Pembina UKM / Himpunan',
   DOSEN_VERIFIKATOR: 'Dosen Verifikator',
-
+  DOSEN_WALI: 'Dosen Wali',
+  DOSEN_PEMBINA: 'Dosen Pembina Himpunan / UKM',
   KETUA_KELAS: 'Ketua Kelas',
+  MAHASISWA: 'Mahasiswa',
   PENGURUS_HIMPUNAN: 'Pengurus Himpunan',
+  KOORDINATOR_KP_PSI_PDLK: 'Koordinator KP / PSI / PDLK',
+  PENGELOLA_ADUAN: 'Pengelola Aduan',
+  MITRA: 'Mitra (eksternal)',
+
+  // Alias Kompatibilitas Sistem & Data Induk
   KOORDINATOR_KP: 'Koordinator KP',
   KOORDINATOR_PSI: 'Koordinator PSI',
   KOORDINATOR_PDLK: 'Koordinator PDLK',
+
   PENGELOLA_ADUAN: 'Pengelola Aduan',
   PETUGAS_KEKERASAN: 'Petugas Kekerasan (Satgas)',
   MAHASISWA: 'Mahasiswa',
@@ -36,6 +58,11 @@ export const ROLE_LABELS: Record<Role, string> = {
   DOSEN_WALI: 'Dosen Wali',
   DOSEN_PEMBINA: 'Dosen Pembina',
   KETUA_KELAS: 'Ketua Kelas',
+
+
+  PETUGAS_KEKERASAN: 'Pengelola Aduan',
+  MITRA_EKSTERNAL: 'Mitra (eksternal)',
+  HIMPUNAN: 'Pengurus Himpunan',
 
 };
 
@@ -113,7 +140,7 @@ export default function Header() {
                   Ganti Peran Pengguna
                 </p>
                 <div className="max-h-72 overflow-y-auto">
-                  {Array.from(new Set(user.roles)).map(role => (
+                  {CANONICAL_ROLES.map(role => (
                     <button
                       key={role}
                       onClick={() => { setActiveRole(role); setShowRoles(false); }}

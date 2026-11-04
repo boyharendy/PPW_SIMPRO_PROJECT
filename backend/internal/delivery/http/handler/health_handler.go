@@ -26,7 +26,9 @@ func (h *HealthHandler) Health(c *gin.Context) {
 	}
 
 	dbStatus := "in_memory"
-	if h.cfg.DatabaseURL != "" && !strings.Contains(h.cfg.DatabaseURL, "[YOUR-PASSWORD]") {
+	if h.cfg.SupabaseURL != "" && h.cfg.SupabaseServiceKey != "" {
+		dbStatus = "connected_supabase_cloud"
+	} else if h.cfg.DatabaseURL != "" && !strings.Contains(h.cfg.DatabaseURL, "[YOUR-PASSWORD]") {
 		dbStatus = "configured_postgres"
 	}
 

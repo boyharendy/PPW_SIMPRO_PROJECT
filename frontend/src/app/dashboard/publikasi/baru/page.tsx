@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import { useApp } from '@/lib/context';
 import { mockProfiles, mockPublications } from '@/lib/mock-data';
+import { publicationService } from '@/lib/api/services/publication.service';
 import type {
   Publication,
   PublicationType,
@@ -65,7 +66,7 @@ export default function TambahPublikasiPage() {
     setAuthors(authors.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (statusTarget: 'DRAF' | 'DIAJUKAN') => {
+  const handleSubmit = async (statusTarget: 'DRAF' | 'DIAJUKAN') => {
     if (!judul.trim() || !namaTarget.trim()) {
       alert('Judul dan nama target publikasi wajib diisi.');
       return;
@@ -100,7 +101,7 @@ export default function TambahPublikasiPage() {
       ],
     };
 
-    mockPublications.unshift(newPub);
+    await publicationService.createPublication(newPub);
     router.push('/dashboard/publikasi');
   };
 
