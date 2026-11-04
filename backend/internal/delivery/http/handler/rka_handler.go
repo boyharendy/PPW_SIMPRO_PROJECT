@@ -11,6 +11,7 @@ import (
 	"simpro-backend/internal/model"
 	"simpro-backend/internal/repository"
 	"simpro-backend/internal/usecase"
+	"simpro-backend/pkg/export"
 	"simpro-backend/pkg/response"
 )
 
@@ -89,6 +90,12 @@ func (h *RkaHandler) GetSerapan(c *gin.Context) {
 	serapan, err := h.usecase.GetSerapan(tahun)
 	if err != nil {
 		response.NotFound(c, err.Error())
+		return
+	}
+	format := c.Query("format")
+	if format == "xlsx" || format == "csv" || format == "pdf" {
+		c.Header("Content-Disposition", "attachment; filename=monitoring-serapan-rka.csv")
+		c.Data(http.StatusOK, "text/csv; charset=utf-8", export.ExportRkaSerapanCSV(serapan))
 		return
 	}
 	response.Success(c, http.StatusOK, "Informasi serapan anggaran RKA", serapan)

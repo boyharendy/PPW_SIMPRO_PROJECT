@@ -7,6 +7,7 @@ import (
 	"simpro-backend/internal/delivery/http/middleware"
 	"simpro-backend/internal/model"
 	"simpro-backend/internal/usecase"
+	"simpro-backend/pkg/export"
 	"simpro-backend/pkg/response"
 )
 
@@ -147,6 +148,12 @@ func (h *SurveyHandler) GetRecap(c *gin.Context) {
 	recap, err := h.usecase.GetRecap(id)
 	if err != nil {
 		response.NotFound(c, err.Error())
+		return
+	}
+	format := c.Query("format")
+	if format == "xlsx" || format == "csv" || format == "pdf" {
+		c.Header("Content-Disposition", "attachment; filename=rekap-kepuasan-mitra.csv")
+		c.Data(http.StatusOK, "text/csv; charset=utf-8", export.ExportSurveyRecapCSV(recap))
 		return
 	}
 	response.Success(c, http.StatusOK, "Rekapitulasi kepuasan mitra berhasil diambil", recap)

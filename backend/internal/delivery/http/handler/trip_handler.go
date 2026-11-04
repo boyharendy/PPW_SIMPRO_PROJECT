@@ -8,6 +8,7 @@ import (
 	"simpro-backend/internal/delivery/http/middleware"
 	"simpro-backend/internal/model"
 	"simpro-backend/internal/usecase"
+	"simpro-backend/pkg/export"
 	"simpro-backend/pkg/response"
 )
 
@@ -166,6 +167,12 @@ func (h *TripHandler) GetRecap(c *gin.Context) {
 	recap, err := h.usecase.GetRecap()
 	if err != nil {
 		response.InternalServerError(c, "Gagal mengambil rekapitulasi: "+err.Error())
+		return
+	}
+	format := c.Query("format")
+	if format == "xlsx" || format == "csv" || format == "pdf" {
+		c.Header("Content-Disposition", "attachment; filename=rekap-perjalanan-dinas.csv")
+		c.Data(http.StatusOK, "text/csv; charset=utf-8", export.ExportTripRecapCSV(recap))
 		return
 	}
 	response.Success(c, http.StatusOK, "Rekapitulasi perjalanan dinas", recap)

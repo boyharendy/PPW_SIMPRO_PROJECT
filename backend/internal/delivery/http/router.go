@@ -22,6 +22,7 @@ type RouterParams struct {
 	EvaluationHandler  *handler.EvaluationHandler
 	DashboardHandler   *handler.DashboardHandler
 	AttachmentHandler  *handler.AttachmentHandler
+	AdminHandler       *handler.AdminHandler
 }
 
 func SetupRouter(params RouterParams) *gin.Engine {
@@ -296,6 +297,21 @@ func SetupRouter(params RouterParams) *gin.Engine {
 			{
 				notifs.GET("", params.DashboardHandler.GetNotifications)
 				notifs.PATCH("/:id/read", params.DashboardHandler.MarkNotificationRead)
+			}
+		}
+
+		// Admin & System Settings (Protected)
+		if params.AdminHandler != nil {
+			admin := api.Group("/admin")
+			admin.Use(middleware.AuthMiddleware(params.Config.JWTSecret))
+			{
+				admin.GET("/settings", params.AdminHandler.GetSettings)
+				admin.PUT("/settings/:key", params.AdminHandler.UpdateSetting)
+				admin.GET("/user-roles", params.AdminHandler.GetUserRoles)
+				admin.POST("/user-roles", params.AdminHandler.AssignUserRole)
+				admin.DELETE("/user-roles/:id", params.AdminHandler.RevokeUserRole)
+				admin.GET("/audit-logs", params.AdminHandler.GetAuditLogs)
+				admin.POST("/scheduler/run", params.AdminHandler.RunScheduler)
 			}
 		}
 	}

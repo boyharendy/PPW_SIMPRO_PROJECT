@@ -7,6 +7,7 @@ import (
 	"simpro-backend/internal/delivery/http/middleware"
 	"simpro-backend/internal/model"
 	"simpro-backend/internal/usecase"
+	"simpro-backend/pkg/export"
 	"simpro-backend/pkg/response"
 )
 
@@ -107,6 +108,12 @@ func (h *EvaluationHandler) GetRecap(c *gin.Context) {
 	recap, err := h.usecase.GetRecap()
 	if err != nil {
 		response.InternalServerError(c, "Gagal mengambil rekapitulasi evaluasi: "+err.Error())
+		return
+	}
+	format := c.Query("format")
+	if format == "xlsx" || format == "csv" || format == "pdf" {
+		c.Header("Content-Disposition", "attachment; filename=rekap-evaluasi-cpmk.csv")
+		c.Data(http.StatusOK, "text/csv; charset=utf-8", export.ExportEvaluationRecapCSV(recap))
 		return
 	}
 	response.Success(c, http.StatusOK, "Rekapitulasi post evaluasi perkuliahan", recap)

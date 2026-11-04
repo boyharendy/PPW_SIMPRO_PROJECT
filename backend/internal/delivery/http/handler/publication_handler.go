@@ -8,6 +8,7 @@ import (
 	"simpro-backend/internal/delivery/http/middleware"
 	"simpro-backend/internal/model"
 	"simpro-backend/internal/usecase"
+	"simpro-backend/pkg/export"
 	"simpro-backend/pkg/response"
 )
 
@@ -250,6 +251,13 @@ func (h *PublicationHandler) GetRecap(c *gin.Context) {
 	recap, err := h.usecase.GetRecap()
 	if err != nil {
 		response.InternalServerError(c, "Gagal mengambil rekapitulasi: "+err.Error())
+		return
+	}
+	format := c.Query("format")
+	if format == "xlsx" || format == "csv" || format == "pdf" {
+		pubs, _, _ := h.usecase.GetPublications("", "", 0, 1, 1000)
+		c.Header("Content-Disposition", "attachment; filename=rekap-publikasi-ilmiah.csv")
+		c.Data(http.StatusOK, "text/csv; charset=utf-8", export.ExportPublicationRecapCSV(pubs))
 		return
 	}
 	response.Success(c, http.StatusOK, "Rekapitulasi publikasi ilmiah", recap)
