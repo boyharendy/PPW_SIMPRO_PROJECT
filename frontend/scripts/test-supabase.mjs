@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -32,7 +31,7 @@ console.log('==================================================');
 console.log('🔍 Pengujian Koneksi Supabase SIMPRO');
 console.log('==================================================');
 console.log('URL     :', supabaseUrl);
-console.log('Anon Key:', (supabaseAnonKey.startsWith('eyJ') || supabaseAnonKey.startsWith('sb_')) ? '✅ Key Terkonfigurasi' : '⚠️ Format Tidak Dikenal');
+console.log('Anon Key:', (supabaseAnonKey && (supabaseAnonKey.startsWith('eyJ') || supabaseAnonKey.startsWith('sb_'))) ? '✅ Key Terkonfigurasi' : '⚠️ Format Tidak Dikenal');
 console.log('--------------------------------------------------');
 
 if (!supabaseUrl || supabaseUrl.includes('your-project-id') || !supabaseAnonKey || supabaseAnonKey === 'your-anon-key-here') {
@@ -42,10 +41,33 @@ if (!supabaseUrl || supabaseUrl.includes('your-project-id') || !supabaseAnonKey 
 }
 
 try {
-  const supabase = createClient(supabaseUrl, supabaseAnonKey);
-  console.log('📡 Menghubungi Supabase API...');
+  let data = null;
+  let error = null;
   const start = Date.now();
-  const { data, error } = await supabase.from('profiles').select('id, nama_lengkap, email').limit(5);
+
+  try {
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    console.log('📡 Menghubungi Supabase API (via Supabase SDK)...');
+    const res = await supabase.from('profiles').select('id, nama_lengkap, email, tipe_pengguna').limit(5);
+    data = res.data;
+    error = res.error;
+  } catch {
+    console.log('📡 Menghubungi Supabase API (via Native Fetch)...');
+    const res = await fetch(`${supabaseUrl}/rest/v1/profiles?select=id,nama_lengkap,email,tipe_pengguna&limit=5`, {
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${supabaseAnonKey}`,
+      },
+    });
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      error = { code: errJson.code || String(res.status), message: errJson.message || res.statusText };
+    } else {
+      data = await res.json();
+    }
+  }
+
   const elapsed = Date.now() - start;
 
   if (error) {
@@ -60,11 +82,10 @@ try {
   } else {
     console.log(`🎉 KONEKSI DAN QUERY DATABASE SUKSES! (Waktu respon: ${elapsed}ms)`);
     console.log(`📊 Ditemukan ${data?.length || 0} akun pengguna di tabel profiles:`);
-    data?.forEach(p => console.log(`   - [${p.id.slice(0, 8)}...] ${p.nama_lengkap} (${p.email})`));
+    data?.forEach(p => console.log(`   - [${p.tipe_pengguna}] ${p.nama_lengkap} (${p.email})`));
   }
 } catch (err) {
   console.log('❌ Terjadi kesalahan fatal:', err.message);
   process.exit(1);
 }
 console.log('==================================================');
-
