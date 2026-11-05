@@ -17,6 +17,11 @@ type ComplaintRepository interface {
 	FindByTicket(ticket string) (*model.Complaint, error)
 	Create(complaint *model.Complaint) (*model.Complaint, error)
 	UpdateStatus(id string, status model.ComplaintStatus, petugasID string) error
+	Verify(id string, petugasID string) error
+	Resolve(id string, petugasID, solusi string) error
+	Close(id string, petugasID, alasan string) error
+	GetEscalations() ([]*model.ComplaintMetadata, error)
+	FindMyDispositions(userID string) ([]*model.Complaint, error)
 	AddMessage(msg *model.ComplaintMessage) error
 	AddDisposition(disp *model.ComplaintDisposition) error
 	ForwardToSatgas(id, tanggal, nomorReferensi, petugasSatgas string) error
@@ -173,6 +178,79 @@ func (r *supabaseComplaintRepository) UpdateStatus(id string, status model.Compl
 	return r.client.Update("complaints", map[string]string{
 		"id": fmt.Sprintf("eq.%s", id),
 	}, payload, nil)
+}
+
+func (r *supabaseComplaintRepository) Verify(id string, petugasID string) error {
+	payload := map[string]interface{}{
+		"status":           string(model.ComplaintStatusDiverifikasi),
+		"tanggal_diterima": time.Now().Format("2006-01-02"),
+	}
+	if petugasID != "" {
+		payload["petugas_id"] = petugasID
+	}
+	return r.client.Update("complaints", map[string]string{
+		"id": fmt.Sprintf("eq.%s", id),
+	}, payload, nil)
+}
+
+func (r *supabaseComplaintRepository) Resolve(id string, petugasID, solusi string) error {
+	nowStr := time.Now().Format("2006-01-02")
+	payload := map[string]interface{}{
+		"status":               string(model.ComplaintStatusSelesai),
+		"solusi_tindak_lanjut": solusi,
+		"tanggal_selesai":      nowStr,
+		"tanggal_penyelesaian": nowStr,
+	}
+	if petugasID != "" {
+		payload["petugas_id"] = petugasID
+	}
+	return r.client.Update("complaints", map[string]string{
+		"id": fmt.Sprintf("eq.%s", id),
+	}, payload, nil)
+}
+
+func (r *supabaseComplaintRepository) Close(id string, petugasID, alasan string) error {
+	nowStr := time.Now().Format("2006-01-02")
+	payload := map[string]interface{}{
+		"status":               string(model.ComplaintStatusDitutup),
+		"alasan_penutupan":     alasan,
+		"tanggal_selesai":      nowStr,
+		"tanggal_penyelesaian": nowStr,
+	}
+	if petugasID != "" {
+		payload["petugas_id"] = petugasID
+	}
+	return r.client.Update("complaints", map[string]string{
+		"id": fmt.Sprintf("eq.%s", id),
+	}, payload, nil)
+}
+
+func (r *supabaseComplaintRepository) GetEscalations() ([]*model.ComplaintMetadata, error) {
+	var list []*model.ComplaintMetadata
+	err := r.client.Select("v_complaint_metadata", map[string]string{
+		"order": "umur_hari.desc",
+	}, &list)
+	if err != nil {
+		return nil, fmt.Errorf("gagal query v_complaint_metadata: %w", err)
+	}
+	return list, nil
+}
+
+func (r *supabaseComplaintRepository) FindMyDispositions(userID string) ([]*model.Complaint, error) {
+	var disps []*model.ComplaintDisposition
+	err := r.client.Select("complaint_dispositions", map[string]string{
+		"kepada_petugas_id": fmt.Sprintf("eq.%s", userID),
+	}, &disps)
+	if err != nil {
+		return nil, err
+	}
+	var results []*model.Complaint
+	for _, d := range disps {
+		if c, err := r.FindByID(d.ComplaintID); err == nil {
+			results = append(results, c)
+		}
+	}
+	return results, nil
 }
 
 func (r *supabaseComplaintRepository) AddMessage(msg *model.ComplaintMessage) error {
@@ -415,6 +493,105 @@ func (r *memoryComplaintRepository) UpdateStatus(id string, status model.Complai
 	}
 	c.UpdatedAt = time.Now()
 	return nil
+}
+
+func (r *memoryComplaintRepository) Verify(id string, petugasID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	c, ok := r.complaints[id]
+	if !ok {
+		return errors.New("aduan tidak ditemukan")
+	}
+	c.Status = model.ComplaintStatusDiverifikasi
+	c.PetugasID = petugasID
+	c.TanggalDiterima = time.Now().Format("2006-01-02")
+	c.UpdatedAt = time.Now()
+	return nil
+}
+
+func (r *memoryComplaintRepository) Resolve(id string, petugasID, solusi string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	c, ok := r.complaints[id]
+	if !ok {
+		return errors.New("aduan tidak ditemukan")
+	}
+	nowStr := time.Now().Format("2006-01-02")
+	c.Status = model.ComplaintStatusSelesai
+	c.PetugasID = petugasID
+	c.SolusiTindakLanjut = solusi
+	c.TanggalSelesai = nowStr
+	c.TanggalPenyelesaian = &nowStr
+	c.UpdatedAt = time.Now()
+	return nil
+}
+
+func (r *memoryComplaintRepository) Close(id string, petugasID, alasan string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	c, ok := r.complaints[id]
+	if !ok {
+		return errors.New("aduan tidak ditemukan")
+	}
+	nowStr := time.Now().Format("2006-01-02")
+	c.Status = model.ComplaintStatusDitutup
+	c.PetugasID = petugasID
+	c.AlasanPenutupan = alasan
+	c.TanggalSelesai = nowStr
+	c.TanggalPenyelesaian = &nowStr
+	c.UpdatedAt = time.Now()
+	return nil
+}
+
+func (r *memoryComplaintRepository) GetEscalations() ([]*model.ComplaintMetadata, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var result []*model.ComplaintMetadata
+	now := time.Now()
+	for _, c := range r.complaints {
+		tglDiterima := c.TanggalDiterima
+		if tglDiterima == "" {
+			tglDiterima = c.TanggalPengaduan
+		}
+		umurHari := 0
+		if t, err := time.Parse("2006-01-02", tglDiterima); err == nil {
+			umurHari = int(now.Sub(t).Hours() / 24)
+		}
+		meta := &model.ComplaintMetadata{
+			ID:              c.ID,
+			NomorAduan:      c.NomorAduan,
+			Kategori:        string(c.Kategori),
+			IsSensitif:      c.IsSensitif,
+			Status:          string(c.Status),
+			TanggalDiterima: tglDiterima,
+			UmurHari:        umurHari,
+		}
+		if c.TanggalSelesai != "" {
+			tSelesai := c.TanggalSelesai
+			meta.TanggalSelesai = &tSelesai
+		}
+		result = append(result, meta)
+	}
+	return result, nil
+}
+
+func (r *memoryComplaintRepository) FindMyDispositions(userID string) ([]*model.Complaint, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var result []*model.Complaint
+	for cid, disps := range r.dispositions {
+		for _, d := range disps {
+			if d.KepadaPetugasID == userID {
+				if c, ok := r.complaints[cid]; ok {
+					result = append(result, c)
+					break
+				}
+			}
+		}
+	}
+	return result, nil
 }
 
 func (r *memoryComplaintRepository) AddMessage(msg *model.ComplaintMessage) error {

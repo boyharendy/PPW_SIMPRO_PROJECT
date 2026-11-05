@@ -40,7 +40,8 @@ type PublicationAuthor struct {
 	Peran           string `json:"peran,omitempty"`        // PENULIS_UTAMA | PENULIS_PENDAMPING | KORESPONDENSI
 	Afiliasi        string `json:"afiliasi,omitempty"`
 	Urutan          int    `json:"urutan"`
-	IsCorresponding bool   `json:"is_corresponding"`
+	IsCorresponding      bool    `json:"is_corresponding"`
+	PersentaseKontribusi float64 `json:"persentase_kontribusi"`
 }
 
 type PublicationStageLog struct {

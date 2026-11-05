@@ -9,6 +9,7 @@ import (
 	deliveryHttp "simpro-backend/internal/delivery/http"
 	"simpro-backend/internal/delivery/http/handler"
 	"simpro-backend/internal/repository"
+	"simpro-backend/internal/scheduler"
 	"simpro-backend/internal/usecase"
 )
 
@@ -16,7 +17,7 @@ func main() {
 	// 1. Load Configurations
 	cfg := config.LoadConfig()
 
-	// 2. Initialize Database / Repositories
+	// 2. Initialize Repositories (Dual-Mode: Supabase with Fallback to In-Memory)
 	var userRepo repository.UserRepository
 	var refRepo repository.ReferenceRepository
 	var surveyRepo repository.SurveyRepository
@@ -26,6 +27,8 @@ func main() {
 	var rkaRepo repository.RkaRepository
 	var rpsRepo repository.RpsRepository
 	var evalRepo repository.EvaluationRepository
+	var attRepo repository.AttachmentRepository
+	var adminRepo repository.AdminRepository
 
 	if cfg.SupabaseURL != "" && cfg.SupabaseServiceKey != "" {
 		log.Println("🔌 Menghubungkan ke Supabase Database...")
@@ -39,6 +42,8 @@ func main() {
 		rkaRepo = repository.NewSupabaseRkaRepository(supabaseClient)
 		rpsRepo = repository.NewSupabaseRpsRepository(supabaseClient)
 		evalRepo = repository.NewSupabaseEvaluationRepository(supabaseClient)
+		attRepo = repository.NewSupabaseAttachmentRepository(supabaseClient)
+		adminRepo = repository.NewSupabaseAdminRepository(supabaseClient)
 		log.Println("✅ Supabase Repositories aktif")
 	} else {
 		log.Println("⚠️ Kredensial Supabase tidak lengkap, menggunakan Memory Repositories (Mock)")
@@ -51,20 +56,37 @@ func main() {
 		rkaRepo = repository.NewMemoryRkaRepository()
 		rpsRepo = repository.NewMemoryRpsRepository()
 		evalRepo = repository.NewMemoryEvaluationRepository()
+		attRepo = repository.NewMemoryAttachmentRepository()
+		adminRepo = repository.NewMemoryAdminRepository()
 	}
 
-	// 3. Initialize Usecases
+	// 3. Initialize Background Scheduler (07:00 WIB daily batch)
+	cronScheduler := scheduler.NewScheduler(
+		surveyRepo,
+		pubRepo,
+		tripRepo,
+		rkaRepo,
+		rpsRepo,
+		evalRepo,
+		complaintRepo,
+		adminRepo,
+	)
+	cronScheduler.Start()
+
+	// 4. Initialize Usecases
 	authUsecase := usecase.NewAuthUsecase(userRepo, cfg)
 	userUsecase := usecase.NewUserUsecase(userRepo)
 	surveyUsecase := usecase.NewSurveyUsecase(surveyRepo)
 	complaintUsecase := usecase.NewComplaintUsecase(complaintRepo)
 	pubUsecase := usecase.NewPublicationUsecase(pubRepo)
-	tripUsecase := usecase.NewTripUsecase(tripRepo)
+	tripUsecase := usecase.NewTripUsecase(tripRepo, rkaRepo)
 	rkaUsecase := usecase.NewRkaUsecase(rkaRepo)
-	rpsUsecase := usecase.NewRpsUsecase(rpsRepo)
+	rpsUsecase := usecase.NewRpsUsecase(rpsRepo, evalRepo)
 	evalUsecase := usecase.NewEvaluationUsecase(evalRepo)
+	attUsecase := usecase.NewAttachmentUsecase(attRepo)
+	adminUsecase := usecase.NewAdminUsecase(adminRepo, cronScheduler)
 
-	// 4. Initialize Handlers
+	// 5. Initialize Handlers
 	authHandler := handler.NewAuthHandler(authUsecase)
 	userHandler := handler.NewUserHandler(userUsecase)
 	healthHandler := handler.NewHealthHandler(cfg)
@@ -77,8 +99,10 @@ func main() {
 	rpsHandler := handler.NewRpsHandler(rpsUsecase)
 	evalHandler := handler.NewEvaluationHandler(evalUsecase)
 	dashboardHandler := handler.NewDashboardHandler(surveyRepo, pubRepo, tripRepo, rkaRepo, rpsRepo, evalRepo, complaintRepo)
+	attHandler := handler.NewAttachmentHandler(attUsecase)
+	adminHandler := handler.NewAdminHandler(adminUsecase)
 
-	// 5. Setup Router
+	// 6. Setup Router
 	router := deliveryHttp.SetupRouter(deliveryHttp.RouterParams{
 		Config:             cfg,
 		AuthHandler:        authHandler,
@@ -93,9 +117,11 @@ func main() {
 		RpsHandler:         rpsHandler,
 		EvaluationHandler:  evalHandler,
 		DashboardHandler:   dashboardHandler,
+		AttachmentHandler:  attHandler,
+		AdminHandler:       adminHandler,
 	})
 
-	// 6. Start Server
+	// 7. Start Server
 	serverAddr := fmt.Sprintf(":%s", cfg.ServerPort)
 	log.Printf("==================================================")
 	log.Printf("🚀 SIMPRO Golang Backend Server running on port %s", cfg.ServerPort)

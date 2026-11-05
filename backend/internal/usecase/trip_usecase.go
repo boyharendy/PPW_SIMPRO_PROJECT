@@ -19,14 +19,26 @@ type TripUsecase interface {
 	SubmitReport(id string, userID string, ringkasan, fileURL string, totalRealisasi float64) error
 	AddProof(id string, proof *model.TravelProof) error
 	GetRecap() (*model.TripRecap, error)
+
+	// PRD Milestone 2 Methods
+	UpdateCosts(id string, costs []*model.TravelCost) error
+	UpdateRealizationCosts(id string, costs []*model.TravelCost) error
+	ConfirmTrip(id string, actorID string) (*model.TravelOrder, error)
+	GetCompleteness(id string) (map[string]interface{}, error)
+	GetFlags() ([]map[string]interface{}, error)
 }
 
 type tripUsecase struct {
-	repo repository.TripRepository
+	repo    repository.TripRepository
+	rkaRepo repository.RkaRepository
 }
 
-func NewTripUsecase(repo repository.TripRepository) TripUsecase {
-	return &tripUsecase{repo: repo}
+func NewTripUsecase(repo repository.TripRepository, rkaRepo ...repository.RkaRepository) TripUsecase {
+	var rka repository.RkaRepository
+	if len(rkaRepo) > 0 {
+		rka = rkaRepo[0]
+	}
+	return &tripUsecase{repo: repo, rkaRepo: rka}
 }
 
 func (u *tripUsecase) GetTrips(status string, userID string, page, limit int) ([]*model.TravelOrder, int, error) {
@@ -45,14 +57,20 @@ func (u *tripUsecase) GetTripByID(id string) (*model.TravelOrder, error) {
 }
 
 func (u *tripUsecase) CreateTrip(userID string, trip *model.TravelOrder) (*model.TravelOrder, error) {
-	if strings.TrimSpace(trip.Tujuan) == "" || strings.TrimSpace(trip.Keperluan) == "" {
-		return nil, errors.New("tujuan dan keperluan dinas wajib diisi")
+	if strings.TrimSpace(trip.Tujuan) == "" {
+		return nil, errors.New("tujuan perjalanan dinas wajib diisi")
 	}
-	if trip.EstimasiBiaya < 0 {
+	if strings.TrimSpace(trip.Keperluan) == "" && strings.TrimSpace(trip.MaksudKegiatan) != "" {
+		trip.Keperluan = trip.MaksudKegiatan
+	}
+	if strings.TrimSpace(trip.Keperluan) == "" {
+		return nil, errors.New("keperluan dinas wajib diisi")
+	}
+	if trip.TotalEstimasiBiaya < 0 {
 		return nil, errors.New("estimasi biaya tidak boleh bernilai negatif")
 	}
 	for _, c := range trip.Costs {
-		if c.Estimasi < 0 || c.Realisasi < 0 {
+		if c.NominalEstimasi < 0 || c.EstimasiBiaya < 0 {
 			return nil, errors.New("komponen biaya tidak boleh bernilai negatif")
 		}
 	}
@@ -124,4 +142,24 @@ func (u *tripUsecase) AddProof(id string, proof *model.TravelProof) error {
 
 func (u *tripUsecase) GetRecap() (*model.TripRecap, error) {
 	return u.repo.GetRecap()
+}
+
+func (u *tripUsecase) UpdateCosts(id string, costs []*model.TravelCost) error {
+	return u.repo.UpdateCosts(id, costs)
+}
+
+func (u *tripUsecase) UpdateRealizationCosts(id string, costs []*model.TravelCost) error {
+	return u.repo.UpdateRealizationCosts(id, costs)
+}
+
+func (u *tripUsecase) ConfirmTrip(id string, actorID string) (*model.TravelOrder, error) {
+	return u.repo.ConfirmTrip(id, actorID, u.rkaRepo)
+}
+
+func (u *tripUsecase) GetCompleteness(id string) (map[string]interface{}, error) {
+	return u.repo.GetCompleteness(id)
+}
+
+func (u *tripUsecase) GetFlags() ([]map[string]interface{}, error) {
+	return u.repo.GetFlags()
 }

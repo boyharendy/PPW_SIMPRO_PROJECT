@@ -21,6 +21,8 @@ type RouterParams struct {
 	RpsHandler         *handler.RpsHandler
 	EvaluationHandler  *handler.EvaluationHandler
 	DashboardHandler   *handler.DashboardHandler
+	AttachmentHandler  *handler.AttachmentHandler
+	AdminHandler       *handler.AdminHandler
 }
 
 func SetupRouter(params RouterParams) *gin.Engine {
@@ -41,12 +43,32 @@ func SetupRouter(params RouterParams) *gin.Engine {
 
 		// Public Routes (No Auth Required)
 		if params.ComplaintHandler != nil {
+			// Format URL lama (/public/complaints)
 			pubComplaints := api.Group("/public/complaints")
 			{
 				pubComplaints.POST("", params.ComplaintHandler.CreatePublicComplaint)
 				pubComplaints.GET("/:ticket", params.ComplaintHandler.GetPublicComplaint)
 				pubComplaints.POST("/:ticket/messages", params.ComplaintHandler.AddPublicMessage)
 				pubComplaints.POST("/:ticket/rating", params.ComplaintHandler.SubmitPublicRating)
+			}
+
+			// Format URL PRD (/public/aduan)
+			pubAduan := api.Group("/public/aduan")
+			{
+				pubAduan.POST("", params.ComplaintHandler.CreatePublicComplaint)
+				pubAduan.GET("/:ticket", params.ComplaintHandler.GetPublicComplaint)
+				pubAduan.POST("/track", params.ComplaintHandler.GetPublicComplaint)
+				pubAduan.POST("/track/messages", params.ComplaintHandler.AddPublicMessage)
+				pubAduan.POST("/track/rating", params.ComplaintHandler.SubmitPublicRating)
+			}
+		}
+
+		// Public Attachments / Sanitized Upload
+		if params.AttachmentHandler != nil {
+			attachments := api.Group("/attachments")
+			{
+				attachments.POST("", params.AttachmentHandler.Upload)
+				attachments.GET("/:id/url", params.AttachmentHandler.GetURL)
 			}
 		}
 
@@ -101,34 +123,61 @@ func SetupRouter(params RouterParams) *gin.Engine {
 
 		// Modul 7: Kepuasan Mitra (Protected)
 		if params.SurveyHandler != nil {
+			registerSurveyRoutes := func(grp *gin.RouterGroup) {
+				grp.GET("", params.SurveyHandler.GetSurveys)
+				grp.POST("", params.SurveyHandler.CreateSurvey)
+				grp.POST("/templates/:id/activate", params.SurveyHandler.ActivateTemplate)
+				grp.POST("/templates/:id/duplicate", params.SurveyHandler.DuplicateTemplate)
+				grp.POST("/templates/:id/archive", params.SurveyHandler.ArchiveTemplate)
+				grp.GET("/invitations", params.SurveyHandler.GetInvitations)
+				grp.POST("/invitations", params.SurveyHandler.CreateInvitation)
+				grp.POST("/invitations/:id/send", params.SurveyHandler.SendInvitation)
+				grp.POST("/invitations/:id/remind", params.SurveyHandler.RemindInvitation)
+				grp.POST("/invitations/:id/resend", params.SurveyHandler.ResendInvitation)
+				grp.POST("/invitations/:id/cancel", params.SurveyHandler.CancelInvitation)
+				grp.GET("/placements", params.SurveyHandler.GetPlacements)
+				grp.POST("/responses/:id/void", params.SurveyHandler.VoidResponse)
+				grp.POST("/manual-responses", params.SurveyHandler.SubmitManualResponse)
+				grp.GET("/:id", params.SurveyHandler.GetSurveyByID)
+				grp.PUT("/:id", params.SurveyHandler.UpdateSurvey)
+				grp.DELETE("/:id", params.SurveyHandler.DeleteSurvey)
+				grp.GET("/:id/recap", params.SurveyHandler.GetRecap)
+			}
+
 			surveys := api.Group("/surveys")
 			surveys.Use(middleware.AuthMiddleware(params.Config.JWTSecret))
-			{
-				surveys.GET("", params.SurveyHandler.GetSurveys)
-				surveys.POST("", params.SurveyHandler.CreateSurvey)
-				surveys.GET("/invitations", params.SurveyHandler.GetInvitations)
-				surveys.POST("/invitations", params.SurveyHandler.CreateInvitation)
-				surveys.POST("/manual-responses", params.SurveyHandler.SubmitManualResponse)
-				surveys.GET("/:id", params.SurveyHandler.GetSurveyByID)
-				surveys.PUT("/:id", params.SurveyHandler.UpdateSurvey)
-				surveys.DELETE("/:id", params.SurveyHandler.DeleteSurvey)
-				surveys.GET("/:id/recap", params.SurveyHandler.GetRecap)
-			}
+			registerSurveyRoutes(surveys)
+
+			partnerSurveys := api.Group("/partner-surveys")
+			partnerSurveys.Use(middleware.AuthMiddleware(params.Config.JWTSecret))
+			registerSurveyRoutes(partnerSurveys)
 		}
 
 		// Modul 13: Layanan Aduan (Protected)
 		if params.ComplaintHandler != nil {
+			registerComplaintRoutes := func(grp *gin.RouterGroup) {
+				grp.POST("/permit", params.ComplaintHandler.IssuePermit)
+				grp.GET("", params.ComplaintHandler.GetComplaints)
+				grp.GET("/recap", params.ComplaintHandler.GetRecap)
+				grp.GET("/escalations", params.ComplaintHandler.GetEscalations)
+				grp.GET("/my-dispositions", params.ComplaintHandler.GetMyDispositions)
+				grp.GET("/:id", params.ComplaintHandler.GetComplaintByID)
+				grp.PATCH("/:id/status", params.ComplaintHandler.UpdateStatus)
+				grp.POST("/:id/verify", params.ComplaintHandler.Verify)
+				grp.POST("/:id/resolve", params.ComplaintHandler.Resolve)
+				grp.POST("/:id/close", params.ComplaintHandler.Close)
+				grp.POST("/:id/messages", params.ComplaintHandler.AddInternalMessage)
+				grp.POST("/:id/dispositions", params.ComplaintHandler.AddDisposition)
+				grp.POST("/:id/forward-satgas", params.ComplaintHandler.ForwardToSatgas)
+			}
+
 			complaints := api.Group("/complaints")
 			complaints.Use(middleware.AuthMiddleware(params.Config.JWTSecret))
-			{
-				complaints.GET("", params.ComplaintHandler.GetComplaints)
-				complaints.GET("/recap", params.ComplaintHandler.GetRecap)
-				complaints.GET("/:id", params.ComplaintHandler.GetComplaintByID)
-				complaints.PATCH("/:id/status", params.ComplaintHandler.UpdateStatus)
-				complaints.POST("/:id/messages", params.ComplaintHandler.AddInternalMessage)
-				complaints.POST("/:id/dispositions", params.ComplaintHandler.AddDisposition)
-				complaints.POST("/:id/forward-satgas", params.ComplaintHandler.ForwardToSatgas)
-			}
+			registerComplaintRoutes(complaints)
+
+			aduan := api.Group("/aduan")
+			aduan.Use(middleware.AuthMiddleware(params.Config.JWTSecret))
+			registerComplaintRoutes(aduan)
 		}
 
 		// Modul 8: Publikasi Ilmiah (Protected)
@@ -139,13 +188,18 @@ func SetupRouter(params RouterParams) *gin.Engine {
 				pubs.GET("", params.PublicationHandler.GetPublications)
 				pubs.POST("", params.PublicationHandler.CreatePublication)
 				pubs.GET("/recap", params.PublicationHandler.GetRecap)
+				pubs.GET("/verification-queue", params.PublicationHandler.GetVerificationQueue)
 				pubs.GET("/:id", params.PublicationHandler.GetPublicationByID)
 				pubs.PUT("/:id", params.PublicationHandler.UpdatePublication)
 				pubs.DELETE("/:id", params.PublicationHandler.DeletePublication)
+				pubs.PUT("/:id/authors", params.PublicationHandler.UpdateAuthors)
+				pubs.PUT("/:id/verifier", params.PublicationHandler.AssignVerifier)
 				pubs.POST("/:id/submit", params.PublicationHandler.SubmitPublication)
 				pubs.POST("/:id/stages", params.PublicationHandler.AddStageLog)
+				pubs.POST("/stages/:stageId/verify", params.PublicationHandler.VerifyStage)
 				pubs.POST("/:id/verify", params.PublicationHandler.VerifyPublication)
 				pubs.POST("/:id/reviews", params.PublicationHandler.AddReview)
+				pubs.POST("/reviews/:reviewId/complete", params.PublicationHandler.CompleteReview)
 			}
 		}
 
@@ -157,6 +211,7 @@ func SetupRouter(params RouterParams) *gin.Engine {
 				trips.GET("", params.TripHandler.GetTrips)
 				trips.POST("", params.TripHandler.CreateTrip)
 				trips.GET("/recap", params.TripHandler.GetRecap)
+				trips.GET("/flags", params.TripHandler.GetFlags)
 				trips.GET("/:id", params.TripHandler.GetTripByID)
 				trips.PUT("/:id", params.TripHandler.UpdateTrip)
 				trips.DELETE("/:id", params.TripHandler.DeleteTrip)
@@ -164,6 +219,10 @@ func SetupRouter(params RouterParams) *gin.Engine {
 				trips.POST("/:id/approve", params.TripHandler.ApproveTrip)
 				trips.POST("/:id/report", params.TripHandler.SubmitReport)
 				trips.POST("/:id/proofs", params.TripHandler.AddProof)
+				trips.PUT("/:id/costs", params.TripHandler.UpdateCosts)
+				trips.PUT("/:id/costs/realization", params.TripHandler.UpdateRealizationCosts)
+				trips.POST("/:id/confirm", params.TripHandler.ConfirmTrip)
+				trips.GET("/:id/completeness", params.TripHandler.GetCompleteness)
 			}
 		}
 
@@ -178,6 +237,12 @@ func SetupRouter(params RouterParams) *gin.Engine {
 				rka.PUT("/:tahun", params.RkaHandler.UpdateRka)
 				rka.POST("/:tahun/realizations", params.RkaHandler.AddRealization)
 				rka.GET("/:tahun/serapan", params.RkaHandler.GetSerapan)
+				rka.GET("/:id/working-version", params.RkaHandler.GetWorkingVersion)
+				rka.PUT("/:id/working-version", params.RkaHandler.UpdateWorkingVersion)
+				rka.POST("/:id/working-version/submit", params.RkaHandler.SubmitWorkingVersion)
+				rka.GET("/:id/versions/:nomor/diff", params.RkaHandler.GetVersionDiff)
+				rka.POST("/:id/versions/:nomor/decision", params.RkaHandler.DecideVersion)
+				rka.POST("/:id/close", params.RkaHandler.CloseRka)
 			}
 		}
 
@@ -192,7 +257,11 @@ func SetupRouter(params RouterParams) *gin.Engine {
 				rps.GET("/:id", params.RpsHandler.GetSubmissionByID)
 				rps.POST("/:id/submit", params.RpsHandler.SubmitForReview)
 				rps.POST("/:id/assign-reviewer", params.RpsHandler.AssignReviewer)
+				rps.POST("/submissions/:id/assign-reviewers", params.RpsHandler.AssignReviewer)
 				rps.POST("/:id/review", params.RpsHandler.ReviewSubmission)
+				rps.PUT("/reviews/:reviewId/items", params.RpsHandler.UpdateReviewItems)
+				rps.POST("/reviews/:reviewId/complete", params.RpsHandler.CompleteReview)
+				rps.PUT("/submissions/:id/improvement-plans", params.RpsHandler.UpdateImprovementPlans)
 				rps.POST("/:id/ratify", params.RpsHandler.RatifySubmission)
 			}
 		}
@@ -205,6 +274,9 @@ func SetupRouter(params RouterParams) *gin.Engine {
 				evals.GET("", params.EvaluationHandler.GetEvaluations)
 				evals.POST("", params.EvaluationHandler.SaveEvaluation)
 				evals.GET("/recap", params.EvaluationHandler.GetRecap)
+				evals.GET("/:id", params.EvaluationHandler.GetEvaluationByID)
+				evals.GET("/:id/student-feedback", params.EvaluationHandler.GetStudentFeedback)
+				evals.POST("/:id/review", params.EvaluationHandler.ReviewEvaluation)
 				evals.GET("/class/:classId", params.EvaluationHandler.GetEvaluationByClass)
 				evals.POST("/class/:classId/submit", params.EvaluationHandler.SubmitEvaluation)
 				evals.GET("/course/:courseId/improvement-plans", params.EvaluationHandler.GetImprovementPlansByCourse)
@@ -225,6 +297,21 @@ func SetupRouter(params RouterParams) *gin.Engine {
 			{
 				notifs.GET("", params.DashboardHandler.GetNotifications)
 				notifs.PATCH("/:id/read", params.DashboardHandler.MarkNotificationRead)
+			}
+		}
+
+		// Admin & System Settings (Protected)
+		if params.AdminHandler != nil {
+			admin := api.Group("/admin")
+			admin.Use(middleware.AuthMiddleware(params.Config.JWTSecret))
+			{
+				admin.GET("/settings", params.AdminHandler.GetSettings)
+				admin.PUT("/settings/:key", params.AdminHandler.UpdateSetting)
+				admin.GET("/user-roles", params.AdminHandler.GetUserRoles)
+				admin.POST("/user-roles", params.AdminHandler.AssignUserRole)
+				admin.DELETE("/user-roles/:id", params.AdminHandler.RevokeUserRole)
+				admin.GET("/audit-logs", params.AdminHandler.GetAuditLogs)
+				admin.POST("/scheduler/run", params.AdminHandler.RunScheduler)
 			}
 		}
 	}

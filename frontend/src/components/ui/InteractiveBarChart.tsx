@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { TrendingUp, BarChart2, Check } from 'lucide-react';
+import { animate } from 'animejs';
 
 export interface BarSeriesConfig {
   dataKey: string;
@@ -49,9 +50,12 @@ export default function InteractiveBarChart<T extends Record<string, any>>({
   const [chartType, setChartType] = useState<'line' | 'bar'>(defaultChartType);
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
 
-  // Interactive hover index (defaults to the last data item or null)
-  const defaultHoverIdx = data.length > 0 ? data.length - 1 : null;
-  const [hoveredIdx, setHoveredIdx] = useState<number | null>(defaultHoverIdx);
+  // Interactive hover state - tooltip ONLY appears when cursor hovers on chart
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [isHovering, setIsHovering] = useState<boolean>(false);
+  const [showTooltip, setShowTooltip] = useState<boolean>(false);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const animRef = useRef<any>(null);
 
   // ResizeObserver to track container width/height smoothly
   useEffect(() => {
@@ -162,23 +166,64 @@ export default function InteractiveBarChart<T extends Record<string, any>>({
     return path;
   };
 
-  // Mouse Move Handler to find the nearest column
+  // Mouse Move Handler to track hovered column & trigger anime.js morphing entry
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current || data.length === 0) return;
     const rect = containerRef.current.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const colWidth = plotWidth / data.length;
     const relativeX = mouseX - paddingLeft;
+
+    // Check if within the plot canvas area
+    if (relativeX < -15 || relativeX > plotWidth + 15) {
+      handleMouseLeave();
+      return;
+    }
+
     const idx = Math.max(0, Math.min(data.length - 1, Math.floor(relativeX / colWidth)));
     setHoveredIdx(idx);
-  };
 
-  const handleMouseLeave = () => {
-    // Keep last hovered or default to last point
-    if (data.length > 0) {
-      setHoveredIdx(data.length - 1);
+    if (!isHovering) {
+      setIsHovering(true);
+      setShowTooltip(true);
     }
   };
+
+  // Mouse Leave Handler with anime.js disappearing / morphing exit animation
+  const handleMouseLeave = () => {
+    setIsHovering(false);
+    if (tooltipRef.current) {
+      if (animRef.current) animRef.current.pause();
+      animRef.current = animate(tooltipRef.current, {
+        opacity: [1, 0],
+        scale: [1, 0.86],
+        translateY: [0, 8],
+        duration: 200,
+        ease: 'inCubic',
+        onComplete: () => {
+          setShowTooltip(false);
+          setHoveredIdx(null);
+        },
+      });
+    } else {
+      setShowTooltip(false);
+      setHoveredIdx(null);
+    }
+  };
+
+  // Anime.js entry animation when tooltip becomes visible
+  useEffect(() => {
+    if (showTooltip && isHovering && tooltipRef.current) {
+      if (animRef.current) animRef.current.pause();
+      animRef.current = animate(tooltipRef.current, {
+        opacity: [0, 1],
+        scale: [0.86, 1],
+        translateY: [8, 0],
+        duration: 240,
+        ease: 'outBack',
+      });
+    }
+  }, [showTooltip, isHovering]);
 
   // Active hover data
   const activeIdx = hoveredIdx !== null && hoveredIdx < data.length ? hoveredIdx : null;
@@ -426,7 +471,7 @@ export default function InteractiveBarChart<T extends Record<string, any>>({
           )}
 
           {/* Active Vertical Crosshair & Intersection Dots (Sypher Style) */}
-          {activeX !== null && activeRow && (
+          {isHovering && activeX !== null && activeRow && (
             <g className="transition-all duration-100 ease-out">
               {/* Vertical Dashed Crosshair Line */}
               <line
@@ -467,25 +512,29 @@ export default function InteractiveBarChart<T extends Record<string, any>>({
           )}
         </svg>
 
-        {/* 3. Floating Tooltip Card (Exact Sypher Reference Design) */}
-        {activeRow && activeX !== null && (
+        {/* 3. Floating Tooltip Card (Glassmorphism with Anime.js) */}
+        {showTooltip && activeRow && activeX !== null && (
           <div
-            className="absolute z-30 pointer-events-none rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-xl transition-all duration-150 min-w-[180px] max-w-[260px]"
+            ref={tooltipRef}
+            className="glass-tooltip absolute z-30 pointer-events-none p-4 min-w-[190px] max-w-[270px] will-change-transform"
             style={{
               top: `${paddingTop + 6}px`,
               left:
                 activeIdx !== null && activeIdx >= data.length / 2
-                  ? Math.max(10, activeX - 210)
-                  : Math.min(dims.width - 220, activeX + 16),
+                  ? Math.max(10, activeX - 220)
+                  : Math.min(dims.width - 230, activeX + 16),
+              transition: 'left 0.12s cubic-bezier(0.2, 0, 0, 1)',
             }}
           >
-            {/* Tooltip Header (e.g. AUG 6, 2025 / TW 4) */}
-            <p className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-1.5 mb-2">
-              {String(activeRow[xKey])}
-            </p>
+            {/* Tooltip Header (e.g. AUG 6, 2025 / 24/25 GANJIL) */}
+            <div className="border-b border-white/50 pb-1.5 mb-2.5">
+              <p className="text-xs font-black text-slate-900 uppercase tracking-wider drop-shadow-2xs">
+                {String(activeRow[xKey])}
+              </p>
+            </div>
 
             {/* Series rows with square color chips and bold values */}
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {visibleSeries.map((s, sIdx) => {
                 const color = getSeriesColor(sIdx, s.fill);
                 const val = Number(activeRow[s.dataKey]) || 0;
@@ -495,15 +544,15 @@ export default function InteractiveBarChart<T extends Record<string, any>>({
                     key={s.dataKey}
                     className="flex items-center justify-between gap-3 text-xs"
                   >
-                    <span className="flex items-center gap-1.5 text-slate-600 font-medium truncate">
-                      {/* Square color chip (Sypher style) */}
+                    <span className="flex items-center gap-2 text-slate-800 font-bold truncate">
+                      {/* Square color chip with subtle glass border */}
                       <span
-                        className="w-2.5 h-2.5 rounded-xs shrink-0"
+                        className="w-2.5 h-2.5 rounded-xs shrink-0 shadow-2xs border border-white/70"
                         style={{ backgroundColor: color }}
                       />
                       <span className="truncate">{s.name}</span>
                     </span>
-                    <span className="font-extrabold text-slate-900 whitespace-nowrap pl-2">
+                    <span className="font-black text-slate-950 whitespace-nowrap pl-2">
                       {tooltipFormatter(val, s.name)}
                     </span>
                   </div>
