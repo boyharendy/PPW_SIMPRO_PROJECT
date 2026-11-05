@@ -5,7 +5,14 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useApp } from '@/lib/context';
 import { NAV_ITEMS } from '@/lib/navigation';
-import type { Role } from '@/lib/types';
+import type { Role, NavItem, BusinessTrip, Complaint, RpsSubmission, Publication } from '@/lib/types';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
+import {
+  mockBusinessTrips,
+  mockComplaints,
+  mockRpsSubmissions,
+  mockPublications,
+} from '@/lib/mock-data';
 import AnimatedSimproLogo from '@/components/Logo/AnimatedSimproLogo';
 import {
   LayoutDashboard, FileCheck, Wallet, SmilePlus, FileText,
@@ -120,6 +127,62 @@ export default function Sidebar() {
     return null;
   })();
 
+  // State untuk menyimpan halaman yang sudah dikunjungi di sesi ini agar badge dismiss
+  const [visitedPages, setVisitedPages] = useState<Set<string>>(new Set());
+  const [, setStorageVersion] = useState(0);
+
+  // Tandai halaman aktif sebagai sudah dibuka agar notifikasi hilang
+  useEffect(() => {
+    if (activeItemHref) {
+      setVisitedPages((prev) => {
+        if (prev.has(activeItemHref)) return prev;
+        const next = new Set(prev);
+        next.add(activeItemHref);
+        return next;
+      });
+    }
+  }, [activeItemHref]);
+
+  // Listener perubahan storage antar tab atau aksi dalam aplikasi
+  useEffect(() => {
+    const handleStorageChange = () => setStorageVersion((v) => v + 1);
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('simpro_storage_change', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('simpro_storage_change', handleStorageChange);
+    };
+  }, []);
+
+  // Menghitung jumlah tugas pending dinamis (hilang otomatis saat halaman dibuka)
+  const getItemBadge = (item: NavItem): number => {
+    // Jika halaman sedang dibuka pengguna atau sudah dikunjungi di sesi ini, sembunyikan notifikasi badge
+    if (item.href === activeItemHref || visitedPages.has(item.href)) return 0;
+
+    if (item.href === '/dashboard/perjalanan-dinas/persetujuan') {
+      const trips = storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips);
+      return trips.filter((t) => t.status === 'DIAJUKAN').length;
+    }
+    if (item.href === '/dashboard/kelola/aduan') {
+      const complaints = storageSync.get<Complaint[]>(STORAGE_KEYS.COMPLAINTS, mockComplaints);
+      return complaints.filter((c) => !c.is_sensitif && c.status === 'DITERIMA').length;
+    }
+    if (item.href === '/dashboard/kelola/aduan/sensitif') {
+      const complaints = storageSync.get<Complaint[]>(STORAGE_KEYS.COMPLAINTS, mockComplaints);
+      return complaints.filter((c) => c.is_sensitif && (c.status === 'DITERIMA' || c.status === 'DIVERIFIKASI')).length;
+    }
+    if (item.href === '/dashboard/rps/review-saya') {
+      const rps = storageSync.get<RpsSubmission[]>(STORAGE_KEYS.RPS_SUBMISSIONS, mockRpsSubmissions);
+      return rps.filter((r) => r.status === 'DIAJUKAN' || r.status === 'DIREVIEW').length;
+    }
+    if (item.href === '/dashboard/publikasi/verifikasi') {
+      const pubs = storageSync.get<Publication[]>(STORAGE_KEYS.PUBLICATIONS, mockPublications);
+      return pubs.filter((p) => p.status_verifikasi === 'MENUNGGU').length;
+    }
+
+    return item.badge || 0;
+  };
+
   // State to track which categories are expanded in accordion/dropdown
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
@@ -226,7 +289,7 @@ export default function Sidebar() {
               const CategoryIcon = categoryIconMap[cat] || Layers;
               const isCatOpen = !!openCategories[cat];
               const isChildActive = catItems.some((item) => item.href === activeItemHref);
-              const totalCategoryBadge = catItems.reduce((sum, item) => sum + (item.badge || 0), 0);
+              const totalCategoryBadge = catItems.reduce((sum, item) => sum + getItemBadge(item), 0);
 
               return (
                 <div key={cat} className="space-y-0.5 mb-1">
@@ -277,6 +340,7 @@ export default function Sidebar() {
                       {catItems.map((item) => {
                         const Icon = iconMap[item.icon] || LayoutDashboard;
                         const isExactActive = item.href === activeItemHref;
+                        const itemBadge = getItemBadge(item);
 
                         return (
                           <Link
@@ -303,13 +367,13 @@ export default function Sidebar() {
                             <span className="leading-snug text-left flex-1 break-words">
                               {item.title}
                             </span>
-                            {item.badge && item.badge > 0 && (
+                            {itemBadge > 0 && (
                               <span
                                 className={`ml-1.5 flex-shrink-0 text-xs font-bold px-2 py-0.5 rounded-full ${
                                   isExactActive ? 'bg-white text-blue-600' : 'bg-red-600 text-white'
                                 }`}
                               >
-                                {item.badge}
+                                {itemBadge}
                               </span>
                             )}
                           </Link>

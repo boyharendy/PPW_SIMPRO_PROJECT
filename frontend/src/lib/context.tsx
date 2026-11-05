@@ -12,6 +12,7 @@ export interface AuthUser {
   email: string;
   roles: Role[];
   activeRole: Role;
+  penanganan_kekerasan?: boolean; // PRDnew FR-50: penunjukan PGL-K pada Pengelola Aduan
 }
 
 interface AppContextType {
@@ -75,6 +76,7 @@ const DEFAULT_FALLBACK_USER: AuthUser = {
     'HIMPUNAN',
   ],
   activeRole: 'KAPRODI',
+  penanganan_kekerasan: true,
 };
 
 function sanitizeRoles(roles?: Role[]): Role[] {

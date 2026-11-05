@@ -1,263 +1,191 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
-import {
-  Clock,
-  CheckCircle2,
-  AlertTriangle,
-  Star,
-  ArrowRight,
-  TrendingUp,
-  Lock,
-} from 'lucide-react';
-import { PageHeader } from '@/components/layout/PageHeader';
-import { DataTable } from '@/components/ui/DataTable';
+import { MessageSquare, CheckCircle2, Clock, Star, ShieldAlert, Users } from 'lucide-react';
+import PageHeader from '@/components/ui/PageHeader';
+import { StatCard } from '@/components/ui/StatCard';
 import { ExportMenu } from '@/components/ui/ExportMenu';
-import InteractiveBarChart, { BarSeriesConfig } from '@/components/ui/InteractiveBarChart';
-import { mockComplaints, mockProfiles } from '@/lib/mock-data';
-import { formatDate } from '@/lib/utils';
+import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 
-const CATEGORY_DATA = [
-  { name: 'Fasilitas & Lab', count: 8, fill: '#3b82f6' },
-  { name: 'Layanan Admin', count: 5, fill: '#10b981' },
-  { name: 'Akademik & Nilai', count: 3, fill: '#f59e0b' },
-  { name: 'Sensitif (Satgas)', count: 2, fill: '#ef4444' },
-  { name: 'Lainnya', count: 1, fill: '#64748b' },
+interface ResolvedAduanSummary {
+  nomor: string;
+  kategori: string;
+  judul: string;
+  durasiHari: number;
+  rating: number;
+  status: string;
+}
+
+const MOCK_RESOLVED_DATA: ResolvedAduanSummary[] = [
+  {
+    nomor: 'ADU-2025-0038',
+    kategori: 'AKADEMIK',
+    judul: 'Nilai UTS Pemrograman Web belum diumumkan',
+    durasiHari: 2,
+    rating: 5,
+    status: 'SELESAI',
+  },
+  {
+    nomor: 'ADU-2025-0034',
+    kategori: 'FASILITAS',
+    judul: 'Koneksi WiFi Eduroam sering putus di Gedung F',
+    durasiHari: 3,
+    rating: 4,
+    status: 'SELESAI',
+  },
+  {
+    nomor: 'ADU-2025-0029',
+    kategori: 'LAYANAN_ADMINISTRASI',
+    judul: 'Antrean tanda tangan transkrip nilai akademik lambat',
+    durasiHari: 4,
+    rating: 4,
+    status: 'DITUTUP',
+  },
 ];
 
-const CATEGORY_SERIES: BarSeriesConfig[] = [
-  { dataKey: 'count', name: 'Jumlah Aduan', fill: '#3b82f6', colorKey: 'fill' },
-];
-
-const CATEGORY_DOMAIN: [number, number] = [0, 10];
-const CATEGORY_TICKS = [0, 2, 4, 6, 8, 10];
-
-const MONTHLY_TREND = [
-  { bulan: 'Mei', masuk: 2, tuntas: 2 },
-  { bulan: 'Jun', masuk: 4, tuntas: 3 },
-  { bulan: 'Jul', masuk: 3, tuntas: 3 },
-  { bulan: 'Agu', masuk: 5, tuntas: 4 },
-  { bulan: 'Sep', masuk: 6, tuntas: 5 },
-  { bulan: 'Okt', masuk: 4, tuntas: 3 },
-];
-
-const MONTHLY_SERIES: BarSeriesConfig[] = [
-  { dataKey: 'masuk', name: 'Aduan Masuk', fill: '#93c5fd' },
-  { dataKey: 'tuntas', name: 'Aduan Tuntas', fill: '#2563eb' },
-];
-
-const MONTHLY_DOMAIN: [number, number] = [0, 8];
-const MONTHLY_TICKS = [0, 2, 4, 6, 8];
-
-export default function RekapAduanPage() {
-  // Overdue / Escalation Dispositions
-  const overdueDispositions = mockComplaints.flatMap((c) => {
-    if (!c.dispositions) return [];
-    return c.dispositions
-      .filter((d) => d.status === 'AKTIF' && new Date(d.tenggat) < new Date('2025-10-15'))
-      .map((d) => ({
-        ...d,
-        complaint: c,
-      }));
-  });
-
-  const columnsEskalasi = [
+export default function Page() {
+  const columns: DataTableColumn<ResolvedAduanSummary>[] = [
     {
       key: 'nomor',
-      header: 'Nomor Aduan',
-      render: (item: any) => (
+      header: 'Nomor Tiket & Kategori',
+      render: (r) => (
         <div>
-          <span className="font-semibold text-slate-800 text-sm">{item.complaint.nomor_aduan}</span>
-          <div className="font-mono text-xs text-slate-500">{item.complaint.kode_tiket}</div>
+          <span className="font-mono text-xs font-bold text-slate-800">{r.nomor}</span>
+          <div className="text-[10px] text-slate-400 mt-0.5">{r.kategori.replace('_', ' ')}</div>
         </div>
       ),
     },
     {
-      key: 'kategori',
-      header: 'Kategori',
-      render: (item: any) => (
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700">
-          {item.complaint.kategori.replace('_', ' ')}
+      key: 'judul',
+      header: 'Pokok Aduan',
+      render: (r) => <span className="text-xs text-slate-800 font-medium line-clamp-1">{r.judul}</span>,
+    },
+    {
+      key: 'durasi',
+      header: 'Waktu Resolusi',
+      render: (r) => (
+        <span className="text-xs font-semibold text-slate-700 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+          {r.durasiHari} Hari Kerja
         </span>
       ),
     },
     {
-      key: 'penanggung_jawab',
-      header: 'Petugas Tertugaskan',
-      render: (item: any) => {
-        const staff = mockProfiles.find((p) => p.id === item.penanggung_jawab_id);
-        return <span className="text-xs font-medium text-slate-800">{staff?.nama_lengkap || item.penanggung_jawab_id}</span>;
-      },
-    },
-    {
-      key: 'tenggat',
-      header: 'Batas Tenggat',
-      render: (item: any) => (
-        <div>
-          <span className="text-xs font-bold text-red-600">{formatDate(item.tenggat)}</span>
-          <span className="block text-[11px] text-red-500">Melewati SLA Disposisi</span>
-        </div>
+      key: 'rating',
+      header: 'Kepuasan Pelapor',
+      render: (r) => (
+        <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">
+          <Star size={11} className="fill-amber-500 text-amber-500" /> {r.rating}.0 / 5.0
+        </span>
       ),
     },
     {
-      key: 'catatan',
-      header: 'Instruksi',
-      render: (item: any) => (
-        <p className="text-xs text-slate-600 line-clamp-1 max-w-xs">{item.catatan}</p>
-      ),
-    },
-    {
-      key: 'aksi',
-      header: 'Aksi Eskalasi',
-      className: 'text-right',
-      render: (item: any) => (
-        <Link
-          href={`/dashboard/kelola/aduan/${item.complaint.id}`}
-          className="rounded border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-100 transition-colors inline-flex items-center gap-1"
-        >
-          Tinjau &amp; Tegur
-          <ArrowRight className="h-3 w-3" />
-        </Link>
-      ),
+      key: 'status',
+      header: 'Status',
+      render: (r) => <StatusBadge status={r.status} size="sm" />,
     },
   ];
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Rekapitulasi &amp; Eskalasi Aduan Mahasiswa"
-        subtitle="Analisis tren aduan, kecepatan penyelesaian (SLA), evaluasi kepuasan mahasiswa, dan eskalasi pimpinan."
-        badge={
-          <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800">
-            Monitoring &amp; KPI
-          </span>
-        }
-        actions={<ExportMenu filename="rekap-aduan-mahasiswa" title="Ekspor Rekapitulasi" />}
+        title="Rekap Statistik Aduan"
+        description="Statistik, tren kategori, dan riwayat resolusi layanan aduan program studi (FR-52)."
+        actions={<ExportMenu filename="rekap-statistik-aduan" />}
       />
 
-      {/* KPI Top Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Laporan Masuk</p>
-              <p className="mt-1 text-2xl font-bold text-slate-800">19</p>
-            </div>
-            <div className="rounded-lg bg-blue-50 p-2 text-blue-600">
-              <TrendingUp className="h-5 w-5" />
-            </div>
-          </div>
-          <p className="mt-2 text-xs text-slate-500">Semester Ganjil 2024/2025</p>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Rasio Penyelesaian</p>
-              <p className="mt-1 text-2xl font-bold text-emerald-600">89.5%</p>
-            </div>
-            <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600">
-              <CheckCircle2 className="h-5 w-5" />
-            </div>
-          </div>
-          <p className="mt-2 text-xs text-slate-500">17 dari 19 aduan tuntas</p>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Rata-rata Durasi SLA</p>
-              <p className="mt-1 text-2xl font-bold text-blue-600">3.4 Hari</p>
-            </div>
-            <div className="rounded-lg bg-blue-50 p-2 text-blue-600">
-              <Clock className="h-5 w-5" />
-            </div>
-          </div>
-          <p className="mt-2 text-xs text-slate-500">Target batas maksimal: 7 hari</p>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Indeks Kepuasan</p>
-              <p className="mt-1 text-2xl font-bold text-amber-600">4.8 / 5.0</p>
-            </div>
-            <div className="rounded-lg bg-amber-50 p-2 text-amber-600">
-              <Star className="h-5 w-5 fill-amber-500 text-amber-500" />
-            </div>
-          </div>
-          <p className="mt-2 text-xs text-slate-500">Dari 15 mahasiswa pemberi rating</p>
-        </div>
-      </div>
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Chart 1: Bar Chart Kategori */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-          <h3 className="text-sm font-bold text-slate-900 mb-1">Distribusi Aduan Berdasarkan Kategori</h3>
-          <p className="text-xs text-slate-500 mb-4">Pemetaan jenis kendala yang paling sering dilaporkan mahasiswa</p>
-          <div className="h-64">
-            <InteractiveBarChart
-              data={CATEGORY_DATA}
-              xKey="name"
-              series={CATEGORY_SERIES}
-              domain={CATEGORY_DOMAIN}
-              ticks={CATEGORY_TICKS}
-              tooltipFormatter={(val) => `${val} Laporan`}
-              showLegend={false}
-            />
-          </div>
-        </div>
-
-        {/* Chart 2: Tren Bulanan */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-          <h3 className="text-sm font-bold text-slate-900 mb-1">Tren Aduan Masuk vs Tuntas Bulanan</h3>
-          <p className="text-xs text-slate-500 mb-4">Konsistensi tindak lanjut laporan sepanjang semester</p>
-          <div className="h-64">
-            <InteractiveBarChart
-              data={MONTHLY_TREND}
-              xKey="bulan"
-              series={MONTHLY_SERIES}
-              domain={MONTHLY_DOMAIN}
-              ticks={MONTHLY_TICKS}
-              showLegend
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Escalation Section for Kaprodi */}
-      <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-5 shadow-xs space-y-4">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-600" />
-              <h3 className="text-sm font-bold text-slate-900">Eskalasi Disposisi Melewati Tenggat (Kaprodi)</h3>
-            </div>
-            <p className="text-xs text-slate-600 mt-1">
-              Daftar penugasan penanganan yang melewati batas waktu tanpa penyelesaian. Kaprodi berwenang melakukan teguran atau re-alokasi petugas.
-            </p>
-          </div>
-          <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-bold text-red-700">
-            {overdueDispositions.length} Kasus Overdue
-          </span>
-        </div>
-
-        {/* Anonymity Protection for Sensitive Escalation */}
-        <div className="rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-600 flex items-center gap-2">
-          <Lock className="h-4 w-4 text-slate-400 shrink-0" />
-          <span>
-            <strong>Perhatian Privasi Bab 11:</strong> Untuk kasus berkategori sensitif, tabel pimpinan ini
-            hanya menampilkan kode tiket, tanggal penerusan, dan status penanganan tanpa narasi detail maupun identitas saksi.
-          </span>
-        </div>
-
-        <DataTable
-          columns={columnsEskalasi}
-          data={overdueDispositions}
-          emptyMessage="Tidak ada disposisi yang melewati batas tenggat saat ini. Kinerja prodi berjalan sesuai SLA."
+      {/* 4 StatCards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="Total Aduan Masuk"
+          value="48 Tiket"
+          subtitle="Tahun Akademik 2024/2025"
+          badgeTone="blue"
+          icon={<MessageSquare size={16} />}
         />
+        <StatCard
+          title="Tingkat Resolusi"
+          value="85.4%"
+          subtitle="41 tiket telah selesai"
+          badgeTone="emerald"
+          badgeText="SLA Terpenuhi"
+          icon={<CheckCircle2 size={16} />}
+        />
+        <StatCard
+          title="Rata-rata Waktu Resolusi"
+          value="3.2 Hari"
+          subtitle="Tenggat maksimal 7 hari"
+          badgeTone="indigo"
+          icon={<Clock size={16} />}
+        />
+        <StatCard
+          title="Kepuasan Pelapor"
+          value="4.4 / 5.0"
+          subtitle="Dari 36 penilaian pelapor"
+          badgeTone="amber"
+          badgeText="Sangat Baik"
+          icon={<Star size={16} />}
+        />
+      </div>
+
+      {/* Distribusi Kategori & Status */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="card space-y-3">
+          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+            Distribusi per Kategori Aduan
+          </h3>
+          <div className="space-y-2.5">
+            {[
+              { label: 'Akademik (Kurikulum & Perkuliahan)', count: 21, pct: 43.8, color: 'bg-blue-600' },
+              { label: 'Fasilitas & Sarana Lab', count: 14, pct: 29.2, color: 'bg-indigo-600' },
+              { label: 'Layanan Administrasi / TU', count: 8, pct: 16.7, color: 'bg-emerald-600' },
+              { label: 'Dosen / Tenaga Kependidikan', count: 3, pct: 6.2, color: 'bg-amber-600' },
+              { label: 'Kekerasan / Perundungan (Sensitif)', count: 2, pct: 4.1, color: 'bg-rose-600' },
+            ].map((k, i) => (
+              <div key={i} className="space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="font-medium text-slate-700">{k.label}</span>
+                  <span className="font-bold text-slate-800">{k.count} ({k.pct}%)</span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className={`h-full ${k.color} rounded-full`} style={{ width: `${k.pct}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="card space-y-3">
+          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+            Status Penyelesaian Aduan
+          </h3>
+          <div className="space-y-2.5">
+            {[
+              { label: 'Selesai Ditangani', count: 35, pct: 72.9, color: 'bg-emerald-600' },
+              { label: 'Ditutup (Tidak Valid / Selesai SLA)', count: 6, pct: 12.5, color: 'bg-purple-600' },
+              { label: 'Sedang Ditindaklanjuti', count: 4, pct: 8.3, color: 'bg-blue-600' },
+              { label: 'Diverifikasi / Baru Diterima', count: 3, pct: 6.3, color: 'bg-amber-600' },
+            ].map((s, i) => (
+              <div key={i} className="space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="font-medium text-slate-700">{s.label}</span>
+                  <span className="font-bold text-slate-800">{s.count} tiket</span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className={`h-full ${s.color} rounded-full`} style={{ width: `${s.pct}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Tabel Tiket Terakhir */}
+      <div className="card">
+        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-3">
+          Contoh Tiket yang Telah Selesai Ditangani
+        </h3>
+        <DataTable columns={columns} data={MOCK_RESOLVED_DATA} />
       </div>
     </div>
   );

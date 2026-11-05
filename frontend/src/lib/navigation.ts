@@ -52,7 +52,6 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'FileCheck',
     roles: ['DOSEN_VERIFIKATOR', 'DOSEN_WALI', 'DOSEN', 'KAPRODI'],
     category: 'Beasiswa & Jam Karya',
-    badge: 2,
   },
   {
     title: 'Rekap Pemenuhan Jam',
@@ -83,7 +82,6 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'FileCheck',
     roles: ['DOSEN_VERIFIKATOR', 'DOSEN_WALI', 'DOSEN', 'KAPRODI'],
     category: 'Pelanggaran & Sanksi',
-    badge: 1,
   },
   {
     title: 'Log Retensi (UU PDP)',
@@ -107,7 +105,6 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'Users',
     roles: ['MAHASISWA', 'DOSEN_PEMBINA', 'DOSEN', 'ADMIN_PRODI', 'KAPRODI'],
     category: 'Unit Kegiatan Mahasiswa',
-    badge: 1,
   },
   {
     title: 'Rekap Partisipasi UKM',
@@ -152,7 +149,6 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'FileCheck',
     roles: ['DOSEN_PEMBINA', 'DOSEN', 'KAPRODI'],
     category: 'Program Kerja Himpunan',
-    badge: 2,
   },
   {
     title: 'Analisis Deviasi Proker',
@@ -176,7 +172,6 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'FileCheck',
     roles: ['DOSEN_VERIFIKATOR', 'DOSEN_WALI', 'DOSEN', 'KAPRODI'],
     category: 'Sertifikat Mahasiswa',
-    badge: 2,
   },
   {
     title: 'Rekapitulasi & Masa Berlaku',
@@ -223,7 +218,6 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'FileCheck',
     roles: ['DOSEN_VERIFIKATOR', 'DOSEN', 'KAPRODI', 'ADMIN_PRODI'],
     category: 'Publikasi',
-    badge: 1,
   },
   {
     title: 'Review Internal Publikasi',
@@ -254,7 +248,6 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'FileCheck',
     roles: ['KAPRODI'],
     category: 'Perjalanan Dinas',
-    badge: 1,
   },
   {
     title: 'Rekap Perjalanan & Biaya',
@@ -301,7 +294,6 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'ClipboardCheck',
     roles: ['DOSEN', 'GKM', 'KAPRODI'],
     category: 'Mutu Pembelajaran',
-    badge: 1,
   },
   {
     title: 'Rekap Status RPS',
@@ -339,7 +331,6 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'MessageSquareHeart',
     roles: ['PENGELOLA_ADUAN', 'KAPRODI', 'ADMIN_PRODI'],
     category: 'Layanan Aduan',
-    badge: 2,
   },
   {
     title: 'Aduan Sensitif (Satgas)',
@@ -347,7 +338,6 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'ShieldAlert',
     roles: ['PENGELOLA_ADUAN', 'PETUGAS_KEKERASAN', 'KAPRODI'],
     category: 'Layanan Aduan',
-    badge: 1,
   },
   {
     title: 'Disposisi Tugas Saya',

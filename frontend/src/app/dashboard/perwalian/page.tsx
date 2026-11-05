@@ -530,6 +530,7 @@ export default function LaporanPerwalianPage() {
         <div className="flex gap-6">
           <button
             onClick={() => setActiveTab('KELAS')}
+            className={`pb-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
               activeTab === 'KELAS'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -542,6 +543,7 @@ export default function LaporanPerwalianPage() {
           </button>
           <button
             onClick={() => setActiveTab('SESI_DOSEN')}
+            className={`pb-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
               activeTab === 'SESI_DOSEN'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -554,6 +556,7 @@ export default function LaporanPerwalianPage() {
           </button>
           <button
             onClick={() => setActiveTab('STATUS_MONITORING')}
+            className={`pb-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
               activeTab === 'STATUS_MONITORING'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'

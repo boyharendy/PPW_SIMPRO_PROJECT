@@ -33,6 +33,9 @@ export const storageSync = {
     if (typeof window === 'undefined') return;
     try {
       localStorage.setItem(key, JSON.stringify(data));
+      if (typeof window.dispatchEvent === 'function') {
+        window.dispatchEvent(new CustomEvent('simpro_storage_change', { detail: { key } }));
+      }
     } catch (e) {
       console.warn('Gagal menyimpan ke localStorage:', e);
     }

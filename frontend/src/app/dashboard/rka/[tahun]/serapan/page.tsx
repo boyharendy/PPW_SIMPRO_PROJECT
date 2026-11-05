@@ -1,224 +1,214 @@
 'use client';
 
-import React from 'react';
-import { useParams } from 'next/navigation';
-import PageHeader from '@/components/ui/PageHeader';
-import StatCard from '@/components/ui/StatCard';
-import ExportMenu from '@/components/ui/ExportMenu';
-import InteractiveBarChart, { BarSeriesConfig } from '@/components/ui/InteractiveBarChart';
-import { mockRkaDocuments } from '@/lib/mock-data';
-import { Wallet, TrendingUp, AlertTriangle, Clock, ArrowLeft } from 'lucide-react';
+import React, { useState } from 'react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { ArrowLeft, TrendingUp, Wallet, AlertCircle, PieChart, CheckCircle2 } from 'lucide-react';
+import PageHeader from '@/components/ui/PageHeader';
+import { StatCard } from '@/components/ui/StatCard';
+import { ExportMenu } from '@/components/ui/ExportMenu';
+import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { formatRupiah, calculateAbsorptionPercentage } from '@/lib/utils';
 
-const QUARTER_DATA = [
-  { triwulan: 'TW 1 (Jan-Mar)', Target: 50000000, Realisasi: 42000000 },
-  { triwulan: 'TW 2 (Apr-Jun)', Target: 75000000, Realisasi: 68500000 },
-  { triwulan: 'TW 3 (Jul-Sep)', Target: 65000000, Realisasi: 52000000 },
-  { triwulan: 'TW 4 (Okt-Des)', Target: 60000000, Realisasi: 25000000 },
+interface SerapanKegiatan {
+  kode: string;
+  nama: string;
+  pagu: number;
+  realisasi: number;
+  jadwal: string;
+  penanda?: 'OVER_REALISASI' | 'TERLAMBAT' | 'NORMAL';
+}
+
+const MOCK_SERAPAN: SerapanKegiatan[] = [
+  {
+    kode: 'KG-01',
+    nama: 'Penyusunan dan Review Kurikulum MBKM',
+    pagu: 125000000,
+    realisasi: 98500000,
+    jadwal: 'TW1 - TW2',
+    penanda: 'NORMAL',
+  },
+  {
+    kode: 'KG-02',
+    nama: 'Seminar Nasional Teknologi Informasi & Konferensi',
+    pagu: 85000000,
+    realisasi: 89200000,
+    jadwal: 'TW1',
+    penanda: 'OVER_REALISASI',
+  },
+  {
+    kode: 'KG-03',
+    nama: 'Peningkatan Kompetensi & Sertifikasi Dosen',
+    pagu: 150000000,
+    realisasi: 45000000,
+    jadwal: 'TW1 - TW3',
+    penanda: 'TERLAMBAT',
+  },
+  {
+    kode: 'KG-04',
+    nama: 'Pengembangan Sarana Lab Komputasi Awan',
+    pagu: 125000000,
+    realisasi: 0,
+    jadwal: 'TW3 - TW4',
+    penanda: 'NORMAL',
+  },
 ];
 
-const QUARTER_SERIES: BarSeriesConfig[] = [
-  { dataKey: 'Target', fill: '#94A3B8', name: 'Target Anggaran' },
-  { dataKey: 'Realisasi', fill: '#2563EB', name: 'Realisasi Riil' },
-];
+export default function Page() {
+  const { tahun } = useParams<{ tahun: string }>();
+  const [filterTW, setFilterTW] = useState('ALL');
 
-const QUARTER_DOMAIN: [number, number] = [0, 80000000];
-const QUARTER_TICKS = [0, 20000000, 40000000, 60000000, 80000000];
+  const totalPagu = MOCK_SERAPAN.reduce((s, k) => s + k.pagu, 0);
+  const totalRealisasi = MOCK_SERAPAN.reduce((s, k) => s + k.realisasi, 0);
+  const pctTotal = calculateAbsorptionPercentage(totalRealisasi, totalPagu);
 
-export default function RkaSerapanPage() {
-  const params = useParams();
-  const tahun = Number(params.tahun) || 2025;
-
-  const doc =
-    mockRkaDocuments.find((d) => d.tahun_anggaran === tahun) || mockRkaDocuments[0];
-
-  const serapanPct = calculateAbsorptionPercentage(doc.total_realisasi || 0, doc.total_anggaran);
-  const allBudgetItems = (doc.activities || []).flatMap((act) =>
-    (act.budget_items || []).map((b) => ({
-      ...b,
-      nama_kegiatan: act.nama_kegiatan,
-      jadwal_selesai: act.jadwal_selesai,
-    }))
-  );
-
-  // Deteksi kegiatan yang belum memiliki realisasi melewati jadwal pelaksanaan (FR-38)
-  const overdueActivities = (doc.activities || []).filter((act) => {
-    const actReal = (act.budget_items || []).reduce((s, b) => s + (b.realisasi_total || 0), 0);
-    return actReal === 0 && act.jadwal_selesai && new Date(act.jadwal_selesai) < new Date();
-  });
+  const columns: DataTableColumn<SerapanKegiatan>[] = [
+    {
+      key: 'kode',
+      header: 'Kode & Kegiatan RKA',
+      render: (r) => (
+        <div>
+          <span className="font-mono text-xs font-bold text-blue-600 mr-2">{r.kode}</span>
+          <span className="font-semibold text-slate-800 text-sm">{r.nama}</span>
+          <div className="text-[11px] text-slate-400 mt-0.5">Jadwal: {r.jadwal}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'pagu',
+      header: 'Alokasi Pagu',
+      render: (r) => <span className="font-mono text-xs text-slate-600">{formatRupiah(r.pagu)}</span>,
+    },
+    {
+      key: 'realisasi',
+      header: 'Realisasi Berjalan',
+      render: (r) => (
+        <span className="font-mono font-bold text-xs text-slate-900">
+          {formatRupiah(r.realisasi)}
+        </span>
+      ),
+    },
+    {
+      key: 'serapan',
+      header: 'Persentase Serapan',
+      render: (r) => {
+        const pct = calculateAbsorptionPercentage(r.realisasi, r.pagu);
+        const isOver = r.realisasi > r.pagu;
+        return (
+          <div className="w-36 space-y-1">
+            <div className="flex justify-between text-xs">
+              <span className={`font-bold ${isOver ? 'text-rose-600' : 'text-slate-800'}`}>
+                {pct}%
+              </span>
+              <span className="text-[10px] text-slate-400">
+                {isOver ? 'Over Pagu' : `Sisa ${formatRupiah(Math.max(0, r.pagu - r.realisasi))}`}
+              </span>
+            </div>
+            <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full ${
+                  isOver ? 'bg-rose-500' : pct >= 75 ? 'bg-emerald-500' : 'bg-blue-600'
+                }`}
+                style={{ width: `${Math.min(pct, 100)}%` }}
+              />
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'penanda',
+      header: 'Status & Penanda',
+      render: (r) => (
+        <div>
+          {r.penanda === 'OVER_REALISASI' && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+              <AlertCircle size={10} /> Over-Realisasi
+            </span>
+          )}
+          {r.penanda === 'TERLAMBAT' && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+              <AlertCircle size={10} /> Progres Terlambat
+            </span>
+          )}
+          {r.penanda === 'NORMAL' && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+              <CheckCircle2 size={10} /> Sesuai Jadwal
+            </span>
+          )}
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
         <Link
-          href={`/dashboard/rka/${doc.tahun_anggaran}`}
-          className="text-xs text-slate-500 hover:text-blue-600 flex items-center gap-1 font-medium"
+          href={`/dashboard/rka/${tahun || '2025'}`}
+          className="text-xs text-slate-500 hover:text-slate-800 inline-flex items-center gap-1 font-medium"
         >
-          <ArrowLeft size={14} />
-          <span>Kembali ke Dokumen RKA {doc.tahun_anggaran}</span>
+          <ArrowLeft size={14} /> Kembali ke RKA {tahun || '2025'}
         </Link>
       </div>
 
       <PageHeader
-        title={`Monitoring Serapan Anggaran RKA ${doc.tahun_anggaran}`}
-        description="Analisis persentase serapan anggaran per kegiatan, per pos anggaran, dan per triwulan (TW1–TW4), serta penanda kegiatan yang melewati jadwal."
-        action={<ExportMenu title="Ekspor Laporan Serapan" filename={`serapan-rka-${doc.tahun_anggaran}`} />}
+        title={`Monitoring Serapan Anggaran RKA ${tahun || '2025'}`}
+        description="Analisis persentase serapan belanja dan proyeksi sisa pagu tahun berjalan (FR-42)."
+        actions={<ExportMenu filename={`serapan-rka-${tahun || '2025'}`} />}
       />
 
-      {/* Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 3 StatCards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
-          title="Total Pagu Anggaran Aktif"
-          value={formatRupiah(doc.total_anggaran)}
-          subtitle="Tahun Anggaran Berjalan"
-          icon={<Wallet size={20} />}
-          gradient="bg-blue-50 text-blue-600"
+          title="Total Pagu Aktif"
+          value={formatRupiah(totalPagu)}
+          subtitle="Pagu tahun anggaran berjalan"
+          badgeTone="blue"
+          icon={<Wallet size={16} />}
         />
         <StatCard
-          title="Total Serapan Riil"
-          value={formatRupiah(doc.total_realisasi || 0)}
-          subtitle={`${serapanPct}% Telah Terserap`}
-          icon={<TrendingUp size={20} />}
-          gradient="bg-emerald-50 text-emerald-600"
+          title="Total Realisasi Belanja"
+          value={formatRupiah(totalRealisasi)}
+          subtitle={`Sisa pagu: ${formatRupiah(totalPagu - totalRealisasi)}`}
+          badgeTone="emerald"
+          icon={<PieChart size={16} />}
         />
         <StatCard
-          title="Kegiatan Melewati Jadwal"
-          value={`${overdueActivities.length} Kegiatan`}
-          subtitle={
-            overdueActivities.length === 0
-              ? 'Semua berjalan sesuai jadwal'
-              : 'Belum terlaksana melewati jadwal'
-          }
-          icon={<Clock size={20} />}
-          gradient="bg-blue-50 text-blue-600"
-        />
-        <StatCard
-          title="Total Pos Anggaran"
-          value={`${allBudgetItems.length} Pos`}
-          subtitle="Tercatat aktif di RKA"
-          icon={<AlertTriangle size={20} />}
-          gradient="bg-emerald-50 text-emerald-600"
+          title="Persentase Serapan Pagu"
+          value={`${pctTotal}%`}
+          subtitle="Kinerja serapan semester berjalan"
+          badgeTone={pctTotal >= 50 ? 'emerald' : 'amber'}
+          badgeText={pctTotal >= 50 ? 'Baik' : 'Perlu Dorongan'}
+          icon={<TrendingUp size={16} />}
         />
       </div>
 
-      {/* Charts & Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 card space-y-4">
-          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-slate-800">
-                Serapan Anggaran Triwulan (TW 1 – TW 4)
-              </h3>
-              <p className="text-xs text-slate-500">Perbandingan target rencana vs realisasi belanja riil</p>
-            </div>
+      {/* Filter Triwulan & Tabel */}
+      <div className="card">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50">
+            {['ALL', 'TW1', 'TW2', 'TW3', 'TW4'].map((tw) => (
+              <button
+                key={tw}
+                onClick={() => setFilterTW(tw)}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                  filterTW === tw
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {tw === 'ALL' ? 'Semua Triwulan' : tw}
+              </button>
+            ))}
           </div>
 
-          <div className="h-72 w-full pt-2">
-            <InteractiveBarChart
-              data={QUARTER_DATA}
-              xKey="triwulan"
-              series={QUARTER_SERIES}
-              domain={QUARTER_DOMAIN}
-              ticks={QUARTER_TICKS}
-              yAxisFormatter={(val) => `Rp ${(val / 1000000).toFixed(0)}jt`}
-              tooltipFormatter={(val) => formatRupiah(val)}
-              showLegend
-            />
-          </div>
+          <span className="text-xs text-slate-400">
+            Menampilkan serapan per mata kegiatan aktif
+          </span>
         </div>
 
-        {/* Serapan Per Kegiatan */}
-        <div className="card space-y-4">
-          <div className="border-b border-slate-100 pb-3">
-            <h3 className="text-sm font-bold text-slate-800">Serapan per Kegiatan & Jadwal</h3>
-            <p className="text-xs text-slate-500">Capaian belanja per butir program kerja</p>
-          </div>
-
-          <div className="space-y-4">
-            {doc.activities?.map((act) => {
-              const actPagu = act.budget_items.reduce((s, b) => s + (b.nominal_anggaran || 0), 0);
-              const actReal = act.budget_items.reduce((s, b) => s + (b.realisasi_total || 0), 0);
-              const pct = calculateAbsorptionPercentage(actReal, actPagu);
-
-              return (
-                <div key={act.id} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-800 line-clamp-1">{act.nama_kegiatan}</span>
-                    <span className="font-bold text-blue-600">{pct}%</span>
-                  </div>
-                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-blue-600 rounded-full transition-all duration-500"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-[10px] text-slate-400">
-                    <span>Realisasi: {formatRupiah(actReal)}</span>
-                    <span>Pagu: {formatRupiah(actPagu)}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 leading-relaxed">
-            Data monitoring serapan dihasilkan secara langsung dari database agregat aktif (&le; 5 detik) untuk kebutuhan audit mutu ISO dan akreditasi BAN-PT/LAM INFOKOM.
-          </div>
-        </div>
-      </div>
-
-      {/* Tabel Serapan per Pos Anggaran (SKPL FR-38) */}
-      <div className="card space-y-4">
-        <div className="border-b border-slate-100 pb-3">
-          <h3 className="text-sm font-bold text-slate-800">
-            Rincian Persentase Serapan per Pos Anggaran (FR-38)
-          </h3>
-          <p className="text-xs text-slate-500">
-            Pemantauan alokasi pagu, realisasi riil, sisa anggaran, dan persentase serapan per mata anggaran
-          </p>
-        </div>
-
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
-          <table className="w-full text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase">
-              <tr>
-                <th className="px-3 py-2.5 text-left font-mono">Kode Pos</th>
-                <th className="px-3 py-2.5 text-left">Uraian Pos Anggaran &amp; Kegiatan</th>
-                <th className="px-3 py-2.5 text-right">Pagu Anggaran</th>
-                <th className="px-3 py-2.5 text-right">Realisasi</th>
-                <th className="px-3 py-2.5 text-right">Sisa Anggaran</th>
-                <th className="px-3 py-2.5 text-right">% Serapan</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {allBudgetItems.map((pos) => {
-                const real = pos.realisasi_total || 0;
-                const sisa = pos.sisa_anggaran ?? pos.nominal_anggaran - real;
-                const pct = calculateAbsorptionPercentage(real, pos.nominal_anggaran);
-                return (
-                  <tr key={pos.id} className="hover:bg-slate-50/50">
-                    <td className="px-3 py-2.5 font-mono font-bold text-blue-700">{pos.kode_pos}</td>
-                    <td className="px-3 py-2.5">
-                      <p className="font-semibold text-slate-800">{pos.nama_pos}</p>
-                      <span className="text-[11px] text-slate-400">{pos.nama_kegiatan}</span>
-                    </td>
-                    <td className="px-3 py-2.5 text-right font-medium text-slate-700">
-                      {formatRupiah(pos.nominal_anggaran)}
-                    </td>
-                    <td className="px-3 py-2.5 text-right font-bold text-blue-700">
-                      {formatRupiah(real)}
-                    </td>
-                    <td className="px-3 py-2.5 text-right font-medium text-emerald-700">
-                      {formatRupiah(sisa)}
-                    </td>
-                    <td className="px-3 py-2.5 text-right font-extrabold text-slate-800">{pct}%</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <DataTable columns={columns} data={MOCK_SERAPAN} />
       </div>
     </div>
   );

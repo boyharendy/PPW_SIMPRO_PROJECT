@@ -39,18 +39,10 @@ export default function DashboardPage() {
   const { user, currentRole } = useUser();
   const stats = mockDashboardStats;
 
-  const [trips, setTrips] = useState<BusinessTrip[]>(() =>
-    storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips)
-  );
-  const [publications, setPublications] = useState<Publication[]>(() =>
-    storageSync.get<Publication[]>(STORAGE_KEYS.PUBLICATIONS, mockPublications)
-  );
-  const [rpsList, setRpsList] = useState<RpsSubmission[]>(() =>
-    storageSync.get<RpsSubmission[]>(STORAGE_KEYS.RPS_SUBMISSIONS, mockRpsSubmissions)
-  );
-  const [complaints, setComplaints] = useState<Complaint[]>(() =>
-    storageSync.get<Complaint[]>(STORAGE_KEYS.COMPLAINTS, mockComplaints)
-  );
+  const [trips, setTrips] = useState<BusinessTrip[]>(mockBusinessTrips);
+  const [publications, setPublications] = useState<Publication[]>(mockPublications);
+  const [rpsList, setRpsList] = useState<RpsSubmission[]>(mockRpsSubmissions);
+  const [complaints, setComplaints] = useState<Complaint[]>(mockComplaints);
 
   useEffect(() => {
     setTrips(storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips));

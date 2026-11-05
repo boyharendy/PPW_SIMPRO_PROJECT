@@ -1,343 +1,378 @@
 'use client';
 
 import React, { useState } from 'react';
-import {
-  Users,
-  ShieldCheck,
-  ShieldAlert,
-  UserCheck,
-  Edit2,
-  CheckCircle2,
-  FileText,
-  Calendar,
-  X,
-  Mail,
-  Award,
-} from 'lucide-react';
-import { PageHeader } from '@/components/layout/PageHeader';
-import { mockProfiles } from '@/lib/mock-data';
-import type { Role } from '@/lib/types';
+import { Plus, UserCheck, ShieldAlert, Trash2, Shield, Award } from 'lucide-react';
+import PageHeader from '@/components/ui/PageHeader';
+import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import Modal from '@/components/ui/Modal';
+import { formatDateShort } from '@/lib/utils';
 
-interface RoleAssignment {
+interface PengelolaAduan {
   id: string;
-  roleKey: Role;
-  roleTitle: string;
-  category: string;
-  description: string;
-  currentUserId: string;
-  skNumber: string;
-  periode: string;
+  nama: string;
+  nidn: string;
+  penangananKekerasan: boolean;
+  berlakuDari: string;
 }
 
-const initialAssignments: RoleAssignment[] = [
+interface VerifikatorPublikasi {
+  id: string;
+  nama: string;
+  nidn: string;
+  bidang: string;
+  berlakuDari: string;
+}
+
+const INITIAL_PENGELOLA: PengelolaAduan[] = [
   {
-    id: 'ra-gkm',
-    roleKey: 'GKM',
-    roleTitle: 'GKM (Gugus Kendali Mutu)',
-    category: 'Penjaminan Mutu',
-    description: 'Bertanggung jawab atas review dokumen RPS, pemantauan CPMK, dan post evaluasi perkuliahan.',
-    currentUserId: 'u-gkm',
-    skNumber: 'SK-DEKAN/2024/08/012',
-    periode: '2024 - 2026',
+    id: 'p-1',
+    nama: 'Dr. Rina Fitriani, M.Kom.',
+    nidn: '0412088501',
+    penangananKekerasan: true,
+    berlakuDari: '2025-01-01',
   },
   {
-    id: 'ra-koord-kemitraan',
-    roleKey: 'KOORDINATOR_KP_PSI_PDLK',
-    roleTitle: 'Koordinator KP / PSI / PDLK',
-    category: 'Kemitraan & Magang',
-    description: 'Mengelola instrumen kepuasan mitra industri, pemantauan magang KP, proyek PSI, dan pembelajaran di luar kampus (PDLK).',
-    currentUserId: 'u-koordinator',
-    skNumber: 'SK-DEKAN/2024/08/015',
-    periode: '2024 - 2025',
-  },
-  {
-    id: 'ra-admin',
-    roleKey: 'ADMIN_PRODI',
-    roleTitle: 'Admin Prodi',
-    category: 'Tata Kelola & Anggaran',
-    description: 'Mengelola administrasi perjalanan dinas dosen, pencatatan realisasi RKA, dan operasional prodi.',
-    currentUserId: 'u-admin',
-    skNumber: 'SK-REKTOR/2023/12/045',
-    periode: '2024 - 2026',
-  },
-  {
-    id: 'ra-verifikator',
-    roleKey: 'DOSEN_VERIFIKATOR',
-    roleTitle: 'Dosen Verifikator',
-    category: 'Verifikasi & Validasi Akademik',
-    description: 'Memverifikasi klaim publikasi ilmiah, pemenuhan jam karya beasiswa, sertifikat kompetensi, dan pelaksanaan sanksi sosial.',
-    currentUserId: 'u-verifikator',
-    skNumber: 'SK-DEKAN/2024/08/018',
-    periode: '2024 - 2025',
-  },
-  {
-    id: 'ra-dosen-wali',
-    roleKey: 'DOSEN_WALI',
-    roleTitle: 'Dosen Wali',
-    category: 'Bimbingan Akademik',
-    description: 'Mendampingi kemajuan studi mahasiswa perwalian, menerima laporan perwalian berkala dari ketua kelas.',
-    currentUserId: 'u-dosen-wali',
-    skNumber: 'SK-DEKAN/2024/08/020',
-    periode: '2024 - 2025',
-  },
-  {
-    id: 'ra-pembina',
-    roleKey: 'DOSEN_PEMBINA',
-    roleTitle: 'Dosen Pembina Himpunan / UKM',
-    category: 'Kemahasiswaan & Ormawa',
-    description: 'Membimbing dan memverifikasi program kerja (Proker), proposal kegiatan, serta LPJ ormawa himpunan mahasiswa & UKM.',
-    currentUserId: 'u-dosen-pembina',
-    skNumber: 'SK-DEKAN/2024/08/022',
-    periode: '2024 - 2026',
-  },
-  {
-    id: 'ra-aduan',
-    roleKey: 'PENGELOLA_ADUAN',
-    roleTitle: 'Pengelola Aduan',
-    category: 'Layanan Kemahasiswaan & Perlindungan',
-    description: 'Menerima tiket aduan mahasiswa secara anonim/terbuka, verifikasi awal, disposisi tindak lanjut, dan koordinasi satgas perundungan.',
-    currentUserId: 'u-pengelola-aduan',
-    skNumber: 'SK-KAPRODI/2024/09/004',
-    periode: '2024 - 2025',
-  },
-  {
-    id: 'ra-mitra',
-    roleKey: 'MITRA',
-    roleTitle: 'Mitra (eksternal)',
-    category: 'Kemitraan Industri',
-    description: 'Perwakilan industri dan instansi eksternal yang memberikan umpan balik kepuasan terhadap kinerja lulusan dan mahasiswa magang.',
-    currentUserId: 'u-mitra',
-    skNumber: 'MOU-INDUSTRI/2024/001',
-    periode: '2024 - 2027',
+    id: 'p-2',
+    nama: 'Agus Prasetyo, M.T.',
+    nidn: '0420058802',
+    penangananKekerasan: false,
+    berlakuDari: '2025-01-01',
   },
 ];
 
-export default function PenetapanPeranPage() {
-  const [assignments, setAssignments] = useState<RoleAssignment[]>(initialAssignments);
-  const [selectedRole, setSelectedRole] = useState<RoleAssignment | null>(null);
-  const [editForm, setEditForm] = useState({
-    userId: '',
-    skNumber: '',
-    periode: '',
-  });
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+const INITIAL_VERIFIKATOR: VerifikatorPublikasi[] = [
+  {
+    id: 'v-1',
+    nama: 'Ir. Bambang Tri, Ph.D.',
+    nidn: '0403067801',
+    bidang: 'Rekayasa Perangkat Lunak & Sistem Informasi',
+    berlakuDari: '2025-01-01',
+  },
+  {
+    id: 'v-2',
+    nama: 'Dr. Budi Santoso, M.Kom.',
+    nidn: '0415108003',
+    bidang: 'Jaringan Komputer & Keamanan Siber',
+    berlakuDari: '2025-01-01',
+  },
+];
 
-  const handleOpenEdit = (item: RoleAssignment) => {
-    setSelectedRole(item);
-    setEditForm({
-      userId: item.currentUserId,
-      skNumber: item.skNumber,
-      periode: item.periode,
-    });
-  };
+export default function Page() {
+  const [pengelola, setPengelola] = useState<PengelolaAduan[]>(INITIAL_PENGELOLA);
+  const [verifikator, setVerifikator] = useState<VerifikatorPublikasi[]>(INITIAL_VERIFIKATOR);
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  // Modals
+  const [modalPengelola, setModalPengelola] = useState(false);
+  const [modalVerifikator, setModalVerifikator] = useState(false);
+
+  // Form pengelola
+  const [namaPengelola, setNamaPengelola] = useState('');
+  const [nidnPengelola, setNidnPengelola] = useState('');
+  const [penangananKekerasan, setPenangananKekerasan] = useState(false);
+
+  // Form verifikator
+  const [namaVerif, setNamaVerif] = useState('');
+  const [nidnVerif, setNidnVerif] = useState('');
+  const [bidangVerif, setBidangVerif] = useState('');
+
+  const handleAddPengelola = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedRole) return;
+    if (!namaPengelola.trim()) return;
 
-    setAssignments((prev) =>
-      prev.map((a) => {
-        if (a.id === selectedRole.id) {
-          return {
-            ...a,
-            currentUserId: editForm.userId,
-            skNumber: editForm.skNumber,
-            periode: editForm.periode,
-          };
-        }
-        return a;
-      })
-    );
-
-    setToastMessage(`Pejabat tugas untuk ${selectedRole.roleTitle} berhasil diperbarui.`);
-    setSelectedRole(null);
-    setTimeout(() => setToastMessage(null), 3500);
+    setPengelola([
+      ...pengelola,
+      {
+        id: `p-${Date.now()}`,
+        nama: namaPengelola.trim(),
+        nidn: nidnPengelola.trim(),
+        penangananKekerasan,
+        berlakuDari: new Date().toISOString().split('T')[0],
+      },
+    ]);
+    setNamaPengelola('');
+    setNidnPengelola('');
+    setPenangananKekerasan(false);
+    setModalPengelola(false);
   };
+
+  const handleAddVerifikator = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!namaVerif.trim()) return;
+
+    setVerifikator([
+      ...verifikator,
+      {
+        id: `v-${Date.now()}`,
+        nama: namaVerif.trim(),
+        nidn: nidnVerif.trim(),
+        bidang: bidangVerif.trim(),
+        berlakuDari: new Date().toISOString().split('T')[0],
+      },
+    ]);
+    setNamaVerif('');
+    setNidnVerif('');
+    setBidangVerif('');
+    setModalVerifikator(false);
+  };
+
+  const pengelolaColumns: DataTableColumn<PengelolaAduan>[] = [
+    {
+      key: 'nama',
+      header: 'Nama Dosen / Pejabat Penugasan',
+      render: (r) => (
+        <div>
+          <span className="font-semibold text-slate-800 text-sm">{r.nama}</span>
+          <div className="text-xs text-slate-400">NIDN: {r.nidn}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'pglk',
+      header: 'Penetapan Mandat Kekerasan (PGL-K)',
+      render: (r) => (
+        <span
+          className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full border ${
+            r.penangananKekerasan
+              ? 'bg-rose-50 text-rose-700 border-rose-200'
+              : 'bg-slate-100 text-slate-600 border-slate-200'
+          }`}
+        >
+          {r.penangananKekerasan ? 'Mandat PGL-K Aktif' : 'Pengelola Umum'}
+        </span>
+      ),
+    },
+    {
+      key: 'berlaku',
+      header: 'Berlaku Mulai',
+      render: (r) => <span className="text-xs text-slate-600">{formatDateShort(r.berlakuDari)}</span>,
+    },
+    {
+      key: 'aksi',
+      header: 'Aksi',
+      className: 'text-right',
+      render: (r) => (
+        <button
+          onClick={() => setPengelola(pengelola.filter((p) => p.id !== r.id))}
+          className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors"
+          title="Cabut Penugasan"
+        >
+          <Trash2 size={13} />
+        </button>
+      ),
+    },
+  ];
+
+  const verifikatorColumns: DataTableColumn<VerifikatorPublikasi>[] = [
+    {
+      key: 'nama',
+      header: 'Nama Dosen Verifikator',
+      render: (r) => (
+        <div>
+          <span className="font-semibold text-slate-800 text-sm">{r.nama}</span>
+          <div className="text-xs text-slate-400">NIDN: {r.nidn}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'bidang',
+      header: 'Bidang Keahlian / Rumpun',
+      render: (r) => <span className="text-xs text-slate-700 font-medium">{r.bidang}</span>,
+    },
+    {
+      key: 'berlaku',
+      header: 'Berlaku Mulai',
+      render: (r) => <span className="text-xs text-slate-600">{formatDateShort(r.berlakuDari)}</span>,
+    },
+    {
+      key: 'aksi',
+      header: 'Aksi',
+      className: 'text-right',
+      render: (r) => (
+        <button
+          onClick={() => setVerifikator(verifikator.filter((v) => v.id !== r.id))}
+          className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors"
+          title="Cabut Penugasan"
+        >
+          <Trash2 size={13} />
+        </button>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Penetapan Peran &amp; Gugus Tugas Prodi"
-        subtitle="Kelola pejabat penjaminan mutu, koordinator kemitraan, pengelola aduan, dan petugas Satgas PPKPT tingkat program studi."
-        badge={
-          <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800">
-            Kewenangan Kaprodi
-          </span>
-        }
+        title="Pengaturan Peran & Penugasan"
+        description="Penugasan peran operasional, dosen verifikator, koordinator, dan tim gugus kendali mutu prodi."
       />
 
-      {toastMessage && (
-        <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 animate-in fade-in">
-          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-          <span>{toastMessage}</span>
+      {/* Bagian 1: Pengelola Aduan */}
+      <div className="card space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <Shield size={16} className="text-blue-600" /> Penugasan Pengelola Layanan Aduan
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Pengelola yang ditunjuk menangani telaah awal, disposisi tiket, dan kanal sensitif kekerasan (PGL-K).
+            </p>
+          </div>
+          <button
+            onClick={() => setModalPengelola(true)}
+            className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5 self-start sm:self-auto"
+          >
+            <Plus size={14} /> Tunjuk Pengelola
+          </button>
         </div>
-      )}
 
-      {/* Grid of Role Assignments */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {assignments.map((item) => {
-          const profile = mockProfiles.find((p) => p.id === item.currentUserId);
-          const isSensitiveRole = item.roleKey === 'PETUGAS_KEKERASAN';
-
-          return (
-            <div
-              key={item.id}
-              className={`rounded-xl border bg-white p-5 shadow-xs transition-shadow hover:shadow-sm flex flex-col justify-between ${
-                isSensitiveRole ? 'border-red-200' : 'border-slate-200'
-              }`}
-            >
-              <div>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <span
-                      className={`inline-block rounded px-2 py-0.5 text-[11px] font-semibold mb-1.5 ${
-                        isSensitiveRole
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-blue-100 text-blue-800'
-                      }`}
-                    >
-                      {item.category}
-                    </span>
-                    <h3 className="text-base font-bold text-slate-900">{item.roleTitle}</h3>
-                  </div>
-
-                  <button
-                    onClick={() => handleOpenEdit(item)}
-                    className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition-colors"
-                    title="Ubah Pejabat Tugas"
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </button>
-                </div>
-
-                <p className="mt-2 text-xs text-slate-600 leading-relaxed">{item.description}</p>
-
-                {/* Assigned Profile Card */}
-                <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50/70 p-3 flex items-center gap-3">
-                  <div
-                    className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-xs text-white shrink-0 ${
-                      isSensitiveRole ? 'bg-red-600' : 'bg-blue-600'
-                    }`}
-                  >
-                    {profile?.nama_lengkap.charAt(0) || 'U'}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-slate-900 truncate">
-                      {profile?.nama_lengkap || 'Belum ditugaskan'}
-                    </p>
-                    <p className="text-[11px] text-slate-500 font-mono">
-                      NIP/NIDN: {profile?.nomor_induk || '-'}
-                    </p>
-                    <p className="text-[11px] text-slate-500 truncate flex items-center gap-1 mt-0.5">
-                      <Mail className="h-3 w-3 text-slate-400" />
-                      {profile?.email}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Legal Reference & Period */}
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                <div className="flex items-center gap-1 truncate max-w-[200px]" title={item.skNumber}>
-                  <FileText className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                  <span className="font-mono">{item.skNumber}</span>
-                </div>
-                <div className="flex items-center gap-1 font-medium text-slate-600">
-                  <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                  <span>Periode: {item.periode}</span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+        <DataTable columns={pengelolaColumns} data={pengelola} />
       </div>
 
-      {/* Edit Role Modal */}
-      {selectedRole && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-lg">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="text-base font-bold text-slate-900">Penugasan Pejabat Peran</h3>
-                <p className="text-xs text-slate-500">{selectedRole.roleTitle}</p>
-              </div>
-              <button
-                onClick={() => setSelectedRole(null)}
-                className="rounded p-1 text-slate-400 hover:bg-slate-100"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveEdit} className="mt-4 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Pilih Dosen / Tenaga Kependidikan <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={editForm.userId}
-                  onChange={(e) => setEditForm({ ...editForm, userId: e.target.value })}
-                  required
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                >
-                  {mockProfiles
-                    .filter((p) => p.tipe_pengguna === 'DOSEN' || p.tipe_pengguna === 'TENDIK')
-                    .map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.nama_lengkap} — NIP: {p.nomor_induk}
-                      </option>
-                    ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Nomor Surat Keputusan (SK) <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={editForm.skNumber}
-                  onChange={(e) => setEditForm({ ...editForm, skNumber: e.target.value })}
-                  required
-                  placeholder="Contoh: SK-DEKAN/2025/08/022"
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-mono focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Periode Masa Jabatan <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={editForm.periode}
-                  onChange={(e) => setEditForm({ ...editForm, periode: e.target.value })}
-                  required
-                  placeholder="Contoh: 2024 - 2026"
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setSelectedRole(null)}
-                  className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
-                >
-                  Simpan Perubahan
-                </button>
-              </div>
-            </form>
+      {/* Bagian 2: Dosen Verifikator Publikasi */}
+      <div className="card space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <Award size={16} className="text-blue-600" /> Penugasan Dosen Verifikator Publikasi Mahasiswa
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Dosen yang berwenang memvalidasi LoA dan DOI publikasi yang diunggah oleh mahasiswa (FR-32).
+            </p>
           </div>
+          <button
+            onClick={() => setModalVerifikator(true)}
+            className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5 self-start sm:self-auto"
+          >
+            <Plus size={14} /> Tunjuk Verifikator
+          </button>
         </div>
-      )}
+
+        <DataTable columns={verifikatorColumns} data={verifikator} />
+      </div>
+
+      {/* Modal Tunjuk Pengelola */}
+      <Modal
+        open={modalPengelola}
+        onClose={() => setModalPengelola(false)}
+        title="Tunjuk Pengelola Aduan Baru"
+        size="md"
+      >
+        <form onSubmit={handleAddPengelola} className="space-y-4">
+          <div>
+            <label className="text-xs font-semibold text-slate-700 block mb-1">Nama Lengkap Dosen / Staf</label>
+            <input
+              type="text"
+              value={namaPengelola}
+              onChange={(e) => setNamaPengelola(e.target.value)}
+              placeholder="Contoh: Dr. Rina Fitriani, M.Kom."
+              className="input-field text-xs"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-700 block mb-1">NIDN / NIP</label>
+            <input
+              type="text"
+              value={nidnPengelola}
+              onChange={(e) => setNidnPengelola(e.target.value)}
+              placeholder="Contoh: 0412088501"
+              className="input-field text-xs font-mono"
+              required
+            />
+          </div>
+
+          <div className="p-3 bg-rose-50/70 border border-rose-200 rounded-xl space-y-1">
+            <label className="flex items-center gap-2 cursor-pointer text-xs">
+              <input
+                type="checkbox"
+                checked={penangananKekerasan}
+                onChange={(e) => setPenangananKekerasan(e.target.checked)}
+                className="rounded text-rose-600"
+              />
+              <span className="font-bold text-rose-900 flex items-center gap-1">
+                <ShieldAlert size={13} className="text-rose-600" /> Tunjuk sebagai PGL-K (Penanganan Kekerasan)
+              </span>
+            </label>
+            <p className="text-[11px] text-rose-700 pl-5">
+              Memberikan hak akses eksklusif membuka materi aduan sensitif kekerasan seksual dan perundungan.
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setModalPengelola(false)}
+              className="btn-secondary text-xs px-4 py-2"
+            >
+              Batal
+            </button>
+            <button type="submit" className="btn-primary text-xs px-4 py-2">
+              Tetapkan Penugasan
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal Tunjuk Verifikator */}
+      <Modal
+        open={modalVerifikator}
+        onClose={() => setModalVerifikator(false)}
+        title="Tunjuk Dosen Verifikator Publikasi"
+        size="md"
+      >
+        <form onSubmit={handleAddVerifikator} className="space-y-4">
+          <div>
+            <label className="text-xs font-semibold text-slate-700 block mb-1">Nama Lengkap Dosen</label>
+            <input
+              type="text"
+              value={namaVerif}
+              onChange={(e) => setNamaVerif(e.target.value)}
+              placeholder="Contoh: Ir. Bambang Tri, Ph.D."
+              className="input-field text-xs"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-700 block mb-1">NIDN</label>
+            <input
+              type="text"
+              value={nidnVerif}
+              onChange={(e) => setNidnVerif(e.target.value)}
+              placeholder="Contoh: 0403067801"
+              className="input-field text-xs font-mono"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-700 block mb-1">Bidang Keahlian / KBK</label>
+            <input
+              type="text"
+              value={bidangVerif}
+              onChange={(e) => setBidangVerif(e.target.value)}
+              placeholder="Contoh: Rekayasa Perangkat Lunak & Sistem Enterprise"
+              className="input-field text-xs"
+              required
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setModalVerifikator(false)}
+              className="btn-secondary text-xs px-4 py-2"
+            >
+              Batal
+            </button>
+            <button type="submit" className="btn-primary text-xs px-4 py-2">
+              Tetapkan Verifikator
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
-

@@ -609,6 +609,7 @@ export interface UserRole {
   id: string;
   user_id: string;
   role: Role;
+  penanganan_kekerasan?: boolean; // PRDnew FR-50: penunjukan PGL-K pada peran Pengelola Aduan
   berlaku_dari?: string;
   berlaku_sampai?: string;
 }

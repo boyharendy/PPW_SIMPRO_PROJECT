@@ -26,6 +26,7 @@ test('STORAGE_KEYS contains all keys for Modul 7-13', async () => {
   const { STORAGE_KEYS } = await import('../src/lib/storage-sync.ts');
   assert.equal(STORAGE_KEYS.SURVEYS, 'simpro_surveys');
   assert.equal(STORAGE_KEYS.SURVEY_INVITATIONS, 'simpro_survey_invitations');
+  assert.equal(STORAGE_KEYS.SURVEY_RESPONSES, 'simpro_survey_responses');
   assert.equal(STORAGE_KEYS.PUBLICATIONS, 'simpro_publications');
   assert.equal(STORAGE_KEYS.TRIPS, 'simpro_trips');
   assert.equal(STORAGE_KEYS.RKA_DOCUMENTS, 'simpro_rka_documents');

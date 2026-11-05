@@ -113,6 +113,10 @@ export default function BeasiswaListPage() {
       header: 'Mahasiswa Penerima',
       render: (row: ScholarshipRecipient) => (
         <div className="space-y-0.5">
+          <span className="font-bold text-slate-800 text-xs sm:text-sm">{row.mahasiswa_nama}</span>
+          <p className="text-[11px] text-slate-500 font-mono">
+            NIM: {row.mahasiswa_nim} • Angkatan {row.angkatan}
+          </p>
         </div>
       ),
     },
@@ -142,6 +146,8 @@ export default function BeasiswaListPage() {
       render: (row: ScholarshipRecipient) => {
         const percent = Math.min(100, Math.round((row.jam_terverifikasi / row.kewajiban_jam) * 100));
         return (
+          <div className="space-y-1.5 min-w-[160px]">
+            <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-slate-800">
                 {row.jam_terverifikasi} / {row.kewajiban_jam} Jam
               </span>

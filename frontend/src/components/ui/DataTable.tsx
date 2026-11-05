@@ -3,7 +3,7 @@ import { Edit2, Trash2 } from 'lucide-react';
 
 export interface DataTableColumn<T = any> {
   key: string;
-  header: string;
+  header: string | ReactNode;
   render?: (row: T) => ReactNode;
   className?: string;
 }
