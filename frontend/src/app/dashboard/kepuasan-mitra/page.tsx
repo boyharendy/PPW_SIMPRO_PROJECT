@@ -2,9 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { Eye, FileText, Send, Star, Users, CheckCircle2, Building2 } from 'lucide-react';
+import { Eye, FileText, Send, Star, CheckCircle2, Building2 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
-import { StatCard } from '@/components/ui/StatCard';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { ExportMenu } from '@/components/ui/ExportMenu';
 import Modal from '@/components/ui/Modal';
@@ -242,80 +241,82 @@ export default function Page() {
         }
       />
 
-      {/* 4 Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Indeks Kepuasan"
-          value={overallAvgScore > 0 ? `${overallAvgScore.toFixed(2)} / 5.0` : '4.50 / 5.0'}
-          subtitle={`Setara ${overallAvgScore > 0 ? Math.round((overallAvgScore / 5.0) * 100) : 90}% skala maksimum`}
-          badgeTone="blue"
-          badgeText="Sangat Baik"
-          icon={<Star size={16} />}
-        />
-        <StatCard
-          title="Tingkat Respons"
-          value={`${responseRate || 75}%`}
-          subtitle={`${diisiTotal} dari ${invitations.length || 4} tautan diisi`}
-          badgeTone="emerald"
-          badgeText="+12% YoY"
-          icon={<CheckCircle2 size={16} />}
-        />
-        <StatCard
-          title="Total Responden"
-          value={`${viewItems.length || diisiTotal || 1} Mitra`}
-          subtitle="Tercatat aktif di sistem"
-          badgeTone="indigo"
-          icon={<Building2 size={16} />}
-        />
-        <StatCard
-          title="Program Penempatan"
-          value="KP · PSI · PDLK"
-          subtitle="3 Program terintegrasi"
-          badgeTone="slate"
-          icon={<Users size={16} />}
-        />
-      </div>
-
-      {/* Rata-rata Skor per Aspek */}
-      <div className="card">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-base font-bold text-slate-800">Rata-rata Skor per Aspek Evaluasi</h2>
-            <p className="text-xs text-slate-500">
-              Rekapitulasi penilaian kinerja mahasiswa berdasarkan bobot instrumen
-            </p>
+      {/* Ringkasan Eksekutif & Aspek Akreditasi (Compact & Seimbang) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Metrik Inti Akreditasi (5 cols) */}
+        <div className="lg:col-span-5 grid grid-cols-3 gap-3">
+          <div className="card p-4 flex flex-col justify-between bg-white">
+            <div className="flex items-center justify-between text-slate-500 mb-1">
+              <span className="text-[11px] font-semibold tracking-tight uppercase">Indeks Kepuasan</span>
+              <Star size={14} className="text-amber-500 fill-amber-400" />
+            </div>
+            <div>
+              <div className="text-xl font-bold text-slate-800">
+                {overallAvgScore > 0 ? overallAvgScore.toFixed(2) : '4.50'}
+                <span className="text-xs text-slate-400 font-normal ml-0.5">/5.0</span>
+              </div>
+              <div className="text-[11px] font-semibold text-emerald-600 mt-0.5">Sangat Baik (90%)</div>
+            </div>
           </div>
-          <span className="text-xs font-semibold px-2.5 py-1 bg-slate-100 text-slate-600 rounded-md">
-            Skala 1.0 – 5.0
-          </span>
+
+          <div className="card p-4 flex flex-col justify-between bg-white">
+            <div className="flex items-center justify-between text-slate-500 mb-1">
+              <span className="text-[11px] font-semibold tracking-tight uppercase">Tingkat Respons</span>
+              <CheckCircle2 size={14} className="text-blue-500" />
+            </div>
+            <div>
+              <div className="text-xl font-bold text-slate-800">
+                {responseRate || 75}%
+              </div>
+              <div className="text-[11px] text-slate-400 mt-0.5">{diisiTotal}/{invitations.length || 4} Kupon Diisi</div>
+            </div>
+          </div>
+
+          <div className="card p-4 flex flex-col justify-between bg-white">
+            <div className="flex items-center justify-between text-slate-500 mb-1">
+              <span className="text-[11px] font-semibold tracking-tight uppercase">Total Mitra</span>
+              <Building2 size={14} className="text-indigo-500" />
+            </div>
+            <div>
+              <div className="text-xl font-bold text-slate-800">
+                {viewItems.length || diisiTotal || 1}
+                <span className="text-xs text-slate-400 font-normal ml-0.5">Mitra</span>
+              </div>
+              <div className="text-[11px] text-slate-400 mt-0.5">KP, PSI, PDLK</div>
+            </div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {dynamicAspectAverages.map((aspek, idx) => (
-            <div key={idx} className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/60">
-              <div className="flex items-center justify-between text-xs mb-1.5">
-                <span className="font-semibold text-slate-700 truncate" title={aspek.nama}>
+        {/* Skor Rata-rata per Aspek (7 cols - Compact Progress Bar) */}
+        <div className="lg:col-span-7 card p-4 flex flex-col justify-between bg-white">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold text-slate-800">
+              Rata-rata Skor per Aspek (Akreditasi LAM/BAN-PT)
+            </span>
+            <span className="text-[11px] text-slate-400 font-medium">Skala 1.0 – 5.0</span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {dynamicAspectAverages.slice(0, 4).map((aspek, idx) => (
+              <div key={idx} className="p-2 rounded-lg bg-slate-50 border border-slate-100 flex flex-col justify-between">
+                <div className="text-[11px] font-medium text-slate-700 truncate mb-1" title={aspek.nama}>
                   {aspek.nama}
-                </span>
-                <span className="text-slate-400 font-mono text-[11px] shrink-0 ml-1">
-                  Bobot {aspek.bobot}
-                </span>
+                </div>
+                <div>
+                  <div className="flex items-baseline justify-between text-xs mb-1">
+                    <span className="font-bold text-slate-800">{aspek.skor.toFixed(1)}</span>
+                    <span className="text-[10px] text-blue-600 font-semibold">{aspek.persen}%</span>
+                  </div>
+                  <div className="w-full h-1 bg-slate-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-blue-600 rounded-full"
+                      style={{ width: `${Math.min(aspek.persen, 100)}%` }}
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="flex items-baseline justify-between mb-2">
-                <span className="text-xl font-bold text-slate-900">
-                  {aspek.skor.toFixed(1)}{' '}
-                  <span className="text-xs text-slate-400 font-normal">/ 5.0</span>
-                </span>
-                <span className="text-xs font-semibold text-blue-600">{aspek.persen}%</span>
-              </div>
-              <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-blue-600 rounded-full"
-                  style={{ width: `${Math.min(aspek.persen, 100)}%` }}
-                />
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 

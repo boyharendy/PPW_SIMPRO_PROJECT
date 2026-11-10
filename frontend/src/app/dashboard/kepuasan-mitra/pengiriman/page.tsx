@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Send, MessageSquare, Copy, Check, Edit3 } from 'lucide-react';
+import { Send, MessageSquare, Copy, Check, Edit3, Plus } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -11,6 +11,8 @@ import { copyToClipboard } from '@/lib/utils';
 import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import { mockSurveyTemplates, mockSurveyInvitations } from '@/lib/mock-data';
 import type { PartnerSurveyTemplate, PartnerSurveyInvitation, PartnerSurveyResponse, SurveyProgram } from '@/lib/types';
+import CreateInvitationModal from './CreateInvitationModal';
+import ManualInputModal from './ManualInputModal';
 
 function PengirimanMitraContent() {
   const searchParams = useSearchParams();
@@ -21,18 +23,23 @@ function PengirimanMitraContent() {
   const [filterProgram, setFilterProgram] = useState<'ALL' | 'KP' | 'PSI' | 'PDLK'>(
     initialProgram === 'KP' || initialProgram === 'PSI' || initialProgram === 'PDLK' ? initialProgram : 'ALL'
   );
-  const [activeModal, setActiveModal] = useState<{ type: 'LINK' | 'MANUAL'; invitation: PartnerSurveyInvitation } | null>(null);
+  const [linkModalInv, setLinkModalInv] = useState<PartnerSurveyInvitation | null>(null);
+  const [manualModalInv, setManualModalInv] = useState<PartnerSurveyInvitation | null>(null);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Manual input form states
-  const [manualPenilai, setManualPenilai] = useState('');
-  const [manualJabatan, setManualJabatan] = useState('');
-  const [manualScores, setManualScores] = useState<Record<string, number>>({});
-  const [manualCatatan, setManualCatatan] = useState('');
-
   useEffect(() => {
-    setTemplates(storageSync.get<PartnerSurveyTemplate[]>(STORAGE_KEYS.SURVEYS, mockSurveyTemplates));
-    setInvitations(storageSync.get<PartnerSurveyInvitation[]>(STORAGE_KEYS.SURVEY_INVITATIONS, mockSurveyInvitations));
+    const loadData = () => {
+      setTemplates(storageSync.get<PartnerSurveyTemplate[]>(STORAGE_KEYS.SURVEYS, mockSurveyTemplates));
+      setInvitations(storageSync.get<PartnerSurveyInvitation[]>(STORAGE_KEYS.SURVEY_INVITATIONS, mockSurveyInvitations));
+    };
+    loadData();
+    window.addEventListener('simpro_storage_change', loadData);
+    window.addEventListener('focus', loadData);
+    return () => {
+      window.removeEventListener('simpro_storage_change', loadData);
+      window.removeEventListener('focus', loadData);
+    };
   }, []);
 
   const filtered = filterProgram === 'ALL'
@@ -42,9 +49,9 @@ function PengirimanMitraContent() {
   const getTemplateForInv = (inv: PartnerSurveyInvitation) =>
     templates.find((t) => t.id === inv.template_id) || templates[0];
 
-  const handleTemplateChange = (invId: string, newTemplateId: string) => {
+  const handleTemplateChange = (invId: string, templateId: string) => {
     const nextInvs = invitations.map((inv) =>
-      inv.id === invId ? { ...inv, template_id: newTemplateId } : inv
+      inv.id === invId ? { ...inv, template_id: templateId } : inv
     );
     setInvitations(nextInvs);
     storageSync.set(STORAGE_KEYS.SURVEY_INVITATIONS, nextInvs);
@@ -57,7 +64,7 @@ function PengirimanMitraContent() {
     );
     setInvitations(nextInvs);
     storageSync.set(STORAGE_KEYS.SURVEY_INVITATIONS, nextInvs);
-    setActiveModal({ type: 'LINK', invitation: { ...inv, status: nextStatus } });
+    setLinkModalInv({ ...inv, status: nextStatus });
   };
 
   const getSurveyLink = (inv: PartnerSurveyInvitation) => {
@@ -87,25 +94,20 @@ function PengirimanMitraContent() {
     window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
   };
 
-  const openManualModal = (inv: PartnerSurveyInvitation) => {
-    const tmpl = getTemplateForInv(inv);
-    const initialAspectScores: Record<string, number> = {};
-    (tmpl?.aspek || []).forEach((asp) => {
-      initialAspectScores[asp.id] = 5;
-    });
-
-    setManualPenilai(inv.placement?.partner?.nama_kontak || '');
-    setManualJabatan('Pembimbing Lapangan Mitra');
-    setManualScores(initialAspectScores);
-    setManualCatatan('');
-    setActiveModal({ type: 'MANUAL', invitation: inv });
+  const handleCreatedInvitation = (newInv: PartnerSurveyInvitation) => {
+    const nextInvs = [newInv, ...invitations];
+    setInvitations(nextInvs);
+    storageSync.set(STORAGE_KEYS.SURVEY_INVITATIONS, nextInvs);
   };
 
-  const handleSaveManual = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!activeModal) return;
-
-    const inv = activeModal.invitation;
+  const handleSaveManual = (manualData: {
+    namaPenilai: string;
+    jabatan: string;
+    scores: Record<string, number>;
+    catatan: string;
+  }) => {
+    if (!manualModalInv) return;
+    const inv = manualModalInv;
     const tmpl = getTemplateForInv(inv);
     const respId = `resp-${Date.now()}`;
 
@@ -116,13 +118,13 @@ function PengirimanMitraContent() {
       invitation_id: inv.id,
       sumber: 'INPUT_KOORDINATOR',
       status: 'TERKIRIM',
-      nama_pengisi: manualPenilai.trim() || 'Pembimbing Lapangan',
-      jabatan_pengisi: manualJabatan.trim() || undefined,
-      komentar: manualCatatan.trim() || undefined,
+      nama_pengisi: manualData.namaPenilai.trim() || 'Pembimbing Lapangan',
+      jabatan_pengisi: manualData.jabatan.trim() || undefined,
+      komentar: manualData.catatan.trim() || undefined,
       diinput_oleh: 'u-koordinator',
       submitted_at: new Date().toISOString(),
       placement: inv.placement,
-      answers: Object.entries(manualScores).map(([aspectId, score], idx) => ({
+      answers: Object.entries(manualData.scores).map(([aspectId, score], idx) => ({
         id: `ans-${respId}-${idx}`,
         response_id: respId,
         aspect_id: aspectId,
@@ -146,7 +148,7 @@ function PengirimanMitraContent() {
       storageSync.set(STORAGE_KEYS.SURVEYS, nextTmpls);
     }
 
-    setActiveModal(null);
+    setManualModalInv(null);
   };
 
   const columns: DataTableColumn<PartnerSurveyInvitation>[] = [
@@ -235,7 +237,7 @@ function PengirimanMitraContent() {
                 <MessageSquare size={12} /> WA
               </button>
               <button
-                onClick={() => openManualModal(r)}
+                onClick={() => setManualModalInv(r)}
                 className="btn-secondary text-xs px-2 py-1 inline-flex items-center gap-1"
                 title="Input nilai kuesioner jika mitra mengisi via form cetak"
               >
@@ -253,10 +255,18 @@ function PengirimanMitraContent() {
       <PageHeader
         title="Pengiriman & Input Mitra"
         description="Kirim tautan kuesioner ke mitra via email/WhatsApp atau catat hasil evaluasi secara manual (FR-27)."
+        actions={
+          <button
+            onClick={() => setCreateModalOpen(true)}
+            className="btn-primary text-sm flex items-center gap-1.5"
+          >
+            <Plus size={16} /> Buat Undangan Baru
+          </button>
+        }
       />
 
       <div className="card">
-        {/* Filter Bar: Hanya Filter Program Sesuai Arahan (Gambar 3 Dihapus) */}
+        {/* Filter Bar: Hanya Filter Program Sesuai Arahan */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-slate-500">Program:</span>
@@ -287,17 +297,34 @@ function PengirimanMitraContent() {
         />
       </div>
 
+      {/* Modal Buat Undangan Baru */}
+      <CreateInvitationModal
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        templates={templates}
+        onCreated={handleCreatedInvitation}
+      />
+
+      {/* Modal Input Manual */}
+      <ManualInputModal
+        open={Boolean(manualModalInv)}
+        onClose={() => setManualModalInv(null)}
+        invitation={manualModalInv}
+        template={manualModalInv ? getTemplateForInv(manualModalInv) : templates[0]}
+        onSave={handleSaveManual}
+      />
+
       {/* Modal Tautan Terkirim */}
       <Modal
-        open={activeModal?.type === 'LINK'}
-        onClose={() => setActiveModal(null)}
+        open={Boolean(linkModalInv)}
+        onClose={() => setLinkModalInv(null)}
         title="Tautan Survei Mitra Siap Dikirim"
         size="md"
       >
-        {activeModal?.type === 'LINK' && (
+        {linkModalInv && (
           <div className="space-y-4">
             <div className="p-3.5 rounded-xl bg-blue-50/60 border border-blue-100 text-xs text-blue-800 leading-relaxed">
-              Tautan survei unik untuk <strong>{activeModal.invitation.placement?.partner?.nama_mitra}</strong> (mahasiswa: {activeModal.invitation.placement?.student?.nama_lengkap}) telah aktif selama 30 hari.
+              Tautan survei unik untuk <strong>{linkModalInv.placement?.partner?.nama_mitra}</strong> (mahasiswa: {linkModalInv.placement?.student?.nama_lengkap}) telah aktif selama 30 hari.
             </div>
 
             <div>
@@ -306,12 +333,12 @@ function PengirimanMitraContent() {
                 <input
                   type="text"
                   readOnly
-                  value={getSurveyLink(activeModal.invitation)}
+                  value={getSurveyLink(linkModalInv)}
                   className="input-field font-mono text-xs text-slate-600 select-all"
                 />
                 <button
                   type="button"
-                  onClick={() => handleCopyLink(activeModal.invitation)}
+                  onClick={() => handleCopyLink(linkModalInv)}
                   className="btn-primary text-xs px-3 py-2.5 shrink-0 flex items-center gap-1.5"
                 >
                   {copied ? <Check size={14} /> : <Copy size={14} />}
@@ -323,113 +350,20 @@ function PengirimanMitraContent() {
             <div className="pt-2 flex justify-between items-center border-t border-slate-100">
               <button
                 type="button"
-                onClick={() => handleWhatsApp(activeModal.invitation)}
+                onClick={() => handleWhatsApp(linkModalInv)}
                 className="btn-secondary text-xs px-3 py-2 text-emerald-700 hover:bg-emerald-50 flex items-center gap-1.5"
               >
                 <MessageSquare size={14} /> Bagikan via WhatsApp
               </button>
               <button
                 type="button"
-                onClick={() => setActiveModal(null)}
+                onClick={() => setLinkModalInv(null)}
                 className="btn-primary text-xs px-4 py-2"
               >
                 Tutup
               </button>
             </div>
           </div>
-        )}
-      </Modal>
-
-      {/* Modal Input Manual */}
-      <Modal
-        open={activeModal?.type === 'MANUAL'}
-        onClose={() => setActiveModal(null)}
-        title="Input Hasil Evaluasi Mitra Manual"
-        size="lg"
-      >
-        {activeModal?.type === 'MANUAL' && (
-          <form onSubmit={handleSaveManual} className="space-y-4">
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 grid grid-cols-2 gap-2">
-              <div><strong>Mitra:</strong> {activeModal.invitation.placement?.partner?.nama_mitra}</div>
-              <div><strong>Program:</strong> {activeModal.invitation.placement?.program}</div>
-              <div><strong>Mahasiswa:</strong> {activeModal.invitation.placement?.student?.nama_lengkap} ({activeModal.invitation.placement?.student?.nomor_induk})</div>
-              <div><strong>Instrumen:</strong> {getTemplateForInv(activeModal.invitation)?.nama}</div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">Nama Pengisi Mitra</label>
-                <input
-                  type="text"
-                  value={manualPenilai}
-                  onChange={(e) => setManualPenilai(e.target.value)}
-                  className="input-field"
-                  required
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">Jabatan Pengisi</label>
-                <input
-                  type="text"
-                  value={manualJabatan}
-                  onChange={(e) => setManualJabatan(e.target.value)}
-                  className="input-field"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">
-                Skor Penilaian per Aspek (Skala 1 - 5)
-              </label>
-              <div className="space-y-2.5">
-                {(getTemplateForInv(activeModal.invitation)?.aspek || []).map((aspek, idx) => (
-                  <div key={aspek.id} className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 bg-white">
-                    <div>
-                      <div className="text-xs font-semibold text-slate-800">{idx + 1}. {aspek.nama_aspek}</div>
-                      <div className="text-[11px] text-slate-400">Bobot {aspek.bobot}% {aspek.deskripsi ? `• ${aspek.deskripsi}` : ''}</div>
-                    </div>
-                    <select
-                      value={manualScores[aspek.id] || 5}
-                      onChange={(e) => setManualScores({ ...manualScores, [aspek.id]: Number(e.target.value) })}
-                      className="select-field w-32 text-xs font-bold text-blue-700"
-                    >
-                      <option value={5}>5 - Sangat Baik</option>
-                      <option value={4}>4 - Baik</option>
-                      <option value={3}>3 - Cukup</option>
-                      <option value={2}>2 - Kurang</option>
-                      <option value={1}>1 - Sangat Kurang</option>
-                    </select>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-slate-700 block mb-1">Catatan / Komentar Mitra</label>
-              <textarea
-                rows={2}
-                value={manualCatatan}
-                onChange={(e) => setManualCatatan(e.target.value)}
-                placeholder="Masukkan catatan penilaian jika ada..."
-                className="input-field resize-none text-xs"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setActiveModal(null)}
-                className="btn-secondary text-xs px-4 py-2"
-              >
-                Batal
-              </button>
-              <button type="submit" className="btn-primary text-xs px-4 py-2">
-                Simpan Hasil Evaluasi
-              </button>
-            </div>
-          </form>
         )}
       </Modal>
     </div>

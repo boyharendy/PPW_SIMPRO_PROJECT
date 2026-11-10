@@ -214,6 +214,16 @@ export const mockPartners: Partner[] = [
     telepon_kontak: '6281122334455',
     is_active: true,
   },
+  {
+    id: 'pt-goto',
+    nama_mitra: 'PT GoTo Gojek Tokopedia Tbk',
+    bidang_usaha: 'Ekosistem Digital & E-Commerce',
+    alamat: 'Gedung Pasaraya Blok M, Jakarta Selatan',
+    nama_kontak: 'Arya Pratama',
+    email_kontak: 'arya.pratama@goto.com',
+    telepon_kontak: '6281987654321',
+    is_active: true,
+  },
 ];
 
 // ----- Student Placements -----
@@ -250,6 +260,29 @@ export const mockPlacements: StudentPlacement[] = [
     tanggal_selesai: '2025-12-15',
     partner: mockPartners[2],
     student: mockProfiles[8],
+  },
+  {
+    id: 'place-4',
+    partner_id: 'pt-goto',
+    student_id: 'u-mhs2',
+    academic_period_id: 'period-2025-ganjil',
+    program: 'KP',
+    tanggal_mulai: '2025-07-01',
+    tanggal_selesai: '2025-08-31',
+    partner: {
+      id: 'pt-goto',
+      nama_mitra: 'PT GoTo Gojek Tokopedia Tbk',
+      bidang_usaha: 'Ekosistem Digital & E-Commerce',
+      nama_kontak: 'Arya Pratama',
+      telepon_kontak: '6281987654321',
+      is_active: true,
+    },
+    student: {
+      ...mockProfiles[8],
+      id: 'u-mhs3',
+      nama_lengkap: 'Bambang Sudarsono',
+      nomor_induk: '1201220019',
+    },
   },
 ];
 
@@ -290,6 +323,22 @@ export const mockSurveyTemplates: PartnerSurveyTemplate[] = [
       { id: 'asp-23', template_id: 'tmpl-psi-2025', nama_aspek: 'Kualitas Dokumentasi Teknis', deskripsi: 'Kelengkapan manual book, SRS, dan rancangan sistem', bobot: 30, urutan: 3, is_active: true },
     ],
   },
+  {
+    id: 'tmpl-pdlk-2025',
+    program: 'PDLK',
+    nama: 'Instrumen Pembimbing Mitra Pembelajaran di Luar Kampus',
+    skala_maks: 5,
+    status: 'AKTIF',
+    dibuat_oleh: 'u-koordinator',
+    created_at: '2025-06-10',
+    updated_at: '2025-06-10',
+    total_responden: 6,
+    aspek: [
+      { id: 'asp-31', template_id: 'tmpl-pdlk-2025', nama_aspek: 'Kemandirian & Adaptabilitas Mahasiswa', deskripsi: 'Kemampuan beradaptasi dengan budaya dan alur kerja di luar kampus', bobot: 40, urutan: 1, is_active: true },
+      { id: 'asp-32', template_id: 'tmpl-pdlk-2025', nama_aspek: 'Ketercapaian Target Kompetensi Magang', deskripsi: 'Pemenuhan kompetensi terapan di instansi mitra', bobot: 35, urutan: 2, is_active: true },
+      { id: 'asp-33', template_id: 'tmpl-pdlk-2025', nama_aspek: 'Kedisiplinan & Sikap Profesional', deskripsi: 'Kepatuhan pada jam kerja dan aturan internal mitra', bobot: 25, urutan: 3, is_active: true },
+    ],
+  },
 ];
 
 export const mockSurveyInvitations: PartnerSurveyInvitation[] = [
@@ -324,6 +373,35 @@ export const mockSurveyInvitations: PartnerSurveyInvitation[] = [
     created_at: '2025-10-01',
     placement: mockPlacements[1],
     template: mockSurveyTemplates[1],
+  },
+  {
+    id: 'inv-3',
+    template_id: 'tmpl-pdlk-2025',
+    placement_id: 'place-3',
+    token_hash: 'tok_mandiri_hash_ghi789',
+    token_plain: 'mandiri-pdlk-demo-token-3',
+    status: 'DIBUAT',
+    kedaluwarsa_at: '2025-12-01T08:30:00Z',
+    jumlah_pengingat: 0,
+    dibuat_oleh: 'u-koordinator',
+    created_at: '2025-10-15',
+    placement: mockPlacements[2],
+  },
+  {
+    id: 'inv-4',
+    template_id: 'tmpl-kp-2025',
+    placement_id: 'place-4',
+    token_hash: 'tok_goto_hash_jkl012',
+    token_plain: 'goto-kp-demo-token-4',
+    status: 'KEDALUWARSA',
+    dikirim_via: 'WHATSAPP',
+    dikirim_at: '2025-07-10T09:00:00Z',
+    kedaluwarsa_at: '2025-08-10T09:00:00Z',
+    jumlah_pengingat: 2,
+    dibuat_oleh: 'u-koordinator',
+    created_at: '2025-07-10',
+    placement: mockPlacements[3],
+    template: mockSurveyTemplates[0],
   },
 ];
 
