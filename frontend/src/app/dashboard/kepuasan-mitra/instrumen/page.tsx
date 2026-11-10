@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, Copy, Send, FileEdit } from 'lucide-react';
+import { Plus, Copy, FileEdit } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -125,16 +125,9 @@ export default function Page() {
       className: 'text-right',
       render: (r) => (
         <div className="flex items-center justify-end gap-1.5">
-          <Link
-            href={`/dashboard/kepuasan-mitra/pengiriman?program=${r.program}&templateId=${r.id}`}
-            className="btn-secondary text-xs px-2.5 py-1 inline-flex items-center gap-1"
-            title="Kirim instrumen ini ke penempatan mitra"
-          >
-            <Send size={12} /> Kirim ke Mitra
-          </Link>
           <button
             onClick={() => handleDuplicate(r)}
-            className="btn-secondary text-xs px-2 py-1 inline-flex items-center gap-1"
+            className="btn-secondary text-xs px-2.5 py-1 inline-flex items-center gap-1"
             title="Duplikasi Template Kuesioner"
           >
             <Copy size={12} /> Duplikasi
@@ -144,7 +137,7 @@ export default function Page() {
             className="btn-primary text-xs px-2.5 py-1 inline-flex items-center gap-1"
             title="Kelola butir aspek dan bobot kuesioner"
           >
-            <FileEdit size={12} /> Kelola
+            <FileEdit size={12} /> Kelola Aspek
           </Link>
         </div>
       ),
