@@ -329,6 +329,7 @@ func (r *memoryEvaluationRepository) seedInitialData() {
 			CourseClassID:     "class-si201-a",
 			JumlahResponden:   32,
 			RataRataNilai:     4.45,
+			SkorRataRata:      4.45,
 			RingkasanKomentar: "Materi praktikum interaktif dan relevan dengan kebutuhan industri software.",
 			SkorPerAspek: map[string]float64{
 				"Kejelasan Materi":   4.6,
@@ -469,6 +470,7 @@ func (r *memoryEvaluationRepository) GetStudentFeedback(evaluationIDOrClassID st
 		CourseClassID:     evaluationIDOrClassID,
 		JumlahResponden:   30,
 		RataRataNilai:     4.40,
+		SkorRataRata:      4.40,
 		RingkasanKomentar: "Mahasiswa puas dengan interaktivitas materi perkuliahan.",
 		SkorPerAspek: map[string]float64{
 			"Kejelasan Materi":   4.5,
@@ -537,7 +539,7 @@ func computeEvaluationRecap(evals []*model.CourseEvaluation) *model.EvaluationRe
 		RingkasanPerMK: []model.CourseEvaluationSummary{},
 	}
 	if total == 0 {
-		return recap, nil
+		return recap
 	}
 
 	var sumKepuasan, sumKelulusan, sumCPMK float64

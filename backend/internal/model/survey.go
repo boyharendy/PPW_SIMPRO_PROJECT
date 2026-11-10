@@ -100,6 +100,10 @@ type PartnerResponseSubmission struct {
 	SkorRataRata      float64                  `json:"skor_rata_rata,omitempty"`
 	Answers           []*PartnerResponseAnswer `json:"answers"`
 	SubmittedAt       time.Time                `json:"submitted_at,omitempty"`
+	IsVoid            bool                     `json:"is_void,omitempty"`
+	AlasanVoid        string                   `json:"alasan_void,omitempty"`
+	DivoidOleh        string                   `json:"divoid_oleh,omitempty"`
+	DivoidAt          *time.Time               `json:"divoid_at,omitempty"`
 }
 
 type SurveyTrendPoint struct {

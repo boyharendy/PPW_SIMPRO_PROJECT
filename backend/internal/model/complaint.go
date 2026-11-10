@@ -33,6 +33,7 @@ type ComplaintMessage struct {
 	SenderID          string    `json:"sender_id,omitempty"`
 	IsCatatanInternal bool      `json:"is_catatan_internal"`
 	Pesan             string    `json:"pesan"`
+	LampiranURL       string    `json:"lampiran_url,omitempty"`
 	CreatedAt         time.Time `json:"created_at"`
 }
 
@@ -41,6 +42,7 @@ type ComplaintDisposition struct {
 	ComplaintID          string     `json:"complaint_id"`
 	DariPetugasID        string     `json:"dari_petugas_id"`
 	KepadaPetugasID      string     `json:"kepada_petugas_id"`
+	UnitTujuan           string     `json:"unit_tujuan,omitempty"`
 	CatatanDisposisi     string     `json:"catatan_disposisi"`
 	DeadlineTindakLanjut *time.Time `json:"deadline_tindak_lanjut,omitempty"`
 	Status               string     `json:"status,omitempty"` // AKTIF | SELESAI | TERESKALASI

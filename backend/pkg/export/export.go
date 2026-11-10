@@ -100,37 +100,27 @@ func ExportRkaSerapanCSV(serapan *model.RkaSerapan) []byte {
 	w := csv.NewWriter(&buf)
 
 	_ = w.Write([]string{"LAPORAN MONITORING SERAPAN ANGGARAN RKA PRODI"})
-	_ = w.Write([]string{"Tahun Anggaran", strconv.Itoa(serapan.TahunAnggaran)})
+	_ = w.Write([]string{"Tahun Anggaran", serapan.TahunAnggaran})
 	_ = w.Write([]string{"Tanggal Cetak", time.Now().Format("2006-01-02 15:04:05")})
-	_ = w.Write([]string{"Total Pagu Anggaran (Rp)", fmt.Sprintf("%.2f", serapan.TotalPagu)})
-	_ = w.Write([]string{"Total Serapan Riil (Rp)", fmt.Sprintf("%.2f", serapan.TotalSerapan)})
-	_ = w.Write([]string{"Persentase Serapan", fmt.Sprintf("%.2f%%", serapan.PersentaseTotal)})
+	_ = w.Write([]string{"Total Pagu Anggaran (Rp)", fmt.Sprintf("%.2f", serapan.PaguTotal)})
+	_ = w.Write([]string{"Total Serapan Riil (Rp)", fmt.Sprintf("%.2f", serapan.TotalTerpakai)})
+	_ = w.Write([]string{"Persentase Serapan", fmt.Sprintf("%.2f%%", serapan.PersentaseSerapan)})
 	_ = w.Write([]string{""})
 
-	_ = w.Write([]string{"TRIWULAN", "PAGU (RP)", "REALISASI (RP)", "SERAPAN (%)"})
-	for _, tw := range serapan.SerapanPerTriwulan {
+	_ = w.Write([]string{"TRIWULAN", "SERAPAN (RP)"})
+	for tw, val := range serapan.SerapanPerTriwulan {
 		_ = w.Write([]string{
-			tw.Triwulan,
-			fmt.Sprintf("%.2f", tw.TargetPagu),
-			fmt.Sprintf("%.2f", tw.Realisasi),
-			fmt.Sprintf("%.2f%%", tw.Persentase),
+			tw,
+			fmt.Sprintf("%.2f", val),
 		})
 	}
 	_ = w.Write([]string{""})
 
-	_ = w.Write([]string{"POS ANGGARAN", "PAGU (RP)", "REALISASI (RP)", "SISA (RP)", "SERAPAN (%)", "STATUS"})
-	for _, pos := range serapan.SerapanPerPos {
-		status := "NORMAL"
-		if pos.IsOverBudget {
-			status = "OVER-BUDGET"
-		}
+	_ = w.Write([]string{"POS ANGGARAN", "REALISASI (RP)"})
+	for pos, val := range serapan.SerapanPerPos {
 		_ = w.Write([]string{
-			pos.NamaPos,
-			fmt.Sprintf("%.2f", pos.Pagu),
-			fmt.Sprintf("%.2f", pos.Realisasi),
-			fmt.Sprintf("%.2f", pos.Sisa),
-			fmt.Sprintf("%.2f%%", pos.Persentase),
-			status,
+			pos,
+			fmt.Sprintf("%.2f", val),
 		})
 	}
 

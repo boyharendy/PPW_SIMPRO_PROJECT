@@ -1,106 +1,80 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, SlidersHorizontal, Copy, Send, FileEdit } from 'lucide-react';
+import { Plus, Copy, Send, FileEdit } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import Modal from '@/components/ui/Modal';
-
-interface InstrumentTemplate {
-  id: string;
-  program: 'KP' | 'PSI' | 'PDLK';
-  nama: string;
-  skalaMaks: number;
-  dibuatAt: string;
-  jumlahAspek: number;
-  jumlahResponden: number;
-  status: 'AKTIF' | 'DRAF' | 'ARSIP';
-}
-
-const INITIAL_TEMPLATES: InstrumentTemplate[] = [
-  {
-    id: 'tmpl-kp-2025',
-    program: 'KP',
-    nama: 'Instrumen Kepuasan Mitra Kerja Praktik 2025/2026',
-    skalaMaks: 5,
-    dibuatAt: '2025-06-01',
-    jumlahAspek: 4,
-    jumlahResponden: 18,
-    status: 'AKTIF',
-  },
-  {
-    id: 'tmpl-psi-2025',
-    program: 'PSI',
-    nama: 'Instrumen Evaluasi Mitra Proyek Sistem Informasi (PSI)',
-    skalaMaks: 5,
-    dibuatAt: '2025-06-05',
-    jumlahAspek: 4,
-    jumlahResponden: 12,
-    status: 'AKTIF',
-  },
-  {
-    id: 'tmpl-pdlk-2025',
-    program: 'PDLK',
-    nama: 'Instrumen Pembimbing Mitra Pembelajaran di Luar Kampus',
-    skalaMaks: 5,
-    dibuatAt: '2025-06-10',
-    jumlahAspek: 3,
-    jumlahResponden: 6,
-    status: 'AKTIF',
-  },
-  {
-    id: 'tmpl-kp-draft',
-    program: 'KP',
-    nama: 'Draft Instrumen KP Skema Magang MBKM 2026',
-    skalaMaks: 5,
-    dibuatAt: '2025-08-01',
-    jumlahAspek: 5,
-    jumlahResponden: 0,
-    status: 'DRAF',
-  },
-];
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
+import { mockSurveyTemplates } from '@/lib/mock-data';
+import type { PartnerSurveyTemplate } from '@/lib/types';
 
 export default function Page() {
-  const [templates, setTemplates] = useState<InstrumentTemplate[]>(INITIAL_TEMPLATES);
+  const [templates, setTemplates] = useState<PartnerSurveyTemplate[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [newProgram, setNewProgram] = useState<'KP' | 'PSI' | 'PDLK'>('KP');
   const [newNama, setNewNama] = useState('');
+
+  useEffect(() => {
+    const loaded = storageSync.get<PartnerSurveyTemplate[]>(STORAGE_KEYS.SURVEYS, mockSurveyTemplates);
+    setTemplates(loaded);
+  }, []);
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newNama.trim()) return;
 
-    const newTmpl: InstrumentTemplate = {
-      id: `tmpl-${Date.now()}`,
+    const tmplId = `tmpl-${Date.now()}`;
+    const newTmpl: PartnerSurveyTemplate = {
+      id: tmplId,
       program: newProgram,
       nama: newNama.trim(),
-      skalaMaks: 5,
-      dibuatAt: new Date().toISOString().split('T')[0],
-      jumlahAspek: 3,
-      jumlahResponden: 0,
+      skala_maks: 5,
       status: 'DRAF',
+      dibuat_oleh: 'u-koordinator',
+      created_at: new Date().toISOString().split('T')[0],
+      updated_at: new Date().toISOString().split('T')[0],
+      total_responden: 0,
+      aspek: [
+        { id: `asp-${tmplId}-1`, template_id: tmplId, nama_aspek: 'Integritas & Etika Profesional', deskripsi: 'Disiplin, kejujuran, dan sopan santun mahasiswa di tempat kerja', bobot: 25, urutan: 1, is_active: true },
+        { id: `asp-${tmplId}-2`, template_id: tmplId, nama_aspek: 'Kompetensi Teknis Sistem Informasi', deskripsi: 'Keahlian teknis dalam analisis, basis data, dan pemrograman', bobot: 35, urutan: 2, is_active: true },
+        { id: `asp-${tmplId}-3`, template_id: tmplId, nama_aspek: 'Komunikasi & Kerja Sama Tim', deskripsi: 'Interaksi kerja serta penyampaian laporan kemajuan', bobot: 20, urutan: 3, is_active: true },
+        { id: `asp-${tmplId}-4`, template_id: tmplId, nama_aspek: 'Koordinasi Pelaksanaan dengan Prodi', deskripsi: 'Kelancaran pelaporan berkala dan kesesuaian capaian', bobot: 20, urutan: 4, is_active: true },
+      ],
     };
 
-    setTemplates([newTmpl, ...templates]);
+    const updated = [newTmpl, ...templates];
+    storageSync.set(STORAGE_KEYS.SURVEYS, updated);
+    setTemplates(updated);
     setNewNama('');
     setModalOpen(false);
   };
 
-  const handleDuplicate = (template: InstrumentTemplate) => {
-    const duplicated: InstrumentTemplate = {
+  const handleDuplicate = (template: PartnerSurveyTemplate) => {
+    const tmplId = `tmpl-${Date.now()}`;
+    const duplicated: PartnerSurveyTemplate = {
       ...template,
-      id: `tmpl-${Date.now()}`,
+      id: tmplId,
       nama: `${template.nama} (Salinan)`,
-      jumlahResponden: 0,
       status: 'DRAF',
-      dibuatAt: new Date().toISOString().split('T')[0],
+      total_responden: 0,
+      created_at: new Date().toISOString().split('T')[0],
+      updated_at: new Date().toISOString().split('T')[0],
+      aspek: (template.aspek || []).map((a, i) => ({
+        ...a,
+        id: `asp-${tmplId}-${i + 1}`,
+        template_id: tmplId,
+      })),
     };
-    setTemplates([duplicated, ...templates]);
+
+    const updated = [duplicated, ...templates];
+    storageSync.set(STORAGE_KEYS.SURVEYS, updated);
+    setTemplates(updated);
   };
 
-  const columns: DataTableColumn<InstrumentTemplate>[] = [
+  const columns: DataTableColumn<PartnerSurveyTemplate>[] = [
     {
       key: 'program',
       header: 'Program',
@@ -117,20 +91,28 @@ export default function Page() {
         <div>
           <div className="font-semibold text-slate-800 text-sm">{r.nama}</div>
           <div className="text-xs text-slate-400 mt-0.5">
-            Skala 1–{r.skalaMaks} • Dibuat: {r.dibuatAt}
+            Skala 1–{r.skala_maks} • Dibuat: {r.created_at}
           </div>
         </div>
       ),
     },
     {
-      key: 'jumlahAspek',
+      key: 'aspek',
       header: 'Aspek Penilaian',
-      render: (r) => <span className="text-sm font-medium text-slate-700">{r.jumlahAspek} Aspek</span>,
+      render: (r) => (
+        <span className="text-sm font-medium text-slate-700">
+          {r.aspek?.filter((a) => a.is_active !== false).length || 0} Aspek
+        </span>
+      ),
     },
     {
-      key: 'jumlahResponden',
+      key: 'total_responden',
       header: 'Responden',
-      render: (r) => <span className="text-sm text-slate-600">{r.jumlahResponden} Mitra</span>,
+      render: (r) => (
+        <span className="text-sm text-slate-600">
+          {r.total_responden || 0} Mitra
+        </span>
+      ),
     },
     {
       key: 'status',
@@ -144,22 +126,23 @@ export default function Page() {
       render: (r) => (
         <div className="flex items-center justify-end gap-1.5">
           <Link
-            href="/dashboard/kepuasan-mitra/pengiriman"
-            className="btn-secondary text-xs px-2 py-1 inline-flex items-center gap-1"
-            title="Kirim ke Mitra"
+            href={`/dashboard/kepuasan-mitra/pengiriman?program=${r.program}&templateId=${r.id}`}
+            className="btn-secondary text-xs px-2.5 py-1 inline-flex items-center gap-1"
+            title="Kirim instrumen ini ke penempatan mitra"
           >
-            <Send size={12} /> Kirim
+            <Send size={12} /> Kirim ke Mitra
           </Link>
           <button
             onClick={() => handleDuplicate(r)}
             className="btn-secondary text-xs px-2 py-1 inline-flex items-center gap-1"
-            title="Duplikasi Template"
+            title="Duplikasi Template Kuesioner"
           >
             <Copy size={12} /> Duplikasi
           </button>
           <Link
             href={`/dashboard/kepuasan-mitra/instrumen/${r.id}`}
             className="btn-primary text-xs px-2.5 py-1 inline-flex items-center gap-1"
+            title="Kelola butir aspek dan bobot kuesioner"
           >
             <FileEdit size={12} /> Kelola
           </Link>
@@ -229,7 +212,7 @@ export default function Page() {
           </div>
 
           <div className="p-3 bg-blue-50/60 border border-blue-100 rounded-xl text-xs text-blue-700 leading-relaxed">
-            Template baru akan dibuat dengan status <strong>DRAF</strong> dan memuat 4 aspek penilaian standar (Integritas, Kompetensi Teknis, Komunikasi, dan Koordinasi) yang dapat Anda kustomisasi selanjutnya.
+            Template baru akan dibuat dengan status <strong>DRAF</strong> dan memuat 4 aspek penilaian standar (Integritas, Kompetensi Teknis, Komunikasi, dan Koordinasi) yang dapat Anda ubah atau sesuaikan setelah dibuat.
           </div>
 
           <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">

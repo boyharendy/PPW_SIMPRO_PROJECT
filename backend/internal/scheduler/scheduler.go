@@ -166,7 +166,7 @@ func (s *simproScheduler) jobRemindInvitations() int {
 
 // 3. remind_trip_reports: Pengingat unggah SPJ dinas pada H+3 dan H+7
 func (s *simproScheduler) jobRemindTripReports() int {
-	trips, _, err := s.tripRepo.FindAll("", "", "", 0, 1000, 0)
+	trips, _, err := s.tripRepo.FindAll("", "", 1000, 0)
 	if err != nil {
 		return 0
 	}
@@ -187,7 +187,7 @@ func (s *simproScheduler) jobRemindTripReports() int {
 
 // 4. remind_rps_reviews: Pengingat batas waktu review RPS
 func (s *simproScheduler) jobRemindRpsReviews() int {
-	subs, _, err := s.rpsRepo.FindSubmissions("", "", 1000, 0)
+	subs, err := s.rpsRepo.FindAll("", "")
 	if err != nil {
 		return 0
 	}

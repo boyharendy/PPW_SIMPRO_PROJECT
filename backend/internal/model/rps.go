@@ -20,20 +20,25 @@ const (
 
 // 5 Komponen SPMI Review RPS (FR-41 & Bab 10.4)
 const (
-	RpsKomponenCplCpmk    = "KESELARASAN_CPL_CPMK"
-	RpsKomponenBahanKajian = "BAHAN_KAJIAN"
-	RpsKomponenMetode      = "METODE_PEMBELAJARAN"
-	RpsKomponenPenilaian   = "BENTUK_BOBOT_PENILAIAN"
-	RpsKomponenReferensi   = "REFERENSI"
+	RpsKomponenCplCpmk            = "KESELARASAN_CPL_CPMK"
+	RpsKomponenBahanKajian        = "BAHAN_KAJIAN"
+	RpsKomponenMetode             = "METODE_PEMBELAJARAN"
+	RpsKomponenMetodePembelajaran = "METODE_PEMBELAJARAN"
+	RpsKomponenPenilaian          = "BENTUK_BOBOT_PENILAIAN"
+	RpsKomponenSistemPenilaian    = "BENTUK_BOBOT_PENILAIAN"
+	RpsKomponenReferensi          = "REFERENSI"
+	RpsKomponenKemutakhiranPustaka = "REFERENSI"
 )
 
 type RpsReviewItem struct {
-	ID          string `json:"id"`
-	RpsReviewID string `json:"rps_review_id"`
-	ReviewID    string `json:"review_id,omitempty"`
-	Komponen    string `json:"komponen"` // KESELARASAN_CPL_CPMK | BAHAN_KAJIAN | METODE_PEMBELAJARAN | BENTUK_BOBOT_PENILAIAN | REFERENSI
-	Hasil       string `json:"hasil"`    // SESUAI | PERLU_PERBAIKAN
-	Catatan     string `json:"catatan,omitempty"`
+	ID          string  `json:"id"`
+	RpsReviewID string  `json:"rps_review_id"`
+	ReviewID    string  `json:"review_id,omitempty"`
+	Komponen    string  `json:"komponen"` // KESELARASAN_CPL_CPMK | BAHAN_KAJIAN | METODE_PEMBELAJARAN | BENTUK_BOBOT_PENILAIAN | REFERENSI
+	Hasil       string  `json:"hasil"`    // SESUAI | PERLU_PERBAIKAN
+	Catatan     string  `json:"catatan,omitempty"`
+	Skor        float64 `json:"skor,omitempty"`
+	Sesuai      bool    `json:"sesuai,omitempty"`
 }
 
 type RpsReview struct {

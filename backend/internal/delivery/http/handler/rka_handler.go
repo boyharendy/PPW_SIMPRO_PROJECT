@@ -33,7 +33,10 @@ func (h *RkaHandler) GetRkaList(c *gin.Context) {
 }
 
 func (h *RkaHandler) GetRkaByYear(c *gin.Context) {
-	tahun := c.Param("tahun")
+	tahun := c.Param("id")
+	if tahun == "" {
+		tahun = c.Param("tahun")
+	}
 	doc, err := h.usecase.GetRkaByYear(tahun)
 	if err != nil {
 		response.NotFound(c, "Dokumen RKA tahun "+tahun+" tidak ditemukan")
@@ -57,7 +60,10 @@ func (h *RkaHandler) CreateRka(c *gin.Context) {
 }
 
 func (h *RkaHandler) UpdateRka(c *gin.Context) {
-	tahun := c.Param("tahun")
+	tahun := c.Param("id")
+	if tahun == "" {
+		tahun = c.Param("tahun")
+	}
 	var req model.RkaDocument
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "Format data update RKA tidak valid", err.Error())
@@ -72,7 +78,10 @@ func (h *RkaHandler) UpdateRka(c *gin.Context) {
 }
 
 func (h *RkaHandler) AddRealization(c *gin.Context) {
-	tahun := c.Param("tahun")
+	tahun := c.Param("id")
+	if tahun == "" {
+		tahun = c.Param("tahun")
+	}
 	var req model.RkaRealization
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "Format data realisasi tidak valid", err.Error())
@@ -86,7 +95,10 @@ func (h *RkaHandler) AddRealization(c *gin.Context) {
 }
 
 func (h *RkaHandler) GetSerapan(c *gin.Context) {
-	tahun := c.Param("tahun")
+	tahun := c.Param("id")
+	if tahun == "" {
+		tahun = c.Param("tahun")
+	}
 	serapan, err := h.usecase.GetSerapan(tahun)
 	if err != nil {
 		response.NotFound(c, err.Error())

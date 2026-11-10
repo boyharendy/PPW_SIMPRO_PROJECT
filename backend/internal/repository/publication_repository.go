@@ -402,6 +402,7 @@ type memoryPublicationRepository struct {
 	publications map[string]*model.Publication
 	reviews      map[string][]*model.PublicationReview
 	stageLogs    map[string][]*model.PublicationStageLog
+	authors      map[string][]*model.PublicationAuthor
 }
 
 func NewMemoryPublicationRepository() PublicationRepository {
@@ -409,6 +410,7 @@ func NewMemoryPublicationRepository() PublicationRepository {
 		publications: make(map[string]*model.Publication),
 		reviews:      make(map[string][]*model.PublicationReview),
 		stageLogs:    make(map[string][]*model.PublicationStageLog),
+		authors:      make(map[string][]*model.PublicationAuthor),
 	}
 }
 

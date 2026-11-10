@@ -137,7 +137,9 @@ func (r *supabaseComplaintRepository) Create(c *model.Complaint) (*model.Complai
 	if c.NomorAduan == "" {
 		c.NomorAduan = c.KodeTiket
 	}
-	c.Status = model.ComplaintStatusDiterima
+	if c.Status == "" {
+		c.Status = model.ComplaintStatusDiterima
+	}
 	c.TanggalPengaduan = time.Now().Format("2006-01-02")
 
 	// NF-04: Do not store reporter user_id or IP address
@@ -468,7 +470,9 @@ func (r *memoryComplaintRepository) Create(c *model.Complaint) (*model.Complaint
 	if c.NomorAduan == "" {
 		c.NomorAduan = c.KodeTiket
 	}
-	c.Status = model.ComplaintStatusDiterima
+	if c.Status == "" {
+		c.Status = model.ComplaintStatusDiterima
+	}
 	c.TanggalPengaduan = time.Now().Format("2006-01-02")
 	c.CreatedAt = time.Now()
 	c.UpdatedAt = time.Now()
@@ -626,7 +630,7 @@ func (r *memoryComplaintRepository) ForwardToSatgas(id, tanggal, nomorReferensi,
 	if !ok {
 		return errors.New("aduan tidak ditemukan")
 	}
-	c.DiteruskanKeSatgasTanggal = &tanggal
+	c.DiteruskanKeSatgasTanggal = tanggal
 	c.NomorReferensiSatgas = nomorReferensi
 	c.PetugasSatgas = petugasSatgas
 	c.Status = model.ComplaintStatusDitindaklanjuti
