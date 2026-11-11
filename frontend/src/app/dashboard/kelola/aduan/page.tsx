@@ -106,9 +106,9 @@ export default function Page() {
       render: (r) => (
         <Link
           href={`/dashboard/kelola/aduan/${r.id}`}
-          className="btn-primary text-xs px-2.5 py-1 inline-flex items-center gap-1"
+          className="btn-secondary text-xs px-2.5 py-1 inline-flex items-center gap-1.5"
         >
-          <Eye size={12} /> Detail
+          <Eye size={13} /> Detail
         </Link>
       ),
     },

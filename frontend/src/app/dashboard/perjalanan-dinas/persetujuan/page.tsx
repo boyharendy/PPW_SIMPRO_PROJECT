@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CheckCircle2, XCircle, AlertTriangle, FileText, Check, X } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertTriangle, FileText, Check, X, Eye } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -137,9 +137,21 @@ export default function Page() {
             setNoSuratTugas(`ST/09${r.id.replace('PD-', '')}/UN-SI/XI/2025`);
             setCatatan('');
           }}
-          className="btn-primary text-xs px-2.5 py-1 inline-flex items-center gap-1"
+          className={
+            r.status === 'DIAJUKAN'
+              ? 'btn-primary text-xs px-2.5 py-1 inline-flex items-center gap-1'
+              : 'btn-secondary text-xs px-2.5 py-1 inline-flex items-center gap-1.5'
+          }
         >
-          {r.status === 'DIAJUKAN' ? 'Persetujuan' : 'Detail'}
+          {r.status === 'DIAJUKAN' ? (
+            <>
+              <CheckCircle2 size={12} /> Persetujuan
+            </>
+          ) : (
+            <>
+              <Eye size={13} /> Detail
+            </>
+          )}
         </button>
       ),
     },

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, FileText, ArrowRight } from 'lucide-react';
+import { Plus, FileText, ArrowRight, Eye } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -92,9 +92,9 @@ export default function Page() {
       render: (row) => (
         <button
           onClick={() => router.push(`/dashboard/rka/${row.tahun}`)}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
+          className="btn-secondary text-xs px-2.5 py-1 inline-flex items-center gap-1.5"
         >
-          Kelola <ArrowRight size={14} />
+          <Eye size={13} /> Detail
         </button>
       ),
     },

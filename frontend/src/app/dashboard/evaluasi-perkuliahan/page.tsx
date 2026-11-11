@@ -110,10 +110,14 @@ export default function Page() {
       render: (r) => (
         <Link
           href={`/dashboard/evaluasi-perkuliahan/${r.id}`}
-          className="btn-primary text-xs px-3 py-1 inline-flex items-center gap-1.5"
+          className={
+            r.status === 'BELUM' || r.status === 'DRAF'
+              ? 'btn-primary text-xs px-3 py-1 inline-flex items-center gap-1.5'
+              : 'btn-secondary text-xs px-2.5 py-1 inline-flex items-center gap-1.5'
+          }
         >
-          {r.status === 'BELUM' || r.status === 'DRAF' ? <Edit3 size={12} /> : <Eye size={12} />}
-          {r.status === 'BELUM' || r.status === 'DRAF' ? 'Isi Form' : 'Lihat Detail'}
+          {r.status === 'BELUM' || r.status === 'DRAF' ? <Edit3 size={12} /> : <Eye size={13} />}
+          {r.status === 'BELUM' || r.status === 'DRAF' ? 'Isi Form' : 'Detail'}
         </Link>
       ),
     },
