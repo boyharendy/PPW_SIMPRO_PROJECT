@@ -73,7 +73,7 @@ export default function HimpunanAnalisisPage() {
 
   // Role detection
   const isKaprodi = currentRole === 'KAPRODI';
-  const isPembina = currentRole === 'DOSEN_PEMBINA' || currentRole === 'DOSEN';
+  const isPembina = currentRole === 'DOSEN_PEMBINA';
 
   // When selected proker changes, update single activity narrative
   const handleSelectProker = (id: string) => {

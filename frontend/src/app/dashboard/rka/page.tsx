@@ -1,217 +1,156 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Plus, FileText, ArrowRight, Eye } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
-import DataTable from '@/components/ui/DataTable';
-import StatusBadge from '@/components/ui/StatusBadge';
+import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import Modal from '@/components/ui/Modal';
-import { mockRkaDocuments } from '@/lib/mock-data';
-import { rkaService } from '@/lib/api/services/rka.service';
-import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
-import type { RkaDocument } from '@/lib/types';
-import { Plus, Wallet, ArrowRight, Eye, Layers } from 'lucide-react';
-import Link from 'next/link';
-import { formatRupiah, calculateAbsorptionPercentage } from '@/lib/utils';
+import { formatRupiah } from '@/lib/utils';
 
-export default function RkaListPage() {
-  const [rkaList, setRkaList] = useState<RkaDocument[]>(mockRkaDocuments);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [tahunBaru, setTahunBaru] = useState(new Date().getFullYear() + 1);
+interface RKA {
+  tahun: number;
+  judul: string;
+  totalPagu: number;
+  versiAktif: number;
+  status: string;
+}
+
+const MOCK_RKA: RKA[] = [
+  {
+    tahun: 2025,
+    judul: 'RKA Program Studi Informatika TA 2025',
+    totalPagu: 485000000,
+    versiAktif: 2,
+    status: 'AKTIF',
+  },
+  {
+    tahun: 2024,
+    judul: 'RKA Program Studi Informatika TA 2024',
+    totalPagu: 420000000,
+    versiAktif: 3,
+    status: 'DITUTUP',
+  },
+  {
+    tahun: 2023,
+    judul: 'RKA Program Studi Informatika TA 2023',
+    totalPagu: 375000000,
+    versiAktif: 2,
+    status: 'ARSIP',
+  },
+];
+
+export default function Page() {
+  const router = useRouter();
+  const [showModal, setShowModal] = useState(false);
+  const [tahunBaru, setTahunBaru] = useState('');
   const [judulBaru, setJudulBaru] = useState('');
 
-  useEffect(() => {
-    // Sinkronisasi data lokal saat mount di client
-    const local = storageSync.get<RkaDocument[]>(STORAGE_KEYS.RKA_DOCUMENTS, mockRkaDocuments);
-    if (local && local.length > 0) {
-      setRkaList(local);
-    }
-
-    let active = true;
-    rkaService
-      .getRkaList()
-      .then((res) => {
-        if (active && res.data && res.data.length > 0) {
-          setRkaList(res.data);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const newDoc: RkaDocument = {
-      id: `rka-${tahunBaru}`,
-      tahun_anggaran: tahunBaru,
-      judul: judulBaru || `Rencana Kerja dan Anggaran (RKA) Prodi SI Tahun ${tahunBaru}`,
-      status: 'DRAF',
-      total_anggaran: 0,
-      dibuat_oleh: 'u-admin',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      versions: [
-        {
-          id: `rka-ver-${tahunBaru}-1`,
-          rka_id: `rka-${tahunBaru}`,
-          nomor_versi: 1,
-          status: 'DRAF',
-          total_anggaran: 0,
-          row_version: 1,
-          dibuat_oleh: 'u-admin',
-          created_at: new Date().toISOString(),
-        },
-      ],
-    };
-
-    const updated = storageSync.prepend(STORAGE_KEYS.RKA_DOCUMENTS, newDoc, rkaList);
-    setRkaList(updated);
-    setModalOpen(false);
-
-    try {
-      await rkaService.createRka(newDoc);
-    } catch {
-      // Offline fallback
-    }
-  };
-
-  const columns = [
+  const columns: DataTableColumn<RKA>[] = [
     {
       key: 'tahun',
-      header: 'Tahun Anggaran & Dokumen',
-      render: (row: RkaDocument) => (
-        <div className="space-y-1">
-          <Link
-            href={`/dashboard/rka/${row.tahun_anggaran}`}
-            className="font-bold text-slate-800 hover:text-blue-600 text-xs sm:text-sm line-clamp-1"
-          >
-            {row.judul}
-          </Link>
-          <p className="text-[11px] text-slate-500">
-            Tahun Anggaran: <strong className="text-blue-700">{row.tahun_anggaran}</strong>
-          </p>
+      header: 'Tahun Anggaran',
+      render: (row) => (
+        <span className="font-semibold text-slate-800">{row.tahun}</span>
+      ),
+    },
+    {
+      key: 'judul',
+      header: 'Judul',
+      render: (row) => (
+        <div className="flex items-center gap-2">
+          <FileText size={15} className="text-blue-500 shrink-0" />
+          <span className="text-sm text-slate-700">{row.judul}</span>
         </div>
       ),
     },
     {
-      key: 'anggaran',
-      header: 'Pagu Anggaran',
-      render: (row: RkaDocument) => (
-        <div className="text-xs space-y-0.5">
-          <p className="font-bold text-slate-800">{formatRupiah(row.total_anggaran)}</p>
-          <p className="text-[11px] text-slate-500">
-            Realisasi: {formatRupiah(row.total_realisasi || 0)}
-          </p>
-        </div>
+      key: 'totalPagu',
+      header: 'Total Pagu',
+      render: (row) => (
+        <span className="font-medium text-slate-800">{formatRupiah(row.totalPagu)}</span>
       ),
     },
     {
-      key: 'serapan',
-      header: 'Serapan Anggaran',
-      render: (row: RkaDocument) => {
-        const pct = calculateAbsorptionPercentage(row.total_realisasi || 0, row.total_anggaran);
-        return (
-          <div className="text-xs space-y-1 w-32">
-            <div className="flex items-center justify-between font-bold">
-              <span className="text-blue-700">{pct}%</span>
-            </div>
-            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-600 rounded-full" style={{ width: `${pct}%` }} />
-            </div>
-          </div>
-        );
-      },
+      key: 'versiAktif',
+      header: 'Versi Aktif',
+      render: (row) => (
+        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
+          v{row.versiAktif}
+        </span>
+      ),
     },
     {
       key: 'status',
-      header: 'Status Dokumen',
-      render: (row: RkaDocument) => <StatusBadge status={row.status} size="sm" />,
+      header: 'Status',
+      render: (row) => <StatusBadge status={row.status} size="sm" />,
     },
     {
-      key: 'actions',
+      key: 'aksi',
       header: 'Aksi',
-      className: 'text-right',
-      render: (row: RkaDocument) => (
-        <Link
-          href={`/dashboard/rka/${row.tahun_anggaran}`}
-          className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1 font-semibold text-slate-600 hover:text-blue-600"
+      render: (row) => (
+        <button
+          onClick={() => router.push(`/dashboard/rka/${row.tahun}`)}
+          className="btn-secondary text-xs px-2.5 py-1 inline-flex items-center gap-1.5"
         >
-          <Eye size={13} />
-          <span>Buka RKA</span>
-        </Link>
+          <Eye size={13} /> Detail
+        </button>
       ),
     },
   ];
 
   return (
-    <div className="space-y-6">
+    <div>
       <PageHeader
-        title="Rencana Kerja dan Anggaran (RKA) Prodi"
-        description="Penyusunan RKA tahunan berversi, pengelolaan kegiatan, dan pemantauan serapan biaya anggaran prodi."
-        action={
+        title="Rencana Kerja & Anggaran (RKA)"
+        description="Kelola rencana kerja dan anggaran program studi per tahun anggaran"
+        actions={
           <button
-            type="button"
-            onClick={() => setModalOpen(true)}
-            className="btn-primary text-xs py-2 px-3.5 flex items-center gap-2"
+            onClick={() => setShowModal(true)}
+            className="bg-blue-600 text-white rounded-xl px-4 py-2 text-sm font-semibold flex items-center gap-2 hover:bg-blue-700 transition-colors"
           >
-            <Plus size={15} />
-            <span>Buat RKA Tahun Anggaran</span>
+            <Plus size={16} /> Buat RKA Tahun Baru
           </button>
         }
       />
 
-      <div className="card">
-        <DataTable
-          columns={columns}
-          data={rkaList}
-          emptyMessage="Belum ada dokumen RKA terdaftar."
-        />
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+        <DataTable columns={columns} data={MOCK_RKA} emptyMessage="Belum ada RKA" />
       </div>
 
-      {/* Modal Buat RKA Baru */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Buat RKA Tahun Anggaran Baru" size="md">
-        <form onSubmit={handleCreate} className="space-y-4 text-xs">
+      <Modal open={showModal} onClose={() => setShowModal(false)} title="Buat RKA Tahun Baru">
+        <div className="space-y-4">
           <div>
-            <label className="label">Tahun Anggaran</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Tahun Anggaran</label>
             <input
               type="number"
-              min={2024}
-              max={2035}
-              required
               value={tahunBaru}
-              onChange={(e) => setTahunBaru(Number(e.target.value) || 2026)}
-              className="input-field text-xs"
+              onChange={(e) => setTahunBaru(e.target.value)}
+              placeholder="Contoh: 2026"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm"
             />
           </div>
-
           <div>
-            <label className="label">Judul Dokumen RKA</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Judul RKA</label>
             <input
               type="text"
-              required
               value={judulBaru}
               onChange={(e) => setJudulBaru(e.target.value)}
-              placeholder={`Rencana Kerja dan Anggaran (RKA) Prodi SI Tahun ${tahunBaru}`}
-              className="input-field text-xs"
+              placeholder="Contoh: RKA Program Studi Informatika TA 2026"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm"
             />
           </div>
-
-          <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-800 leading-relaxed">
-            Sistem akan secara otomatis menerbitkan dokumen RKA berstatus <strong>DRAF</strong> beserta <strong>Versi Kerja Nomor 1</strong> yang siap diisi dengan daftar kegiatan dan pos anggaran.
-          </div>
-
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary text-xs">
+            <button onClick={() => setShowModal(false)} className="bg-white text-slate-700 border border-slate-200 rounded-xl px-4 py-2 text-sm font-medium">
               Batal
             </button>
-            <button type="submit" className="btn-primary text-xs">
-              Buat Dokumen RKA
+            <button className="bg-blue-600 text-white rounded-xl px-4 py-2 text-sm font-semibold hover:bg-blue-700 transition-colors">
+              Simpan
             </button>
           </div>
-        </form>
+        </div>
       </Modal>
     </div>
   );
 }
-

@@ -1,232 +1,170 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import PageHeader from '@/components/ui/PageHeader';
-import StatusBadge from '@/components/ui/StatusBadge';
-import StatusStepper from '@/components/ui/StatusStepper';
-import { mockBusinessTrips } from '@/lib/mock-data';
-import { tripService } from '@/lib/api/services/trip.service';
-import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
-import type { BusinessTrip } from '@/lib/types';
-import {
-  ArrowLeft,
-  Calendar,
-  MapPin,
-  User,
-  Wallet,
-  FileCheck,
-  FileText,
-  AlertTriangle,
-  Upload,
-} from 'lucide-react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { formatDate, formatRupiah } from '@/lib/utils';
+import { useParams } from 'next/navigation';
+import { ArrowLeft, FileText, UploadCloud, CheckCircle2, Clock, MapPin, Calendar, Wallet } from 'lucide-react';
+import PageHeader from '@/components/ui/PageHeader';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { formatRupiah, formatDateShort } from '@/lib/utils';
 
-const TRIP_STEPS = [
-  { id: 'DRAF', label: 'Draf' },
-  { id: 'DIAJUKAN', label: 'Diajukan' },
-  { id: 'DISETUJUI', label: 'Disetujui' },
-  { id: 'DILAPORKAN', label: 'Dilaporkan' },
-  { id: 'SELESAI', label: 'Selesai' },
-];
+export default function Page() {
+  const { id } = useParams<{ id: string }>();
 
-export default function DetailPerjalananPage() {
-  const params = useParams();
-  const tripId = params.id as string;
-
-  const [trip, setTrip] = useState<BusinessTrip>(() => {
-    const list = storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips);
-    return list.find((t) => t.id === tripId) || mockBusinessTrips[0];
+  const [trip] = useState({
+    id: id || 'PD-001',
+    tujuan: 'Surabaya, Jawa Timur',
+    maksud: 'Menghadiri Seminar Nasional Teknologi Informasi dan Komunikasi 2025 serta koordinasi forum prodi SI.',
+    pelaksana: 'Dr. Budi Santoso, M.Kom.',
+    anggota: ['Siti Aminah, M.T.'],
+    tglBerangkat: '2025-03-10',
+    tglKembali: '2025-03-12',
+    sumberDana: 'RKA_PRODI',
+    posRka: 'POS-04 — Perjalanan Dinas Konferensi & Seminar',
+    noSuratTugas: 'ST/088/UN-SI/III/2025',
+    status: 'DISETUJUI',
+    batasLaporan: '2025-03-19',
+    biaya: [
+      { komponen: 'Transportasi (Tiket Kereta/Pesawat)', estimasi: 2400000, realisasi: 2350000 },
+      { komponen: 'Akomodasi (Penginapan 2 Malam)', estimasi: 1200000, realisasi: 1100000 },
+      { komponen: 'Uang Harian & Konsumsi (3 Hari)', estimasi: 1050000, realisasi: 1050000 },
+      { komponen: 'Lain-lain (Registrasi Seminar)', estimasi: 750000, realisasi: 750000 },
+    ],
   });
 
-  useEffect(() => {
-    let active = true;
-    tripService
-      .getTripById(tripId)
-      .then((res) => {
-        if (active && res.data) {
-          setTrip(res.data);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [tripId]);
-
-  const totalEstimasi = trip.costs.reduce((s, c) => s + (c.estimasi_biaya || 0), 0);
-  const totalRealisasi = trip.costs.reduce((s, c) => s + (c.realisasi_biaya || 0), 0);
+  const totalEstimasi = trip.biaya.reduce((s, b) => s + b.estimasi, 0);
+  const totalRealisasi = trip.biaya.reduce((s, b) => s + (b.realisasi || 0), 0);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
         <Link
           href="/dashboard/perjalanan-dinas"
-          className="text-xs text-slate-500 hover:text-blue-600 flex items-center gap-1 font-medium"
+          className="text-xs text-slate-500 hover:text-slate-800 inline-flex items-center gap-1 font-medium"
         >
-          <ArrowLeft size={14} />
-          <span>Kembali ke Daftar Perjalanan</span>
+          <ArrowLeft size={14} /> Kembali ke Daftar Perjalanan Dinas
         </Link>
       </div>
 
       <PageHeader
-        title={`Perjalanan Dinas: ${trip.tujuan}`}
-        description={`Pelaksana: ${trip.pengaju?.nama_lengkap} • Periode: ${formatDate(trip.tanggal_berangkat)} s.d. ${formatDate(trip.tanggal_kembali)}`}
-        action={
+        title={`Perjalanan Dinas ke ${trip.tujuan}`}
+        description={`Nomor Surat Tugas: ${trip.noSuratTugas || 'Belum Diterbitkan'} • ID: ${trip.id}`}
+        badge={<StatusBadge status={trip.status} size="sm" />}
+        actions={
           <div className="flex items-center gap-2">
-            <StatusBadge status={trip.status} size="md" />
-            {trip.status === 'DISETUJUI' && (
-              <Link
-                href={`/dashboard/perjalanan-dinas/${trip.id}/laporan`}
-                className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5"
-              >
-                <Upload size={14} />
-                <span>Kirim Laporan & Bukti</span>
-              </Link>
-            )}
+            <Link
+              href={`/dashboard/perjalanan-dinas/${trip.id}/laporan`}
+              className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5"
+            >
+              <UploadCloud size={14} /> Kirim Laporan Realisasi
+            </Link>
           </div>
         }
       />
 
-      {/* Stepper Card */}
-      <div className="card space-y-2">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-            Alur Perjalanan Dinas
-          </span>
-          {trip.batas_laporan && (
-            <span className="text-[11px] text-amber-600 font-medium">
-              Batas Pelaporan: {formatDate(trip.batas_laporan)}
-            </span>
-          )}
+      {/* Rincian Kegiatan */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="card md:col-span-2 space-y-4">
+          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+            Informasi Surat Tugas & Jadwal
+          </h3>
+          <div className="grid grid-cols-2 gap-4 text-xs">
+            <div>
+              <span className="text-slate-400 block mb-0.5">Kota / Lokasi Tujuan:</span>
+              <span className="font-semibold text-slate-800 flex items-center gap-1">
+                <MapPin size={13} className="text-rose-500" /> {trip.tujuan}
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-400 block mb-0.5">Jadwal Perjalanan:</span>
+              <span className="font-semibold text-slate-800 flex items-center gap-1">
+                <Calendar size={13} className="text-blue-500" /> {formatDateShort(trip.tglBerangkat)} s.d. {formatDateShort(trip.tglKembali)}
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-400 block mb-0.5">Pelaksana Utama:</span>
+              <span className="font-medium text-slate-800">{trip.pelaksana}</span>
+            </div>
+            <div>
+              <span className="text-slate-400 block mb-0.5">Anggota Rombongan:</span>
+              <span className="font-medium text-slate-800">{trip.anggota.join(', ') || '-'}</span>
+            </div>
+            <div className="col-span-2">
+              <span className="text-slate-400 block mb-0.5">Maksud & Output Kegiatan:</span>
+              <p className="text-xs text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-100 leading-relaxed">
+                {trip.maksud}
+              </p>
+            </div>
+          </div>
         </div>
-        <StatusStepper steps={TRIP_STEPS} currentStepId={trip.status} />
+
+        {/* Anggaran & Pos RKA */}
+        <div className="card space-y-3">
+          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+            Sumber Pembiayaan
+          </h3>
+          <div>
+            <span className="text-xs text-slate-400 block mb-0.5">Sumber Dana:</span>
+            <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+              {trip.sumberDana.replace('_', ' ')}
+            </span>
+          </div>
+          <div>
+            <span className="text-xs text-slate-400 block mb-0.5">Alokasi Pos RKA:</span>
+            <span className="text-xs text-slate-700 font-medium">{trip.posRka}</span>
+          </div>
+          <div className="pt-2 border-t border-slate-100">
+            <span className="text-xs text-slate-400 block mb-0.5">Batas Pengumpulan Laporan:</span>
+            <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">
+              {formatDateShort(trip.batasLaporan)} (7 Hari kerja)
+            </span>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Cost Breakdown & Report */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Biaya Estimasi vs Realisasi */}
-          <div className="card space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-slate-800">
-                  Rincian Biaya: Estimasi vs Realisasi
-                </h3>
-                <p className="text-xs text-slate-500">Perbandingan per komponen pembiayaan dinas</p>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase">
-                  <tr>
-                    <th className="px-3 py-2 text-left">Komponen Biaya</th>
-                    <th className="px-3 py-2 text-right">Estimasi Diajukan</th>
-                    <th className="px-3 py-2 text-right">Realisasi Riil</th>
-                    <th className="px-3 py-2 text-left">Bukti Pendukung</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {trip.costs.map((c) => (
-                    <tr key={c.id} className="hover:bg-slate-50/50">
-                      <td className="px-3 py-2.5">
-                        <p className="font-semibold text-slate-800">{c.komponen.replace('_', ' ')}</p>
-                        {c.keterangan && (
-                          <p className="text-[10px] text-slate-400">{c.keterangan}</p>
-                        )}
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-medium text-slate-600">
-                        {formatRupiah(c.estimasi_biaya)}
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-bold text-slate-800">
-                        {c.realisasi_biaya !== undefined ? formatRupiah(c.realisasi_biaya) : '-'}
-                      </td>
-                      <td className="px-3 py-2.5 text-slate-500">
-                        {c.nama_berkas_bukti ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] text-blue-600">
-                            <FileText size={12} />
-                            {c.nama_berkas_bukti}
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-slate-400 italic">Belum ada berkas</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                  {/* Totals */}
-                  <tr className="bg-slate-50/80 font-bold text-slate-800 border-t border-slate-200">
-                    <td className="px-3 py-2.5">Total Biaya</td>
-                    <td className="px-3 py-2.5 text-right text-blue-600">{formatRupiah(totalEstimasi)}</td>
-                    <td className="px-3 py-2.5 text-right text-emerald-600">
-                      {totalRealisasi > 0 ? formatRupiah(totalRealisasi) : '-'}
+      {/* Komparasi Estimasi vs Realisasi Biaya */}
+      <div className="card">
+        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-3">
+          Rincian Estimasi vs Realisasi Biaya (FR-35)
+        </h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-slate-100 text-left text-slate-400 font-semibold uppercase">
+                <th className="py-2.5 px-3">Komponen Biaya</th>
+                <th className="py-2.5 px-3 text-right">Estimasi Usulan</th>
+                <th className="py-2.5 px-3 text-right">Realisasi Riil</th>
+                <th className="py-2.5 px-3 text-right">Selisih</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {trip.biaya.map((b, idx) => {
+                const diff = (b.realisasi || 0) - b.estimasi;
+                return (
+                  <tr key={idx} className="hover:bg-slate-50/50">
+                    <td className="py-2.5 px-3 font-medium text-slate-800">{b.komponen}</td>
+                    <td className="py-2.5 px-3 text-right text-slate-600 font-mono">{formatRupiah(b.estimasi)}</td>
+                    <td className="py-2.5 px-3 text-right text-slate-800 font-mono font-semibold">{formatRupiah(b.realisasi)}</td>
+                    <td className={`py-2.5 px-3 text-right font-mono font-bold ${diff <= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      {diff <= 0 ? `- ${formatRupiah(Math.abs(diff))}` : `+ ${formatRupiah(diff)}`}
                     </td>
-                    <td className="px-3 py-2.5" />
                   </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Laporan Hasil Perjalanan */}
-          {trip.laporan_hasil && (
-            <div className="card space-y-3">
-              <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2">
-                Laporan Hasil Perjalanan
-              </h3>
-              <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap bg-slate-50 p-4 rounded-xl border border-slate-100">
-                {trip.laporan_hasil}
-              </p>
-              {trip.catatan_kelengkapan && (
-                <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 flex items-start gap-2">
-                  <FileCheck size={16} className="text-emerald-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-bold">Verifikasi Admin Prodi: </span>
-                    <span>{trip.catatan_kelengkapan}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Right Column: Metadata Details */}
-        <div className="space-y-6">
-          <div className="card space-y-4 text-xs">
-            <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2">
-              Informasi Administrasi
-            </h3>
-
-            <div className="space-y-3">
-              <div>
-                <p className="text-[10px] text-slate-400 uppercase font-semibold">Nomor Surat Tugas</p>
-                <p className="font-mono font-bold text-slate-800">
-                  {trip.nomor_surat_tugas || 'Belum Diterbitkan'}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-[10px] text-slate-400 uppercase font-semibold">Sumber Pembiayaan</p>
-                <p className="font-semibold text-blue-700">{trip.sumber_dana.replace('_', ' ')}</p>
-              </div>
-
-              <div>
-                <p className="text-[10px] text-slate-400 uppercase font-semibold">Maksud Perjalanan</p>
-                <p className="text-slate-700 leading-relaxed">{trip.maksud_kegiatan}</p>
-              </div>
-
-              {trip.catatan_keputusan && (
-                <div className="pt-2 border-t border-slate-100">
-                  <p className="text-[10px] text-slate-400 uppercase font-semibold">Catatan Keputusan Kaprodi</p>
-                  <p className="text-slate-700 italic mt-0.5">&ldquo;{trip.catatan_keputusan}&rdquo;</p>
-                </div>
-              )}
-            </div>
-          </div>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-slate-200 font-bold bg-slate-50/70">
+                <td className="py-3 px-3 text-slate-900">Total Akumulasi Biaya</td>
+                <td className="py-3 px-3 text-right text-slate-700 font-mono">{formatRupiah(totalEstimasi)}</td>
+                <td className="py-3 px-3 text-right text-blue-700 font-mono text-sm">{formatRupiah(totalRealisasi)}</td>
+                <td className="py-3 px-3 text-right font-mono text-emerald-700">
+                  Hemat {formatRupiah(totalEstimasi - totalRealisasi)}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
       </div>
     </div>
   );
 }
-

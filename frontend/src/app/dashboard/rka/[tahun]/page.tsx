@@ -1,297 +1,154 @@
 'use client';
 
-import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { Wallet, TrendingUp, PieChart, GitBranch, FilePlus, BarChart3, Receipt } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
-import StatusBadge from '@/components/ui/StatusBadge';
-import StatCard from '@/components/ui/StatCard';
-import Modal from '@/components/ui/Modal';
-import { mockRkaDocuments } from '@/lib/mock-data';
-import type { RkaDocument } from '@/lib/types';
-import {
-  ArrowLeft,
-  Wallet,
-  TrendingUp,
-  History,
-  Layers,
-  Edit,
-  FileText,
-  PieChart,
-  Plus,
-} from 'lucide-react';
-import Link from 'next/link';
-import { formatRupiah, calculateAbsorptionPercentage, formatDateShort } from '@/lib/utils';
+import { StatCard } from '@/components/ui/StatCard';
+import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { formatRupiah, formatDateShort, calculateAbsorptionPercentage } from '@/lib/utils';
 
-export default function DetailRkaPage() {
-  const params = useParams();
+interface Kegiatan {
+  kode: string;
+  nama: string;
+  anggaran: number;
+  realisasi: number;
+  status: string;
+}
+
+interface Versi {
+  nomor: number;
+  status: string;
+  diajukanOleh: string;
+  tanggal: string;
+}
+
+const MOCK_KEGIATAN: Kegiatan[] = [
+  { kode: 'KG-01', nama: 'Workshop Kurikulum MBKM', anggaran: 125000000, realisasi: 98500000, status: 'BERJALAN' },
+  { kode: 'KG-02', nama: 'Seminar Nasional Informatika', anggaran: 85000000, realisasi: 85200000, status: 'SELESAI' },
+  { kode: 'KG-03', nama: 'Peningkatan Kompetensi Dosen', anggaran: 150000000, realisasi: 45000000, status: 'BERJALAN' },
+  { kode: 'KG-04', nama: 'Pengadaan Perangkat Lab', anggaran: 125000000, realisasi: 0, status: 'BELUM_DILAKSANAKAN' },
+];
+
+const MOCK_VERSI: Versi[] = [
+  { nomor: 2, status: 'AKTIF', diajukanOleh: 'Dr. Andi Wijaya, M.Kom.', tanggal: '2025-03-15' },
+  { nomor: 1, status: 'DIGANTIKAN', diajukanOleh: 'Dr. Andi Wijaya, M.Kom.', tanggal: '2025-01-10' },
+];
+
+const totalPagu = MOCK_KEGIATAN.reduce((s, k) => s + k.anggaran, 0);
+const totalRealisasi = MOCK_KEGIATAN.reduce((s, k) => s + k.realisasi, 0);
+const serapan = calculateAbsorptionPercentage(totalRealisasi, totalPagu);
+
+export default function Page() {
+  const { tahun } = useParams<{ tahun: string }>();
   const router = useRouter();
-  const tahun = Number(params.tahun) || 2025;
 
-  const doc =
-    mockRkaDocuments.find((d) => d.tahun_anggaran === tahun) || mockRkaDocuments[0];
-
-  const [modalRevisiOpen, setModalRevisiOpen] = useState(false);
-  const [alasanRevisi, setAlasanRevisi] = useState('');
-
-  const serapanPct = calculateAbsorptionPercentage(doc.total_realisasi || 0, doc.total_anggaran);
-  const sisaPagu = (doc.total_anggaran || 0) - (doc.total_realisasi || 0);
-
-  const handleBukaRevisi = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!alasanRevisi.trim()) {
-      alert('Alasan revisi wajib diisi.');
-      return;
-    }
-
-    const nextVerNomor = (doc.versions?.length || 1) + 1;
-    doc.versions?.push({
-      id: `rka-ver-${doc.tahun_anggaran}-${nextVerNomor}`,
-      rka_id: doc.id,
-      nomor_versi: nextVerNomor,
-      status: 'DRAF',
-      total_anggaran: doc.total_anggaran,
-      alasan_revisi: alasanRevisi,
-      row_version: 1,
-      dibuat_oleh: 'u-admin',
-      created_at: new Date().toISOString(),
-    });
-
-    setModalRevisiOpen(false);
-    router.push(`/dashboard/rka/${doc.tahun_anggaran}/versi-kerja`);
-  };
+  const kegiatanColumns: DataTableColumn<Kegiatan>[] = [
+    { key: 'kode', header: 'Kode', render: (r) => <span className="font-mono text-xs text-slate-500">{r.kode}</span> },
+    { key: 'nama', header: 'Nama Kegiatan', render: (r) => <span className="font-medium text-slate-800">{r.nama}</span> },
+    { key: 'anggaran', header: 'Anggaran', render: (r) => <span className="text-sm">{formatRupiah(r.anggaran)}</span> },
+    { key: 'realisasi', header: 'Realisasi', render: (r) => <span className="text-sm">{formatRupiah(r.realisasi)}</span> },
+    {
+      key: 'serapan',
+      header: 'Serapan',
+      render: (r) => {
+        const pct = calculateAbsorptionPercentage(r.realisasi, r.anggaran);
+        const isOver = r.realisasi > r.anggaran;
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-20 h-2 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full ${isOver ? 'bg-rose-500' : pct >= 75 ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                style={{ width: `${Math.min(pct, 100)}%` }}
+              />
+            </div>
+            <span className={`text-xs font-semibold ${isOver ? 'text-rose-600' : 'text-slate-600'}`}>
+              {pct}%
+            </span>
+          </div>
+        );
+      },
+    },
+    { key: 'status', header: 'Status', render: (r) => <StatusBadge status={r.status} size="sm" /> },
+  ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <Link
-          href="/dashboard/rka"
-          className="text-xs text-slate-500 hover:text-blue-600 flex items-center gap-1 font-medium"
-        >
-          <ArrowLeft size={14} />
-          <span>Kembali ke Dokumen RKA</span>
-        </Link>
-      </div>
-
+    <div>
       <PageHeader
-        title={doc.judul}
-        description={`Tahun Anggaran ${doc.tahun_anggaran} • Dokumen Resmi Penganggaran Operasional Prodi SI`}
-        action={
-          <div className="flex items-center gap-2">
-            <Link
-              href={`/dashboard/rka/${doc.tahun_anggaran}/serapan`}
-              className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5 font-semibold text-slate-700 hover:text-blue-600"
+        title={`RKA Tahun ${tahun}`}
+        description="Detail rencana kerja dan anggaran tahunan program studi"
+        actions={
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => router.push(`/dashboard/rka/${tahun}/versi-kerja`)}
+              className="bg-white text-slate-700 border border-slate-200 rounded-xl px-4 py-2 text-sm font-medium flex items-center gap-1.5 hover:bg-slate-50 transition-colors"
             >
-              <PieChart size={14} className="text-slate-500" />
-              <span>Monitoring Serapan</span>
-            </Link>
-
-            <Link
-              href={`/dashboard/rka/${doc.tahun_anggaran}/realisasi`}
-              className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5 font-semibold text-slate-700 hover:text-blue-600"
+              <FilePlus size={15} /> Buka Revisi
+            </button>
+            <button
+              onClick={() => router.push(`/dashboard/rka/${tahun}/serapan`)}
+              className="bg-white text-slate-700 border border-slate-200 rounded-xl px-4 py-2 text-sm font-medium flex items-center gap-1.5 hover:bg-slate-50 transition-colors"
             >
-              <FileText size={14} className="text-slate-500" />
-              <span>Catat Realisasi</span>
-            </Link>
-
-            {doc.status === 'AKTIF' && (
-              <button
-                type="button"
-                onClick={() => setModalRevisiOpen(true)}
-                className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5"
-              >
-                <Edit size={14} />
-                <span>Buka Revisi RKA</span>
-              </button>
-            )}
+              <BarChart3 size={15} /> Monitoring Serapan
+            </button>
+            <button
+              onClick={() => router.push(`/dashboard/rka/${tahun}/realisasi`)}
+              className="bg-blue-600 text-white rounded-xl px-4 py-2 text-sm font-semibold flex items-center gap-1.5 hover:bg-blue-700 transition-colors"
+            >
+              <Receipt size={15} /> Catat Realisasi
+            </button>
           </div>
         }
       />
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <StatCard title="Total Pagu" value={formatRupiah(totalPagu)} icon={<Wallet size={16} />} color="blue" />
+        <StatCard title="Total Realisasi" value={formatRupiah(totalRealisasi)} icon={<TrendingUp size={16} />} color="emerald" />
         <StatCard
-          title="Total Anggaran Aktif"
-          value={formatRupiah(doc.total_anggaran)}
-          subtitle="Pagu resmi yang berlaku"
-          icon={<Wallet size={20} />}
-          gradient="bg-blue-50 text-blue-600"
-        />
-        <StatCard
-          title="Total Serapan Riil"
-          value={formatRupiah(doc.total_realisasi || 0)}
-          subtitle="Tercatat dalam realisasi & SPJ"
-          icon={<TrendingUp size={20} />}
-          gradient="bg-emerald-50 text-emerald-600"
-        />
-        <StatCard
-          title="Persentase Serapan"
-          value={`${serapanPct}%`}
-          subtitle="Dari target pagu tahunan"
-          icon={<PieChart size={20} />}
-          color="blue"
-        />
-        <StatCard
-          title="Sisa Pagu Tersedia"
-          value={formatRupiah(sisaPagu)}
-          subtitle="Dapat dialokasikan"
-          icon={<Layers size={20} />}
-          gradient="bg-amber-50 text-amber-600"
+          title="Serapan"
+          value={`${serapan}%`}
+          subtitle={`dari ${formatRupiah(totalPagu)}`}
+          icon={<PieChart size={16} />}
+          color={serapan >= 75 ? 'emerald' : 'amber'}
         />
       </div>
 
-      {/* Activities and Versions Side-by-Side */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Active Activities List */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="card space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-slate-800">
-                  Kegiatan Aktif & Alokasi Pos Anggaran
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Data aktif resmi yang menjadi acuan pengajuan perjalanan dinas dan serapan anggaran
-                </p>
-              </div>
-            </div>
+      {/* Kegiatan Table */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-6">
+        <h2 className="text-lg font-semibold text-slate-800 mb-4">Ringkasan Kegiatan</h2>
+        <DataTable columns={kegiatanColumns} data={MOCK_KEGIATAN} emptyMessage="Belum ada kegiatan" />
+      </div>
 
-            <div className="space-y-4">
-              {doc.activities?.map((act) => (
-                <div
-                  key={act.id}
-                  className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
-                          {act.kode_kegiatan}
-                        </span>
-                        <h4 className="font-bold text-slate-800 text-xs sm:text-sm">
-                          {act.nama_kegiatan}
-                        </h4>
-                      </div>
-                      <p className="text-[11px] text-slate-500 mt-1">
-                        Indikator: {act.indikator_kinerja} ({act.target_indikator})
-                      </p>
-                    </div>
-
-                    <div className="text-right flex-shrink-0">
-                      <StatusBadge status={act.status_pelaksanaan} size="sm" />
-                    </div>
-                  </div>
-
-                  {/* Pos Anggaran Table */}
-                  <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-                    <table className="w-full text-xs">
-                      <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
-                        <tr>
-                          <th className="px-3 py-1.5 text-left font-mono">Kode</th>
-                          <th className="px-3 py-1.5 text-left">Nama Pos Anggaran</th>
-                          <th className="px-3 py-1.5 text-right">Pagu Anggaran</th>
-                          <th className="px-3 py-1.5 text-right">Realisasi</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {act.budget_items.map((pos) => (
-                          <tr key={pos.id}>
-                            <td className="px-3 py-2 font-mono text-slate-400">{pos.kode_pos}</td>
-                            <td className="px-3 py-2 font-medium text-slate-800">{pos.nama_pos}</td>
-                            <td className="px-3 py-2 text-right font-bold text-slate-800">
-                              {formatRupiah(pos.nominal_anggaran)}
-                            </td>
-                            <td className="px-3 py-2 text-right font-semibold text-emerald-600">
-                              {formatRupiah(pos.realisasi_total || 0)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+      {/* Riwayat Versi */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <GitBranch size={18} className="text-slate-400" />
+          <h2 className="text-lg font-semibold text-slate-800">Riwayat Versi</h2>
         </div>
-
-        {/* Versions History Timeline */}
-        <div className="space-y-4">
-          <div className="card space-y-4">
-            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-slate-800">Riwayat Versi RKA</h3>
-                <p className="text-xs text-slate-500">Jejak revisi tak berubah (Bab 11 D3)</p>
-              </div>
-              <History size={16} className="text-slate-400" />
-            </div>
-
-            <div className="space-y-3">
-              {doc.versions?.map((ver) => (
-                <div
-                  key={ver.id}
-                  className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-white transition-all space-y-2 text-xs"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-800">Versi {ver.nomor_versi}</span>
-                    <StatusBadge status={ver.status} size="sm" />
-                  </div>
-
-                  <p className="text-slate-500 text-[11px]">
-                    Total: <strong className="text-slate-800">{formatRupiah(ver.total_anggaran)}</strong>
+        <div className="space-y-3">
+          {MOCK_VERSI.map((v) => (
+            <div
+              key={v.nomor}
+              className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors cursor-pointer"
+              onClick={() => router.push(`/dashboard/rka/${tahun}/versi/${v.nomor}`)}
+            >
+              <div className="flex items-center gap-3">
+                <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
+                  v{v.nomor}
+                </span>
+                <div>
+                  <p className="text-sm font-medium text-slate-800">Versi {v.nomor}</p>
+                  <p className="text-xs text-slate-500">
+                    Diajukan oleh {v.diajukanOleh} • {formatDateShort(v.tanggal)}
                   </p>
-
-                  {ver.alasan_revisi && (
-                    <p className="text-[10px] text-slate-600 italic bg-white p-2 rounded border border-slate-100">
-                      &ldquo;{ver.alasan_revisi}&rdquo;
-                    </p>
-                  )}
-
-                  <div className="pt-1 flex items-center justify-between text-[10px] text-slate-400">
-                    <span>{formatDateShort(ver.created_at)}</span>
-                    <Link
-                      href={`/dashboard/rka/${doc.tahun_anggaran}/versi/${ver.nomor_versi}`}
-                      className="text-blue-600 hover:underline font-semibold"
-                    >
-                      Lihat Snapshot / Diff →
-                    </Link>
-                  </div>
                 </div>
-              ))}
+              </div>
+              <StatusBadge status={v.status} size="sm" />
             </div>
-          </div>
+          ))}
         </div>
       </div>
-
-      {/* Modal Buka Revisi Baru */}
-      <Modal open={modalRevisiOpen} onClose={() => setModalRevisiOpen(false)} title="Buka Revisi RKA Baru" size="md">
-        <form onSubmit={handleBukaRevisi} className="space-y-4 text-xs">
-          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 leading-relaxed">
-            Sesuai keputusan PRD (Bab 11 D3): Membuka revisi akan <strong>menyalin data aktif menjadi versi kerja baru</strong>. Data aktif resmi dan monitoring serapan tidak akan terpengaruh sampai versi revisi disetujui resmi oleh Kaprodi.
-          </div>
-
-          <div>
-            <label className="label">Alasan Pembukaan Revisi (Wajib)</label>
-            <textarea
-              rows={3}
-              required
-              value={alasanRevisi}
-              onChange={(e) => setAlasanRevisi(e.target.value)}
-              placeholder="Contoh: Pergeseran anggaran pos perjalanan dinas ke pos registrasi konferensi internasional..."
-              className="textarea-field text-xs"
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={() => setModalRevisiOpen(false)} className="btn-secondary text-xs">
-              Batal
-            </button>
-            <button type="submit" className="btn-primary text-xs">
-              Mulai Susun Versi Kerja
-            </button>
-          </div>
-        </form>
-      </Modal>
     </div>
   );
 }
-

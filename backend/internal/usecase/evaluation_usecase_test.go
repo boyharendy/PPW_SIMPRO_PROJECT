@@ -14,6 +14,7 @@ func TestEvaluationUsecase(t *testing.T) {
 
 	// 1. Save draft
 	eval := &model.CourseEvaluation{
+		ID:                  "eval-1",
 		CourseClassID:       "cc1",
 		IndeksKepuasanMhs:   4.5,
 		PersentaseKelulusan: 95.0,
@@ -39,7 +40,30 @@ func TestEvaluationUsecase(t *testing.T) {
 		t.Errorf("expected submitted = true")
 	}
 
-	// 3. Recap
+	// 3. Get Student Feedback (EDOM)
+	feedback, err := uc.GetStudentFeedback("eval-1")
+	if err != nil {
+		t.Fatalf("GetStudentFeedback failed: %v", err)
+	}
+	if feedback.SkorRataRata <= 0 {
+		t.Errorf("expected positive average feedback score")
+	}
+
+	// 4. Review GKM & Auto-Forwarding Recommendation
+	newPlans := []*model.CourseImprovementPlan{
+		{
+			ID:              "gkm-plan-1",
+			CourseID:        "c1",
+			Rekomendasi:     "Tingkatkan porsi praktikum hands-on di lab",
+			StatusPenerapan: "BELUM_DITERAPKAN",
+		},
+	}
+	err = uc.ReviewEvaluation("eval-1", "gkm-lead", "Evaluasi pembelajaran berjalan baik, perlu penguatan lab", "DISETUJUI_DENGAN_CATATAN", newPlans)
+	if err != nil {
+		t.Fatalf("ReviewEvaluation failed: %v", err)
+	}
+
+	// 5. Recap
 	recap, err := uc.GetRecap()
 	if err != nil || recap.TotalEvaluasi != 1 || recap.PersentaseSubmitted != 100.0 {
 		t.Fatalf("GetRecap failed: %v", err)

@@ -1,143 +1,63 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import PageHeader from '@/components/ui/PageHeader';
-import StatusBadge from '@/components/ui/StatusBadge';
-import StatusStepper from '@/components/ui/StatusStepper';
-import Modal from '@/components/ui/Modal';
-import FileUploader from '@/components/ui/FileUploader';
-import { mockPublications, mockProfiles } from '@/lib/mock-data';
-import { publicationService } from '@/lib/api/services/publication.service';
-import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
-import type {
-  Publication,
-  PublicationStatus,
-  ProofType,
-  PublicationStageLog,
-} from '@/lib/types';
-import {
-  ArrowLeft,
-  Calendar,
-  ExternalLink,
-  Upload,
-  UserCheck,
-  CheckCircle2,
-  FileText,
-  Clock,
-  Send,
-} from 'lucide-react';
+import React, { useState } from 'react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { ArrowLeft, Clock, CheckCircle2, UserCheck, ExternalLink, Plus, FileText, Send } from 'lucide-react';
+import PageHeader from '@/components/ui/PageHeader';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import Modal from '@/components/ui/Modal';
 import { formatDateShort } from '@/lib/utils';
 
-const PUBLICATION_STEPS = [
-  { id: 'DRAF', label: 'Draf' },
-  { id: 'REVIEW_INTERNAL', label: 'Review Internal' },
-  { id: 'DIAJUKAN', label: 'Diajukan' },
-  { id: 'DALAM_REVIEW', label: 'Dalam Review' },
-  { id: 'REVISI', label: 'Revisi' },
-  { id: 'DITERIMA', label: 'Diterima (LoA)' },
-  { id: 'TERBIT', label: 'Terbit' },
-];
+export default function Page() {
+  const { id } = useParams<{ id: string }>();
 
-export default function DetailPublikasiPage() {
-  const params = useParams();
-  const pubId = params.id as string;
-
-  const [pub, setPub] = useState<Publication>(() => {
-    const list = storageSync.get<Publication[]>(STORAGE_KEYS.PUBLICATIONS, mockPublications);
-    return list.find((p) => p.id === pubId) || mockPublications[0];
+  // Mock publication data
+  const [pub, setPub] = useState({
+    id: id || 'PUB-001',
+    judul: 'Implementasi Deep Learning untuk Deteksi Anomali pada Jaringan IoT',
+    jenis: 'JURNAL',
+    target: 'Jurnal Teknologi Informasi dan Ilmu Komputer (JTIIK)',
+    peringkat: 'SINTA 2',
+    tahun: 2025,
+    doi: '10.25126/jtiik.2025.12.3.4412',
+    url: 'https://jtiik.ub.ac.id/index.php/jtiik/article/view/4412',
+    status: 'TERBIT',
+    statusVerifikasi: 'TERVERIFIKASI',
+    verifikator: 'Dr. Ahmad Fauzi (Kaprodi)',
   });
-  const [modalStageOpen, setModalStageOpen] = useState(false);
-  const [modalReviewerOpen, setModalReviewerOpen] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    publicationService
-      .getPublicationById(pubId)
-      .then((res) => {
-        if (active && res.data) {
-          setPub(res.data);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [pubId]);
+  const [tahapan, setTahapan] = useState([
+    { tahap: 'TERBIT', tanggal: '2025-08-20', bukti: 'DOI: 10.25126/jtiik.2025.12.3.4412', statusVerif: 'TERVERIFIKASI' },
+    { tahap: 'DITERIMA', tanggal: '2025-06-15', bukti: 'LoA_JTIIK_2025.pdf', statusVerif: 'TERVERIFIKASI' },
+    { tahap: 'REVISI', tanggal: '2025-04-10', bukti: 'Revisi_Mayor_V2.pdf', statusVerif: 'TERVERIFIKASI' },
+    { tahap: 'DALAM_REVIEW', tanggal: '2025-02-18', bukti: '-', statusVerif: 'TERVERIFIKASI' },
+    { tahap: 'DIAJUKAN', tanggal: '2025-01-12', bukti: 'Bukti_Submit_JTIIK.pdf', statusVerif: 'TERVERIFIKASI' },
+    { tahap: 'DRAF', tanggal: '2024-12-05', bukti: '-', statusVerif: 'TERVERIFIKASI' },
+  ]);
 
-  // Stage form
-  const [nextStage, setNextStage] = useState<PublicationStatus>('DALAM_REVIEW');
-  const [stageDate, setStageDate] = useState(new Date().toISOString().split('T')[0]);
-  const [proofType, setProofType] = useState<ProofType>('BUKTI_SUBMIT');
-  const [proofUrl, setProofUrl] = useState('');
-  const [stageNotes, setStageNotes] = useState('');
+  const [penulis] = useState([
+    { urutan: 1, nama: 'Dr. Rina Fitriani, M.Kom.', tipe: 'DOSEN', peran: 'PENULIS_PERTAMA' },
+    { urutan: 2, nama: 'Muhammad Rizky Pratama', tipe: 'MAHASISWA', peran: 'ANGGOTA' },
+    { urutan: 3, nama: 'Ir. Bambang Tri, Ph.D.', tipe: 'DOSEN', peran: 'KORESPONDENSI' },
+  ]);
 
-  // Reviewer form
-  const [selectedReviewerId, setSelectedReviewerId] = useState('u-dosen2');
-  const [reviewerDeadline, setReviewerDeadline] = useState(
-    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-  );
+  const [stageModal, setStageModal] = useState(false);
+  const [newTahap, setNewTahap] = useState('REVISI');
+  const [newBukti, setNewBukti] = useState('');
 
-  const handleAdvanceStage = async (e: React.FormEvent) => {
+  const handleAddStage = (e: React.FormEvent) => {
     e.preventDefault();
-
-    const newLog: PublicationStageLog = {
-      id: `psl-${Date.now()}`,
-      publication_id: pub.id,
-      tahap: nextStage,
-      tanggal_tahap: stageDate,
-      jenis_bukti: proofType,
-      tautan_bukti: proofUrl || undefined,
-      nama_berkas_bukti: proofUrl ? undefined : 'berkas_bukti_upload.pdf',
-      catatan: stageNotes,
-      dicatat_oleh: pub.dicatat_oleh,
-      status_verifikasi: pub.verifikator_id ? 'MENUNGGU' : 'TERVERIFIKASI',
-      created_at: new Date().toISOString(),
-    };
-
-    const updatedPub = {
-      ...pub,
-      status: nextStage,
-      stage_logs: [...(pub.stage_logs || []), newLog],
-    };
-
-    setPub(updatedPub);
-    storageSync.update(STORAGE_KEYS.PUBLICATIONS, pub.id, updatedPub, mockPublications);
-
-    try {
-      await publicationService.updatePublication(pub.id, updatedPub);
-    } catch {
-      // Offline fallback
-    }
-
-    setModalStageOpen(false);
-    setStageNotes('');
-    setProofUrl('');
-  };
-
-  const handleAssignReviewer = (e: React.FormEvent) => {
-    e.preventDefault();
-    const reviewerProfile = mockProfiles.find((p) => p.id === selectedReviewerId);
-
-    const newReview = {
-      id: `rev-${Date.now()}`,
-      publication_id: pub.id,
-      reviewer_id: selectedReviewerId,
-      ditetapkan_oleh: 'u-kaprodi',
-      status: 'DITUGASKAN' as const,
-      tenggat_review: reviewerDeadline,
-      ditugaskan_at: new Date().toISOString(),
-      reviewer: reviewerProfile,
-    };
-
-    setPub({
-      ...pub,
-      status: 'REVIEW_INTERNAL',
-      reviews: [...(pub.reviews || []), newReview],
-    });
-
-    setModalReviewerOpen(false);
+    setTahapan([
+      {
+        tahap: newTahap,
+        tanggal: new Date().toISOString().split('T')[0],
+        bukti: newBukti || 'Dokumen_Tahap.pdf',
+        statusVerif: 'MENUNGGU',
+      },
+      ...tahapan,
+    ]);
+    setStageModal(false);
   };
 
   return (
@@ -145,307 +65,184 @@ export default function DetailPublikasiPage() {
       <div className="flex items-center gap-2">
         <Link
           href="/dashboard/publikasi"
-          className="text-xs text-slate-500 hover:text-blue-600 flex items-center gap-1 font-medium"
+          className="text-xs text-slate-500 hover:text-slate-800 inline-flex items-center gap-1 font-medium"
         >
-          <ArrowLeft size={14} />
-          <span>Kembali ke Daftar Publikasi</span>
+          <ArrowLeft size={14} /> Kembali ke Daftar Publikasi
         </Link>
       </div>
 
       <PageHeader
         title={pub.judul}
-        description={`Target: ${pub.nama_target} • ${pub.jenis} (${pub.peringkat.replace('_', ' ')}) • Tahun: ${pub.tahun}`}
-        action={
+        description={`Katalog karya ilmiah prodi — ID: ${pub.id}`}
+        badge={<StatusBadge status={pub.status} size="sm" />}
+        actions={
           <div className="flex items-center gap-2">
             <button
-              type="button"
-              onClick={() => setModalReviewerOpen(true)}
-              className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5"
+              onClick={() => setStageModal(true)}
+              className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5"
             >
-              <UserCheck size={14} className="text-slate-500" />
-              <span>Tetapkan Reviewer</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setModalStageOpen(true)}
-              className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5"
-            >
-              <Upload size={14} />
-              <span>Perbarui Tahapan</span>
+              <Plus size={14} /> Perbarui Tahapan
             </button>
           </div>
         }
       />
 
-      {/* Stepper Card */}
-      <div className="card space-y-2">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-            Alur Tahapan Publikasi
-          </span>
-          <StatusBadge status={pub.status} size="sm" />
-        </div>
-        <StatusStepper steps={PUBLICATION_STEPS} currentStepId={pub.status} />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Stage Logs & Reviews */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Riwayat Tahapan Log */}
-          <div className="card space-y-4">
-            <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2">
-              Riwayat Bukti & Tahapan
-            </h3>
-
-            <div className="space-y-4">
-              {pub.stage_logs?.map((log, idx) => (
-                <div
-                  key={log.id || idx}
-                  className="flex gap-3 text-xs p-3.5 rounded-xl border border-slate-200 bg-slate-50/50"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 font-bold flex items-center justify-center flex-shrink-0">
-                    <Clock size={16} />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-800">{log.tahap.replace('_', ' ')}</span>
-                      <span className="text-[10px] text-slate-400">{formatDateShort(log.tanggal_tahap)}</span>
-                    </div>
-
-                    {log.catatan && <p className="text-slate-600 text-[11px]">{log.catatan}</p>}
-
-                    <div className="flex items-center gap-3 pt-1 text-[11px]">
-                      {log.jenis_bukti && (
-                        <span className="text-blue-600 font-medium flex items-center gap-1">
-                          <FileText size={12} />
-                          {log.jenis_bukti.replace('_', ' ')}
-                        </span>
-                      )}
-                      {log.tautan_bukti && (
-                        <a
-                          href={log.tautan_bukti}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-blue-600 hover:underline flex items-center gap-1"
-                        >
-                          <ExternalLink size={12} />
-                          Buka Tautan
-                        </a>
-                      )}
-                      {log.status_verifikasi && (
-                        <span className="ml-auto">
-                          <StatusBadge status={log.status_verifikasi} size="sm" />
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+      {/* Info Karya Ilmiah */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="card md:col-span-2 space-y-4">
+          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+            Informasi Manuskrip & Target
+          </h3>
+          <div className="grid grid-cols-2 gap-4 text-xs">
+            <div>
+              <span className="text-slate-400 block mb-0.5">Jenis Publikasi:</span>
+              <span className="font-semibold text-slate-800">{pub.jenis}</span>
             </div>
-          </div>
-
-          {/* Review Internal Panel */}
-          {pub.reviews && pub.reviews.length > 0 && (
-            <div className="card space-y-4">
-              <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2">
-                Hasil Review Internal Dosen
-              </h3>
-              {pub.reviews.map((rev) => (
-                <div key={rev.id} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-xs space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-slate-800">
-                      Reviewer: {rev.reviewer?.nama_lengkap}
-                    </span>
-                    <StatusBadge status={rev.status} size="sm" />
-                  </div>
-                  {rev.rekomendasi && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-slate-500">Rekomendasi:</span>
-                      <StatusBadge status={rev.rekomendasi} size="sm" />
-                    </div>
-                  )}
-                  {rev.catatan_review && (
-                    <p className="text-slate-600 italic bg-white p-2.5 rounded-lg border border-slate-100">
-                      &ldquo;{rev.catatan_review}&rdquo;
-                    </p>
-                  )}
-                </div>
-              ))}
+            <div>
+              <span className="text-slate-400 block mb-0.5">Peringkat / Indeksasi:</span>
+              <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                {pub.peringkat}
+              </span>
             </div>
-          )}
-        </div>
-
-        {/* Right Column: Metadata & Authors */}
-        <div className="space-y-6">
-          <div className="card space-y-4">
-            <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2">
-              Daftar Penulis
-            </h3>
-            <div className="space-y-2.5 divide-y divide-slate-100 text-xs">
-              {pub.authors.map((auth, idx) => (
-                <div key={auth.id || idx} className="pt-2 first:pt-0 space-y-0.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-slate-800">{auth.nama_penulis}</span>
-                    <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
-                      {auth.tipe_penulis}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-blue-600 font-medium">
-                    {auth.peran.replace('_', ' ')}
-                  </p>
-                </div>
-              ))}
+            <div>
+              <span className="text-slate-400 block mb-0.5">Target Publikasi:</span>
+              <span className="font-medium text-slate-800">{pub.target}</span>
             </div>
-          </div>
-
-          <div className="card space-y-3 text-xs">
-            <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2">
-              Tautan & DOI
-            </h3>
-            {pub.doi ? (
-              <div>
-                <p className="text-[11px] text-slate-400">Digital Object Identifier (DOI):</p>
+            <div>
+              <span className="text-slate-400 block mb-0.5">Tahun Terbit:</span>
+              <span className="font-medium text-slate-800">{pub.tahun}</span>
+            </div>
+            <div className="col-span-2">
+              <span className="text-slate-400 block mb-0.5">DOI / Tautan Resmi:</span>
+              {pub.url ? (
                 <a
-                  href={`https://doi.org/${pub.doi}`}
+                  href={pub.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="font-mono text-blue-600 hover:underline flex items-center gap-1 font-semibold"
+                  className="text-blue-600 hover:underline flex items-center gap-1 truncate"
                 >
-                  <ExternalLink size={12} />
-                  {pub.doi}
+                  {pub.doi || pub.url} <ExternalLink size={12} />
                 </a>
-              </div>
-            ) : (
-              <p className="text-slate-400 italic">Belum ada DOI resmi terdaftar.</p>
-            )}
+              ) : (
+                <span className="text-slate-400">-</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Verifikasi Mahasiswa */}
+        <div className="card space-y-3">
+          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+            Status Validasi
+          </h3>
+          <div>
+            <div className="text-xs text-slate-400 mb-1">Status Verifikasi:</div>
+            <StatusBadge status={pub.statusVerifikasi} size="md" />
+          </div>
+          <div className="pt-2 border-t border-slate-100 text-xs">
+            <span className="text-slate-400 block mb-0.5">Diverifikasi oleh:</span>
+            <span className="font-medium text-slate-800">{pub.verifikator}</span>
           </div>
         </div>
       </div>
 
-      {/* Modal Perbarui Tahapan */}
-      <Modal open={modalStageOpen} onClose={() => setModalStageOpen(false)} title="Perbarui Tahapan Publikasi" size="md">
-        <form onSubmit={handleAdvanceStage} className="space-y-4 text-xs">
-          <div>
-            <label className="label">Pilih Tahap Berikutnya</label>
-            <select
-              value={nextStage}
-              onChange={(e) => setNextStage(e.target.value as PublicationStatus)}
-              className="select-field text-xs"
-            >
-              <option value="REVIEW_INTERNAL">Review Internal</option>
-              <option value="DIAJUKAN">Diajukan ke Penerbit / Konferensi</option>
-              <option value="DALAM_REVIEW">Dalam Proses Review (Under Review)</option>
-              <option value="REVISI">Perlu Revisi (Revision Requested)</option>
-              <option value="DITERIMA">Diterima (Accepted / LoA)</option>
-              <option value="TERBIT">Terbit (Published)</option>
-              <option value="DITOLAK">Ditolak (Rejected)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="label">Tanggal Kejadian Tahap</label>
-            <input
-              type="date"
-              required
-              value={stageDate}
-              onChange={(e) => setStageDate(e.target.value)}
-              className="input-field text-xs"
-            />
-          </div>
-
-          <div>
-            <label className="label">Jenis Bukti</label>
-            <select
-              value={proofType}
-              onChange={(e) => setProofType(e.target.value as ProofType)}
-              className="select-field text-xs"
-            >
-              <option value="BUKTI_SUBMIT">Bukti Submit (Tanda Terima)</option>
-              <option value="LOA">Letter of Acceptance (LoA)</option>
-              <option value="DOI_URL">Tautan DOI / URL Terbit</option>
-              <option value="LAINNYA">Bukti Lainnya</option>
-            </select>
-          </div>
-
-          {proofType === 'DOI_URL' ? (
-            <div>
-              <label className="label">Tautan DOI / URL Publikasi</label>
-              <input
-                type="url"
-                required
-                value={proofUrl}
-                onChange={(e) => setProofUrl(e.target.value)}
-                placeholder="https://doi.org/10.xxxx/..."
-                className="input-field text-xs"
-              />
+      {/* Daftar Penulis */}
+      <div className="card">
+        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-3">
+          Susunan Penulis Karya
+        </h3>
+        <div className="divide-y divide-slate-100">
+          {penulis.map((p) => (
+            <div key={p.urutan} className="py-2.5 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-3">
+                <span className="font-mono font-bold text-slate-400 w-4 text-center">{p.urutan}</span>
+                <div>
+                  <div className="font-semibold text-slate-800">{p.nama}</div>
+                  <div className="text-[11px] text-slate-400">Tipe: {p.tipe}</div>
+                </div>
+              </div>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
+                {p.peran.replace('_', ' ')}
+              </span>
             </div>
-          ) : (
-            <FileUploader label="Unggah Berkas Bukti (PDF / JPG)" />
-          )}
+          ))}
+        </div>
+      </div>
 
+      {/* Riwayat Tahapan (Timeline) */}
+      <div className="card">
+        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">
+          Riwayat Tahapan Publikasi (FR-30)
+        </h3>
+        <div className="space-y-4 relative before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
+          {tahapan.map((t, i) => (
+            <div key={i} className="flex items-start gap-4 relative">
+              <div className="w-7 h-7 rounded-full bg-blue-50 border-2 border-blue-500 text-blue-600 flex items-center justify-center shrink-0 z-10">
+                <CheckCircle2 size={14} />
+              </div>
+              <div className="flex-1 p-3 rounded-xl border border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-800 text-xs">{t.tahap}</span>
+                    <span className="text-[11px] text-slate-400">• {formatDateShort(t.tanggal)}</span>
+                  </div>
+                  <div className="text-xs text-slate-500 mt-0.5">Bukti: {t.bukti}</div>
+                </div>
+                <StatusBadge status={t.statusVerif} size="sm" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Modal Tambah Tahap */}
+      <Modal
+        open={stageModal}
+        onClose={() => setStageModal(false)}
+        title="Perbarui Tahapan Publikasi"
+        size="md"
+      >
+        <form onSubmit={handleAddStage} className="space-y-4">
           <div>
-            <label className="label">Catatan Tambahan</label>
-            <textarea
-              rows={2}
-              value={stageNotes}
-              onChange={(e) => setStageNotes(e.target.value)}
-              placeholder="Catatan tahapan, nomor surat, atau keterangan penting..."
-              className="textarea-field text-xs"
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={() => setModalStageOpen(false)} className="btn-secondary text-xs">
-              Batal
-            </button>
-            <button type="submit" className="btn-primary text-xs">
-              Simpan Tahapan
-            </button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Modal Tetapkan Reviewer Internal */}
-      <Modal open={modalReviewerOpen} onClose={() => setModalReviewerOpen(false)} title="Tetapkan Reviewer Internal" size="md">
-        <form onSubmit={handleAssignReviewer} className="space-y-4 text-xs">
-          <p className="text-slate-600 leading-relaxed">
-            Pilih dosen reviewer internal prodi untuk memberikan telaah kelayakan naskah sebelum disubmit. Sesuai aturan PRD, reviewer tidak boleh berasal dari tim penulis naskah ini.
-          </p>
-
-          <div>
-            <label className="label">Dosen Reviewer</label>
+            <label className="text-xs font-semibold text-slate-700 block mb-1">Tahap Baru</label>
             <select
-              value={selectedReviewerId}
-              onChange={(e) => setSelectedReviewerId(e.target.value)}
-              className="select-field text-xs"
+              value={newTahap}
+              onChange={(e) => setNewTahap(e.target.value)}
+              className="select-field"
             >
-              {mockProfiles
-                .filter((p) => p.tipe_pengguna === 'DOSEN' && !pub.authors.some((a) => a.user_id === p.id))
-                .map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.nama_lengkap}
-                  </option>
-                ))}
+              <option value="DIAJUKAN">Diajukan (Submit)</option>
+              <option value="DALAM_REVIEW">Dalam Review</option>
+              <option value="REVISI">Revisi</option>
+              <option value="DITERIMA">Diterima (LoA Accepted)</option>
+              <option value="TERBIT">Terbit (Published)</option>
+              <option value="DITOLAK">Ditolak</option>
             </select>
           </div>
 
           <div>
-            <label className="label">Tenggat Waktu Review</label>
+            <label className="text-xs font-semibold text-slate-700 block mb-1">
+              Unggah Bukti / Tautan DOI
+            </label>
             <input
-              type="date"
-              required
-              value={reviewerDeadline}
-              onChange={(e) => setReviewerDeadline(e.target.value)}
+              type="text"
+              value={newBukti}
+              onChange={(e) => setNewBukti(e.target.value)}
+              placeholder="Contoh: LoA_JTIIK_2025.pdf atau DOI url"
               className="input-field text-xs"
+              required
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={() => setModalReviewerOpen(false)} className="btn-secondary text-xs">
+          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setStageModal(false)}
+              className="btn-secondary text-xs px-4 py-2"
+            >
               Batal
             </button>
-            <button type="submit" className="btn-primary text-xs">
-              Kirim Penugasan
+            <button type="submit" className="btn-primary text-xs px-4 py-2">
+              Simpan Tahap
             </button>
           </div>
         </form>
@@ -453,4 +250,3 @@ export default function DetailPublikasiPage() {
     </div>
   );
 }
-

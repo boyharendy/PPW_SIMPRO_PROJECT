@@ -1,152 +1,167 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import PageHeader from '@/components/ui/PageHeader';
-import DataTable from '@/components/ui/DataTable';
-import StatusBadge from '@/components/ui/StatusBadge';
-import Modal from '@/components/ui/Modal';
-import { mockSurveyTemplates } from '@/lib/mock-data';
-import { surveyService } from '@/lib/api/services/survey.service';
-import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
-import type { PartnerSurveyTemplate, SurveyProgram } from '@/lib/types';
-import { Plus, Copy, ArrowRight, Settings2 } from 'lucide-react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { formatDateShort } from '@/lib/utils';
+import { Plus, SlidersHorizontal, Copy, Send, FileEdit, Eye } from 'lucide-react';
+import PageHeader from '@/components/ui/PageHeader';
+import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import Modal from '@/components/ui/Modal';
 
-export default function InstrumenKepuasanPage() {
-  const [templates, setTemplates] = useState<PartnerSurveyTemplate[]>(mockSurveyTemplates);
-  const [openModal, setOpenModal] = useState(false);
-  const [formProgram, setFormProgram] = useState<SurveyProgram>('KP');
-  const [formNama, setFormNama] = useState('');
-  const [loading, setLoading] = useState(false);
+interface InstrumentTemplate {
+  id: string;
+  program: 'KP' | 'PSI' | 'PDLK';
+  nama: string;
+  skalaMaks: number;
+  dibuatAt: string;
+  jumlahAspek: number;
+  jumlahResponden: number;
+  status: 'AKTIF' | 'DRAF' | 'ARSIP';
+}
 
-  // Muat data dari persistent local storage dan Backend / Supabase
-  useEffect(() => {
-    // 1. Sinkronisasi data lokal dari storageSync saat client mount (mencegah hydration mismatch)
-    const localSurveys = storageSync.get<PartnerSurveyTemplate[]>(STORAGE_KEYS.SURVEYS, mockSurveyTemplates);
-    if (localSurveys && localSurveys.length > 0) {
-      setTemplates(localSurveys);
-    }
+const INITIAL_TEMPLATES: InstrumentTemplate[] = [
+  {
+    id: 'tmpl-kp-2025',
+    program: 'KP',
+    nama: 'Instrumen Kepuasan Mitra Kerja Praktik 2025/2026',
+    skalaMaks: 5,
+    dibuatAt: '2025-06-01',
+    jumlahAspek: 4,
+    jumlahResponden: 18,
+    status: 'AKTIF',
+  },
+  {
+    id: 'tmpl-psi-2025',
+    program: 'PSI',
+    nama: 'Instrumen Evaluasi Mitra Proyek Sistem Informasi (PSI)',
+    skalaMaks: 5,
+    dibuatAt: '2025-06-05',
+    jumlahAspek: 4,
+    jumlahResponden: 12,
+    status: 'AKTIF',
+  },
+  {
+    id: 'tmpl-pdlk-2025',
+    program: 'PDLK',
+    nama: 'Instrumen Pembimbing Mitra Pembelajaran di Luar Kampus',
+    skalaMaks: 5,
+    dibuatAt: '2025-06-10',
+    jumlahAspek: 3,
+    jumlahResponden: 6,
+    status: 'AKTIF',
+  },
+  {
+    id: 'tmpl-kp-draft',
+    program: 'KP',
+    nama: 'Draft Instrumen KP Skema Magang MBKM 2026',
+    skalaMaks: 5,
+    dibuatAt: '2025-08-01',
+    jumlahAspek: 5,
+    jumlahResponden: 0,
+    status: 'DRAF',
+  },
+];
 
-    // 2. Muat data dari Backend / Supabase saat halaman dibuka
-    let active = true;
-    surveyService
-      .getSurveys()
-      .then((res) => {
-        if (active && res.data && res.data.length > 0) {
-          setTemplates(res.data);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, []);
+export default function Page() {
+  const [templates, setTemplates] = useState<InstrumentTemplate[]>(INITIAL_TEMPLATES);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [newProgram, setNewProgram] = useState<'KP' | 'PSI' | 'PDLK'>('KP');
+  const [newNama, setNewNama] = useState('');
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formNama.trim()) return;
+    if (!newNama.trim()) return;
 
-    setLoading(true);
-    try {
-      const res = await surveyService.createSurvey({
-        program: formProgram,
-        nama: formNama,
-        skala_maks: 5,
-        status: 'DRAF',
-      });
-
-      if (res.data) {
-        setTemplates((prev) => [res.data, ...prev.filter((t) => t.id !== res.data.id)]);
-      }
-      setOpenModal(false);
-      setFormNama('');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDuplicate = async (tmpl: PartnerSurveyTemplate) => {
-    const duplicated: Partial<PartnerSurveyTemplate> = {
-      program: tmpl.program,
-      nama: `${tmpl.nama} (Salinan Baru)`,
-      skala_maks: tmpl.skala_maks,
+    const newTmpl: InstrumentTemplate = {
+      id: `tmpl-${Date.now()}`,
+      program: newProgram,
+      nama: newNama.trim(),
+      skalaMaks: 5,
+      dibuatAt: new Date().toISOString().split('T')[0],
+      jumlahAspek: 3,
+      jumlahResponden: 0,
       status: 'DRAF',
-      aspek: tmpl.aspek,
     };
-    const res = await surveyService.createSurvey(duplicated);
-    if (res.data) {
-      setTemplates((prev) => [res.data, ...prev]);
-    }
+
+    setTemplates([newTmpl, ...templates]);
+    setNewNama('');
+    setModalOpen(false);
   };
 
-  const columns = [
+  const handleDuplicate = (template: InstrumentTemplate) => {
+    const duplicated: InstrumentTemplate = {
+      ...template,
+      id: `tmpl-${Date.now()}`,
+      nama: `${template.nama} (Salinan)`,
+      jumlahResponden: 0,
+      status: 'DRAF',
+      dibuatAt: new Date().toISOString().split('T')[0],
+    };
+    setTemplates([duplicated, ...templates]);
+  };
+
+  const columns: DataTableColumn<InstrumentTemplate>[] = [
     {
       key: 'program',
       header: 'Program',
-      render: (row: PartnerSurveyTemplate) => (
-        <span className="font-bold text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-md">
-          {row?.program || '-'}
+      render: (r) => (
+        <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 border border-blue-100">
+          {r.program}
         </span>
       ),
     },
     {
       key: 'nama',
       header: 'Nama Template Instrumen',
-      render: (row: PartnerSurveyTemplate) => (
+      render: (r) => (
         <div>
-          <p className="font-semibold text-slate-800 text-xs sm:text-sm">{row?.nama || '-'}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">
-            Skala 1–{row?.skala_maks ?? 5} • Dibuat: {formatDateShort(row?.created_at)}
-          </p>
+          <div className="font-semibold text-slate-800 text-sm">{r.nama}</div>
+          <div className="text-xs text-slate-400 mt-0.5">
+            Skala 1–{r.skalaMaks} • Dibuat: {r.dibuatAt}
+          </div>
         </div>
       ),
     },
     {
-      key: 'aspek_count',
+      key: 'jumlahAspek',
       header: 'Aspek Penilaian',
-      render: (row: PartnerSurveyTemplate) => (
-        <span className="text-xs text-slate-600 font-medium">
-          {row?.aspek?.length || 0} Aspek
-        </span>
-      ),
+      render: (r) => <span className="text-sm font-medium text-slate-700">{r.jumlahAspek} Aspek</span>,
     },
     {
-      key: 'total_responden',
+      key: 'jumlahResponden',
       header: 'Responden',
-      render: (row: PartnerSurveyTemplate) => (
-        <span className="text-xs font-semibold text-slate-700">
-          {row?.total_responden || 0} Mitra
-        </span>
-      ),
+      render: (r) => <span className="text-sm text-slate-600">{r.jumlahResponden} Mitra</span>,
     },
     {
       key: 'status',
       header: 'Status',
-      render: (row: PartnerSurveyTemplate) => <StatusBadge status={row?.status || 'DRAF'} size="sm" />,
+      render: (r) => <StatusBadge status={r.status} size="sm" />,
     },
     {
-      key: 'actions',
+      key: 'aksi',
       header: 'Aksi',
       className: 'text-right',
-      render: (row: PartnerSurveyTemplate) => (
+      render: (r) => (
         <div className="flex items-center justify-end gap-1.5">
-          <button
-            type="button"
-            onClick={() => handleDuplicate(row)}
-            className="btn-secondary text-xs py-1.5 px-2.5 flex items-center gap-1 text-slate-600"
-            title="Duplikasi Instrumen"
-          >
-            <Copy size={13} />
-            <span className="hidden sm:inline">Duplikasi</span>
-          </button>
-
           <Link
-            href={`/dashboard/kepuasan-mitra/instrumen/${row?.id || ''}`}
-            className="btn-primary text-xs py-1.5 px-2.5 flex items-center gap-1"
+            href="/dashboard/kepuasan-mitra/pengiriman"
+            className="btn-secondary text-xs px-2 py-1 inline-flex items-center gap-1"
+            title="Kirim ke Mitra"
           >
-            <Settings2 size={13} />
-            <span>Kelola</span>
+            <Send size={12} /> Kirim
+          </Link>
+          <button
+            onClick={() => handleDuplicate(r)}
+            className="btn-secondary text-xs px-2 py-1 inline-flex items-center gap-1"
+            title="Duplikasi Template"
+          >
+            <Copy size={12} /> Duplikasi
+          </button>
+          <Link
+            href={`/dashboard/kepuasan-mitra/instrumen/${r.id}`}
+            className="btn-secondary text-xs px-2.5 py-1 inline-flex items-center gap-1.5"
+          >
+            <Eye size={13} /> Detail
           </Link>
         </div>
       ),
@@ -156,16 +171,14 @@ export default function InstrumenKepuasanPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Instrumen Kepuasan Mitra"
-        description="Kelola kuesioner evaluasi mitra untuk program Kerja Praktik (KP), Proyek Sistem Informasi (PSI), dan Pembelajaran Di Luar Kampus (PDLK)."
-        action={
+        title="Instrumen Kuesioner"
+        description="Kelola kuesioner evaluasi mitra lapangan untuk program KP, PSI, dan PDLK (FR-26)."
+        actions={
           <button
-            type="button"
-            onClick={() => setOpenModal(true)}
-            className="btn-primary flex items-center gap-2"
+            onClick={() => setModalOpen(true)}
+            className="btn-primary text-sm flex items-center gap-1.5"
           >
-            <Plus size={16} />
-            <span>Tambah Instrumen</span>
+            <Plus size={16} /> Tambah Instrumen
           </button>
         }
       />
@@ -174,57 +187,64 @@ export default function InstrumenKepuasanPage() {
         <DataTable
           columns={columns}
           data={templates}
-          emptyMessage="Belum ada instrumen kepuasan mitra yang dibuat"
+          emptyMessage="Belum ada template kuesioner. Klik Tambah Instrumen untuk membuat baru."
         />
       </div>
 
-      {/* Modal Tambah Instrumen */}
-      <Modal open={openModal} onClose={() => setOpenModal(false)} title="Tambah Instrumen Kuesioner Baru" size="md">
-        <form onSubmit={handleCreate} className="space-y-4 text-xs">
+      {/* Modal Tambah Template */}
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title="Tambah Template Instrumen Baru"
+        size="md"
+      >
+        <form onSubmit={handleCreate} className="space-y-4">
           <div>
-            <label className="label">Program Terkait *</label>
+            <label className="text-xs font-semibold text-slate-700 block mb-1">
+              Program Penempatan
+            </label>
             <select
-              className="input-field"
-              value={formProgram}
-              onChange={(e) => setFormProgram(e.target.value as SurveyProgram)}
+              value={newProgram}
+              onChange={(e) => setNewProgram(e.target.value as 'KP' | 'PSI' | 'PDLK')}
+              className="select-field"
             >
               <option value="KP">Kerja Praktik (KP)</option>
               <option value="PSI">Proyek Sistem Informasi (PSI)</option>
-              <option value="PDLK">Pembelajaran Di Luar Kampus (PDLK)</option>
+              <option value="PDLK">Pembelajaran di Luar Kampus (PDLK)</option>
             </select>
           </div>
 
           <div>
-            <label className="label">Nama Template Instrumen *</label>
+            <label className="text-xs font-semibold text-slate-700 block mb-1">
+              Nama Template Instrumen
+            </label>
             <input
               type="text"
+              value={newNama}
+              onChange={(e) => setNewNama(e.target.value)}
+              placeholder="Contoh: Instrumen Kepuasan Mitra KP 2026/2027"
               className="input-field"
-              placeholder="Contoh: Evaluasi Kinerja Mahasiswa KP 2025/2026"
-              value={formNama}
-              onChange={(e) => setFormNama(e.target.value)}
               required
             />
           </div>
 
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 text-[11px] leading-relaxed">
-            Template baru akan dibuat dengan status <strong>DRAF</strong> beserta aspek standar (Integritas, Kompetensi, dan Komunikasi). Anda dapat menambahkan rincian butir pertanyaan pada menu Kelola setelah template dibuat.
+          <div className="p-3 bg-blue-50/60 border border-blue-100 rounded-xl text-xs text-blue-700 leading-relaxed">
+            Template baru akan dibuat dengan status <strong>DRAF</strong> dan memuat 4 aspek penilaian standar (Integritas, Kompetensi Teknis, Komunikasi, dan Koordinasi) yang dapat Anda kustomisasi selanjutnya.
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
             <button
               type="button"
-              onClick={() => setOpenModal(false)}
-              className="btn-secondary"
-              disabled={loading}
+              onClick={() => setModalOpen(false)}
+              className="btn-secondary text-xs px-4 py-2"
             >
               Batal
             </button>
             <button
               type="submit"
-              className="btn-primary"
-              disabled={loading || !formNama.trim()}
+              className="btn-primary text-xs px-4 py-2"
             >
-              {loading ? 'Menyimpan...' : 'Simpan Template Kuesioner'}
+              Simpan & Lanjutkan
             </button>
           </div>
         </form>

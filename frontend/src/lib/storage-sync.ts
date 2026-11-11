@@ -7,6 +7,7 @@
 export const STORAGE_KEYS = {
   SURVEYS: 'simpro_surveys',
   SURVEY_INVITATIONS: 'simpro_survey_invitations',
+  SURVEY_RESPONSES: 'simpro_survey_responses',
   PUBLICATIONS: 'simpro_publications',
   TRIPS: 'simpro_trips',
   RKA_DOCUMENTS: 'simpro_rka_documents',
@@ -32,6 +33,9 @@ export const storageSync = {
     if (typeof window === 'undefined') return;
     try {
       localStorage.setItem(key, JSON.stringify(data));
+      if (typeof window.dispatchEvent === 'function') {
+        window.dispatchEvent(new CustomEvent('simpro_storage_change', { detail: { key } }));
+      }
     } catch (e) {
       console.warn('Gagal menyimpan ke localStorage:', e);
     }
@@ -60,4 +64,3 @@ export const storageSync = {
     return updated;
   },
 };
-

@@ -12,6 +12,7 @@ export interface AuthUser {
   email: string;
   roles: Role[];
   activeRole: Role;
+  penanganan_kekerasan?: boolean; // PRDnew FR-50: penunjukan PGL-K pada Pengelola Aduan
 }
 
 interface AppContextType {
@@ -75,6 +76,7 @@ const DEFAULT_FALLBACK_USER: AuthUser = {
     'HIMPUNAN',
   ],
   activeRole: 'KAPRODI',
+  penanganan_kekerasan: true,
 };
 
 function sanitizeRoles(roles?: Role[]): Role[] {
@@ -159,15 +161,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setActiveRole = useCallback(async (role: Role) => {
-    setUser(prev => ({ ...prev, activeRole: role }));
+    if (user.roles && !user.roles.includes(role)) {
+      console.warn(`Peran ${role} tidak dimiliki oleh pengguna ini.`);
+      return;
+    }
+
     if (isAuthenticated) {
       try {
-        await authService.switchRole(role);
-      } catch {
-        // Fallback local update
+        const res = await authService.switchRole(role);
+        if (res.data?.user) {
+          setUser(prev => ({
+            ...prev,
+            activeRole: res.data?.user?.active_role || role,
+          }));
+          return;
+        }
+      } catch (err) {
+        console.error('Gagal mengganti peran di server', err);
+        return; // Jangan bypass secara lokal jika server menolak
       }
     }
-  }, [isAuthenticated]);
+
+    // Mode demo / unauthenticated: ganti state hanya jika terdaftar di user.roles
+    setUser(prev => ({ ...prev, activeRole: role }));
+  }, [isAuthenticated, user.roles]);
 
   const login = useCallback(async (payload: LoginPayload) => {
     const res = await authService.login(payload);

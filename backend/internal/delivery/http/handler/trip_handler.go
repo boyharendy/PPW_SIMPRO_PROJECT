@@ -8,6 +8,7 @@ import (
 	"simpro-backend/internal/delivery/http/middleware"
 	"simpro-backend/internal/model"
 	"simpro-backend/internal/usecase"
+	"simpro-backend/pkg/export"
 	"simpro-backend/pkg/response"
 )
 
@@ -24,6 +25,11 @@ func (h *TripHandler) GetTrips(c *gin.Context) {
 	userID := c.Query("user_id")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+
+	// NF-02: Dosen hanya dapat melihat perjalanannya sendiri; Kaprodi dan Admin Prodi dapat melihat seluruhnya.
+	if r := middleware.NormalizeRole(middleware.ActiveRole(c)); r != model.RoleKaprodi && r != model.RoleAdminProdi {
+		userID = c.GetString(middleware.CtxUserID)
+	}
 
 	trips, total, err := h.usecase.GetTrips(status, userID, page, limit)
 	if err != nil {
@@ -132,9 +138,9 @@ func (h *TripHandler) SubmitReport(c *gin.Context) {
 	userID := c.GetString(middleware.CtxUserID)
 
 	var req struct {
-		RingkasanHasil  string  `json:"ringkasan_hasil" binding:"required"`
-		FileLaporanURL  string  `json:"file_laporan_url"`
-		TotalRealisasi  float64 `json:"total_realisasi"`
+		RingkasanHasil string  `json:"ringkasan_hasil" binding:"required"`
+		FileLaporanURL string  `json:"file_laporan_url"`
+		TotalRealisasi float64 `json:"total_realisasi"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "Format laporan tidak valid", err.Error())
@@ -145,7 +151,21 @@ func (h *TripHandler) SubmitReport(c *gin.Context) {
 		response.BadRequest(c, err.Error(), nil)
 		return
 	}
-	response.Success(c, http.StatusOK, "Laporan perjalanan dinas berhasil dikirim dan diverifikasi", nil)
+	response.Success(c, http.StatusOK, "Laporan perjalanan dinas berhasil dikirim", nil)
+}
+
+func (h *TripHandler) AddProof(c *gin.Context) {
+	id := c.Param("id")
+	var req model.TravelProof
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Format bukti perjalanan tidak valid", err.Error())
+		return
+	}
+	if err := h.usecase.AddProof(id, &req); err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusCreated, "Bukti perjalanan dinas berhasil diunggah", nil)
 }
 
 func (h *TripHandler) GetRecap(c *gin.Context) {
@@ -154,5 +174,81 @@ func (h *TripHandler) GetRecap(c *gin.Context) {
 		response.InternalServerError(c, "Gagal mengambil rekapitulasi: "+err.Error())
 		return
 	}
+	format := c.Query("format")
+	if format == "xlsx" || format == "csv" || format == "pdf" {
+		c.Header("Content-Disposition", "attachment; filename=rekap-perjalanan-dinas.csv")
+		c.Data(http.StatusOK, "text/csv; charset=utf-8", export.ExportTripRecapCSV(recap))
+		return
+	}
 	response.Success(c, http.StatusOK, "Rekapitulasi perjalanan dinas", recap)
+}
+
+// PRD Milestone 2 Endpoints:
+
+// PUT /trips/:id/costs
+func (h *TripHandler) UpdateCosts(c *gin.Context) {
+	id := c.Param("id")
+	var req struct {
+		Costs []*model.TravelCost `json:"costs" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Format rincian biaya tidak valid", err.Error())
+		return
+	}
+	if err := h.usecase.UpdateCosts(id, req.Costs); err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusOK, "Rincian estimasi biaya perjalanan berhasil diperbarui", nil)
+}
+
+// PUT /trips/:id/costs/realization
+func (h *TripHandler) UpdateRealizationCosts(c *gin.Context) {
+	id := c.Param("id")
+	var req struct {
+		Costs []*model.TravelCost `json:"costs" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Format realisasi biaya tidak valid", err.Error())
+		return
+	}
+	if err := h.usecase.UpdateRealizationCosts(id, req.Costs); err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusOK, "Rincian realisasi biaya perjalanan berhasil dicatatkan", nil)
+}
+
+// POST /trips/:id/confirm (Separation of duties: Admin Prodi confirmation & auto-realization to RKA)
+func (h *TripHandler) ConfirmTrip(c *gin.Context) {
+	id := c.Param("id")
+	actorID := c.GetString(middleware.CtxUserID)
+
+	trip, err := h.usecase.ConfirmTrip(id, actorID)
+	if err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusOK, "Perjalanan dinas berhasil dikonfirmasi selesai dan realisasi anggaran RKA telah tercatat", trip)
+}
+
+// GET /trips/:id/completeness
+func (h *TripHandler) GetCompleteness(c *gin.Context) {
+	id := c.Param("id")
+	check, err := h.usecase.GetCompleteness(id)
+	if err != nil {
+		response.NotFound(c, err.Error())
+		return
+	}
+	response.Success(c, http.StatusOK, "Checklist kelengkapan berkas perjalanan dinas", check)
+}
+
+// GET /trips/flags
+func (h *TripHandler) GetFlags(c *gin.Context) {
+	flags, err := h.usecase.GetFlags()
+	if err != nil {
+		response.InternalServerError(c, "Gagal mengambil daftar flag SPPD: "+err.Error())
+		return
+	}
+	response.Success(c, http.StatusOK, "Daftar penanda / anomali perjalanan dinas", flags)
 }

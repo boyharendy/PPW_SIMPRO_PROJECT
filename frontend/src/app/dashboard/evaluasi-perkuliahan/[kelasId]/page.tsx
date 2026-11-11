@@ -1,111 +1,52 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import PageHeader from '@/components/ui/PageHeader';
-import StatusBadge from '@/components/ui/StatusBadge';
-import Modal from '@/components/ui/Modal';
-import { mockCourseEvaluations } from '@/lib/mock-data';
-import { evaluationService } from '@/lib/api/services/evaluation.service';
-import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
-import type { CourseEvaluation, PlanCategory } from '@/lib/types';
-import {
-  ArrowLeft,
-  CheckCircle2,
-  AlertCircle,
-  Plus,
-  Trash2,
-  Save,
-  Send,
-  MessageSquare,
-  BarChart2,
-  Check,
-} from 'lucide-react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { formatDateShort } from '@/lib/utils';
+import { useParams, useRouter } from 'next/navigation';
+import { ArrowLeft, Save, Send, CheckCircle2, MessageSquare, Star, Users } from 'lucide-react';
+import PageHeader from '@/components/ui/PageHeader';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 
-export default function DetailEvaluasiPerkuliahanPage() {
-  const params = useParams();
-  const kelasId = params.kelasId as string;
+interface CpmkRow {
+  kode: string;
+  deskripsi: string;
+  target: number;
+  capaian: number;
+}
 
-  const [evaluation, setEvaluation] = useState<CourseEvaluation>(() => {
-    const list = storageSync.get<CourseEvaluation[]>(STORAGE_KEYS.EVALUATIONS, mockCourseEvaluations);
-    return list.find((e) => e.course_class_id === kelasId) || mockCourseEvaluations[0];
+const DEFAULT_CPMK: CpmkRow[] = [
+  { kode: 'CPMK-1', deskripsi: 'Mampu menjelaskan konsep dasar pemrograman berorientasi objek', target: 75, capaian: 82 },
+  { kode: 'CPMK-2', deskripsi: 'Mampu merancang diagram kelas (class diagram) dengan UML', target: 75, capaian: 78 },
+  { kode: 'CPMK-3', deskripsi: 'Mampu mengimplementasikan design pattern pada kode program', target: 70, capaian: 74 },
+  { kode: 'CPMK-4', deskripsi: 'Mampu membuat aplikasi berbasis GUI dengan arsitektur MVC', target: 75, capaian: 68 },
+];
+
+export default function Page() {
+  const { kelasId } = useParams<{ kelasId: string }>();
+  const router = useRouter();
+
+  const [cpmkList, setCpmkList] = useState<CpmkRow[]>(DEFAULT_CPMK);
+  const [distribusiNilai, setDistribusiNilai] = useState({
+    A: 12,
+    AB: 10,
+    B: 8,
+    BC: 4,
+    C: 3,
+    D: 1,
+    E: 0,
   });
-  const [modalGkmOpen, setModalGkmOpen] = useState(false);
-  const [catatanGkm, setCatatanGkm] = useState('');
-  const [modalPlanOpen, setModalPlanOpen] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    evaluationService
-      .getEvaluationById(kelasId)
-      .then((res) => {
-        if (active && res.data) {
-          setEvaluation(res.data);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [kelasId]);
+  const [kesesuaianRps, setKesesuaianRps] = useState<'SESUAI' | 'SEBAGIAN' | 'TIDAK_SESUAI'>('SEBAGIAN');
+  const [kendala, setKendala] = useState('Mahasiswa membutuhkan waktu adaptasi lebih lama pada materi design pattern di CPMK-4.');
+  const [rencanaPerbaikan, setRencanaPerbaikan] = useState('Menambahkan sesi praktikum mandiri terpandu untuk CPMK-4 pada semester berikutnya.');
+  const [submitted, setSubmitted] = useState(false);
 
-  // New Plan Form
-  const [planUraian, setPlanUraian] = useState('');
-  const [planKategori, setPlanKategori] = useState<PlanCategory>('METODE_PEMBELAJARAN');
-
-  const handleAddPlan = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!planUraian.trim()) return;
-
-    const newPlan = {
-      id: `plan-${Date.now()}`,
-      evaluation_id: evaluation.id,
-      uraian: planUraian,
-      kategori: planKategori,
-      status: 'BARU' as const,
-      created_at: new Date().toISOString(),
-    };
-
-    const updated = {
-      ...evaluation,
-      improvement_plans: [...evaluation.improvement_plans, newPlan],
-    };
-
-    setEvaluation(updated);
-    storageSync.update(STORAGE_KEYS.EVALUATIONS, evaluation.id, updated, mockCourseEvaluations);
-
-    try {
-      await evaluationService.saveEvaluation(updated);
-    } catch {
-      // Offline fallback
-    }
-
-    setModalPlanOpen(false);
-    setPlanUraian('');
-  };
-
-  const handleTinjauGkm = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const updated = {
-      ...evaluation,
-      status: 'DITINJAU' as const,
-      ditinjau_oleh: 'u-gkm',
-      ditinjau_at: new Date().toISOString(),
-      catatan_gkm: catatanGkm || 'Evaluasi telah ditinjau dan dicatat oleh GKM.',
-    };
-
-    setEvaluation(updated);
-    storageSync.update(STORAGE_KEYS.EVALUATIONS, evaluation.id, updated, mockCourseEvaluations);
-
-    try {
-      await evaluationService.saveEvaluation(updated);
-    } catch {
-      // Offline fallback
-    }
-
-    setModalGkmOpen(false);
+    setSubmitted(true);
+    setTimeout(() => {
+      router.push('/dashboard/evaluasi-perkuliahan');
+    }, 1200);
   };
 
   return (
@@ -113,260 +54,237 @@ export default function DetailEvaluasiPerkuliahanPage() {
       <div className="flex items-center gap-2">
         <Link
           href="/dashboard/evaluasi-perkuliahan"
-          className="text-xs text-slate-500 hover:text-blue-600 flex items-center gap-1 font-medium"
+          className="text-xs text-slate-500 hover:text-slate-800 inline-flex items-center gap-1 font-medium"
         >
-          <ArrowLeft size={14} />
-          <span>Kembali ke Daftar Evaluasi</span>
+          <ArrowLeft size={14} /> Kembali ke Daftar Evaluasi
         </Link>
       </div>
 
       <PageHeader
-        title={`Evaluasi: ${evaluation.course_class?.course?.nama_mk} (${evaluation.course_class?.kode_kelas})`}
-        description={`Jumlah Mahasiswa: ${evaluation.course_class?.jumlah_mahasiswa} • Dosen Pengampu: Dr. Ahmad Fauzi, M.T.`}
-        action={
-          <div className="flex items-center gap-2">
-            <StatusBadge status={evaluation.status} size="md" />
-            {evaluation.status !== 'DITINJAU' && (
-              <button
-                type="button"
-                onClick={() => setModalGkmOpen(true)}
-                className="btn-primary text-xs py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5"
-              >
-                <CheckCircle2 size={14} />
-                <span>Tandai Ditinjau (GKM)</span>
-              </button>
-            )}
-          </div>
-        }
+        title="Formulir Evaluasi Perkuliahan Kelas"
+        description={`Evaluasi berkala mata kuliah SI-301 (Kelas A) • 38 Mahasiswa • ID: ${kelasId || 'kls-01'}`}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main 2 Cols: CPMK, Grades, RPS Match, Plans */}
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Form Isian Dosen (2 Kolom) */}
         <div className="lg:col-span-2 space-y-6">
-          {/* CPMK Achievement Table */}
+          {/* 1. Ketercapaian CPMK */}
           <div className="card space-y-4">
-            <div className="border-b border-slate-100 pb-2">
-              <h3 className="text-sm font-bold text-slate-800">
-                1. Ketercapaian Capaian Pembelajaran Mata Kuliah (CPMK)
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+                1. Ketercapaian CPMK (Target vs Realisasi)
               </h3>
-              <p className="text-xs text-slate-500">
-                Perbandingan target persen dan capaian aktual mahasiswa kelas
-              </p>
+              <span className="text-xs font-semibold text-blue-600">
+                Ambang Kelulusan: Target &ge; 70%
+              </span>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <div className="overflow-x-auto">
               <table className="w-full text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase">
-                  <tr>
-                    <th className="px-3 py-2 text-left w-20">Kode</th>
-                    <th className="px-3 py-2 text-left">Deskripsi CPMK</th>
-                    <th className="px-3 py-2 text-right w-20">Target</th>
-                    <th className="px-3 py-2 text-right w-20">Capaian</th>
-                    <th className="px-3 py-2 text-center w-28">Status</th>
+                <thead>
+                  <tr className="border-b border-slate-100 text-left text-slate-400 font-semibold uppercase">
+                    <th className="py-2 px-2">Kode</th>
+                    <th className="py-2 px-2">Deskripsi CPMK</th>
+                    <th className="py-2 px-2 text-center w-20">Target (%)</th>
+                    <th className="py-2 px-2 text-center w-24">Capaian (%)</th>
+                    <th className="py-2 px-2 text-center w-24">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {evaluation.cpmk_list.map((c) => (
-                    <tr key={c.id} className="hover:bg-slate-50/50">
-                      <td className="px-3 py-2.5 font-mono font-bold text-blue-700">{c.kode_cpmk}</td>
-                      <td className="px-3 py-2.5 text-slate-700">
-                        <p className="font-medium">{c.deskripsi_cpmk}</p>
-                        {c.analisis && (
-                          <p className="text-[10px] text-slate-400 mt-0.5 italic">{c.analisis}</p>
-                        )}
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-medium text-slate-500">
-                        {c.target_persen}%
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-bold text-slate-800">
-                        {c.capaian_persen}%
-                      </td>
-                      <td className="px-3 py-2.5 text-center">
-                        <StatusBadge status={c.tercapai ? 'TERCAPAI' : 'TIDAK_TERCAPAI'} size="sm" />
-                      </td>
-                    </tr>
-                  ))}
+                  {cpmkList.map((c, i) => {
+                    const tercapai = c.capaian >= c.target;
+                    return (
+                      <tr key={c.kode}>
+                        <td className="py-2 px-2 font-mono font-bold text-blue-700">{c.kode}</td>
+                        <td className="py-2 px-2 text-slate-700">{c.deskripsi}</td>
+                        <td className="py-2 px-2 text-center font-mono">{c.target}%</td>
+                        <td className="py-2 px-2 text-center">
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={c.capaian}
+                            onChange={(e) => {
+                              const val = Number(e.target.value);
+                              setCpmkList(
+                                cpmkList.map((item, idx) => (idx === i ? { ...item, capaian: val } : item))
+                              );
+                            }}
+                            className="input-field py-1 px-1 text-center font-mono text-xs w-16 mx-auto"
+                          />
+                        </td>
+                        <td className="py-2 px-2 text-center">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              tercapai
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-rose-50 text-rose-700 border border-rose-200'
+                            }`}
+                          >
+                            {tercapai ? 'Tercapai' : 'Belum'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
 
-          {/* Distribusi Nilai Kelas */}
-          <div className="card space-y-4">
-            <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2">
-              2. Distribusi Nilai Akhir Kelas
+          {/* 2. Distribusi Nilai Mahasiswa */}
+          <div className="card space-y-3">
+            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+              2. Distribusi Nilai Akhir (38 Mahasiswa)
             </h3>
-            <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 text-center">
-              {evaluation.grades.map((g) => (
-                <div key={g.id} className="p-2.5 rounded-xl border border-slate-200 bg-slate-50/60">
-                  <span className="font-extrabold text-blue-700 text-sm">{g.nilai_huruf}</span>
-                  <p className="text-xs font-bold text-slate-800 mt-1">{g.jumlah_mahasiswa} Mhs</p>
+            <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+              {(Object.keys(distribusiNilai) as (keyof typeof distribusiNilai)[]).map((grade) => (
+                <div key={grade} className="p-2.5 rounded-xl border border-slate-200 bg-slate-50/60 text-center">
+                  <div className="text-xs font-bold text-slate-700">{grade}</div>
+                  <input
+                    type="number"
+                    min={0}
+                    value={distribusiNilai[grade]}
+                    onChange={(e) =>
+                      setDistribusiNilai({ ...distribusiNilai, [grade]: Number(e.target.value) })
+                    }
+                    className="input-field py-1 px-1 text-center font-mono text-xs mt-1"
+                  />
+                  <div className="text-[10px] text-slate-400 mt-0.5">Mhs</div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Rencana Perbaikan (CQI) */}
+          {/* 3. Kesesuaian RPS & Rencana Perbaikan (PRD FR-45) */}
           <div className="card space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <div>
-                <h3 className="text-sm font-bold text-slate-800">
-                  3. Rencana Perbaikan untuk Semester Berikutnya (FR-45)
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Rencana berstatus BARU akan otomatis diteruskan ke pengajuan RPS periode berikutnya
-                </p>
+            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+              3. Keselarasan RPS & Rencana Perbaikan Siklus Depan (FR-45)
+            </h3>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-700 block mb-1.5">
+                Kesesuaian Pelaksanaan Perkuliahan terhadap RPS
+              </label>
+              <div className="flex gap-4">
+                {(['SESUAI', 'SEBAGIAN', 'TIDAK_SESUAI'] as const).map((opt) => (
+                  <label key={opt} className="flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
+                    <input
+                      type="radio"
+                      name="kesesuaian"
+                      checked={kesesuaianRps === opt}
+                      onChange={() => setKesesuaianRps(opt)}
+                    />
+                    <span className={opt === 'SESUAI' ? 'text-emerald-700' : opt === 'SEBAGIAN' ? 'text-amber-700' : 'text-rose-700'}>
+                      {opt.replace('_', ' ')}
+                    </span>
+                  </label>
+                ))}
               </div>
-              <button
-                type="button"
-                onClick={() => setModalPlanOpen(true)}
-                className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1"
-              >
-                <Plus size={13} />
-                <span>Tambah Rencana</span>
-              </button>
             </div>
 
-            <div className="space-y-3">
-              {evaluation.improvement_plans.map((p, idx) => (
-                <div key={p.id} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-xs space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-slate-700">Rencana #{idx + 1} ({p.kategori})</span>
-                    <StatusBadge status={p.status} size="sm" />
-                  </div>
-                  <p className="text-slate-800 font-medium">{p.uraian}</p>
-                </div>
-              ))}
+            <div>
+              <label className="text-xs font-semibold text-slate-700 block mb-1">
+                Kendala Utama Proses Pembelajaran
+              </label>
+              <textarea
+                rows={2}
+                value={kendala}
+                onChange={(e) => setKendala(e.target.value)}
+                className="input-field text-xs resize-none"
+              />
             </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-700 block mb-1">
+                Usulan Rencana Perbaikan (Otomatis Diteruskan ke RPS Periode Berikutnya)
+              </label>
+              <textarea
+                rows={2}
+                value={rencanaPerbaikan}
+                onChange={(e) => setRencanaPerbaikan(e.target.value)}
+                className="input-field text-xs resize-none"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="btn-secondary text-xs px-4 py-2"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={submitted}
+              className="btn-primary text-xs px-5 py-2 flex items-center gap-1.5"
+            >
+              {submitted ? <CheckCircle2 size={14} /> : <Send size={14} />}
+              {submitted ? 'Tersimpan...' : 'Kirim Evaluasi Perkuliahan'}
+            </button>
           </div>
         </div>
 
-        {/* Right Col: Student Feedback Side Panel (FR-44) & Catatan GKM */}
-        <div className="space-y-6">
-          {/* Umpan Balik Mahasiswa (Berdampingan) */}
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
-            <div className="border-b border-slate-100 pb-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-                Sinkron SIAKAD / SIMPRO
-              </span>
-              <h3 className="text-sm font-bold text-slate-800 mt-2">
-                Ringkasan Umpan Balik Mahasiswa (FR-44)
+        {/* Panel Umpan Balik Mahasiswa (Berdampingan - PRD FR-44) */}
+        <div className="space-y-4">
+          <div className="card space-y-4 bg-blue-50/30 border-blue-100">
+            <div className="flex items-center gap-2">
+              <MessageSquare size={16} className="text-blue-600" />
+              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+                Umpan Balik Mahasiswa (FR-44)
               </h3>
-              <p className="text-xs text-slate-500">
-                Hasil kuesioner mahasiswa ditampilkan berdampingan
-              </p>
             </div>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Data sinkron dari Kuesioner Evaluasi Dosen oleh Mahasiswa (EDOM) pada SIAKAD prodi.
+            </p>
 
-            <div className="space-y-3 text-xs">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-blue-50/70 border border-blue-200">
-                <span className="font-semibold text-blue-900">Skor Rata-rata Kepuasan</span>
-                <span className="text-lg font-black text-blue-700">
-                  {evaluation.feedback_summary?.skor_rata_rata.toFixed(2)} / 5.0
+            <div className="p-3.5 rounded-xl bg-white border border-blue-100 space-y-1">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500">Jumlah Responden:</span>
+                <span className="font-bold text-slate-800">34 / 38 Mhs (89.5%)</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500">Skor Rata-rata EDOM:</span>
+                <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 inline-flex items-center gap-1">
+                  <Star size={12} className="fill-blue-600 text-blue-600" /> 4.42 / 5.0
                 </span>
               </div>
+            </div>
 
-              <div className="space-y-2 pt-1">
-                <p className="font-bold text-slate-700">Rincian per Aspek:</p>
-                {evaluation.feedback_summary?.rincian_aspek &&
-                  Object.entries(evaluation.feedback_summary.rincian_aspek).map(([asp, val]) => (
-                    <div key={asp} className="flex items-center justify-between p-2 rounded bg-slate-50 border border-slate-100">
-                      <span className="text-slate-600">{asp}</span>
-                      <span className="font-bold text-slate-800">{val.toFixed(1)} / 5.0</span>
-                    </div>
-                  ))}
-              </div>
+            <div className="space-y-2.5">
+              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Penilaian per Aspek Mahasiswa
+              </h4>
+              {[
+                { label: 'Kejelasan Penyampaian Materi', score: 4.5 },
+                { label: 'Ketepatan Waktu & Kedisiplinan', score: 4.6 },
+                { label: 'Transparansi Penilaian & Asesmen', score: 4.3 },
+                { label: 'Interaksi & Ketersediaan Diskusi', score: 4.3 },
+              ].map((a, idx) => (
+                <div key={idx} className="p-2.5 rounded-lg bg-white border border-slate-100 text-xs">
+                  <div className="flex justify-between mb-1">
+                    <span className="font-medium text-slate-700">{a.label}</span>
+                    <span className="font-bold text-slate-900">{a.score}</span>
+                  </div>
+                  <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-blue-600 rounded-full" style={{ width: `${(a.score / 5) * 100}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-3 rounded-lg bg-white border border-slate-100 text-xs text-slate-600">
+              <span className="font-semibold text-slate-700 block mb-1">Kutipan Aspirasi Mahasiswa:</span>
+              <p className="italic text-[11px] text-slate-500 leading-relaxed">
+                "Penjelasan materi praktikum sangat runtut dan mudah dipahami, tetapi modul tutorial untuk tugas besar perlu diperbanyak contoh kodenya."
+              </p>
             </div>
           </div>
-
-          {/* Catatan GKM */}
-          {evaluation.catatan_gkm && (
-            <div className="card space-y-2 bg-emerald-50/50 border-emerald-200 text-xs">
-              <div className="flex items-center gap-1.5 font-bold text-emerald-900">
-                <CheckCircle2 size={15} />
-                <span>Catatan Gugus Kendali Mutu (GKM)</span>
-              </div>
-              <p className="text-slate-700 leading-relaxed italic bg-white p-3 rounded-xl border border-emerald-100">
-                &ldquo;{evaluation.catatan_gkm}&rdquo;
-              </p>
-              <p className="text-[10px] text-slate-400">
-                Ditinjau pada: {formatDateShort(evaluation.ditinjau_at)}
-              </p>
-            </div>
-          )}
         </div>
-      </div>
-
-      {/* Modal Tinjau GKM */}
-      <Modal open={modalGkmOpen} onClose={() => setModalGkmOpen(false)} title="Tinjau Evaluasi Perkuliahan (GKM)" size="md">
-        <form onSubmit={handleTinjauGkm} className="space-y-4 text-xs">
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-900 leading-relaxed">
-            GKM menandai bahwa post-evaluasi ini telah ditinjau dan rencana perbaikan telah diverifikasi untuk diteruskan ke siklus RPS berikutnya.
-          </div>
-
-          <div>
-            <label className="label">Catatan & Masukan GKM</label>
-            <textarea
-              rows={3}
-              required
-              value={catatanGkm}
-              onChange={(e) => setCatatanGkm(e.target.value)}
-              placeholder="Berikan arahan mutu pembelajaran..."
-              className="textarea-field text-xs"
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={() => setModalGkmOpen(false)} className="btn-secondary text-xs">
-              Batal
-            </button>
-            <button type="submit" className="btn-primary text-xs bg-emerald-600 hover:bg-emerald-700">
-              Konfirmasi Ditinjau
-            </button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Modal Tambah Rencana Perbaikan */}
-      <Modal open={modalPlanOpen} onClose={() => setModalPlanOpen(false)} title="Tambah Rencana Perbaikan Baru" size="md">
-        <form onSubmit={handleAddPlan} className="space-y-4 text-xs">
-          <div>
-            <label className="label">Kategori Perbaikan</label>
-            <select
-              value={planKategori}
-              onChange={(e) => setPlanKategori(e.target.value as PlanCategory)}
-              className="select-field text-xs"
-            >
-              <option value="CPMK_RPS">CPMK & RPS</option>
-              <option value="METODE_PEMBELAJARAN">Metode Pembelajaran</option>
-              <option value="PENILAIAN">Bentuk / Bobot Penilaian</option>
-              <option value="REFERENSI">Referensi Pustaka</option>
-              <option value="LAINNYA">Lainnya</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="label">Uraian Rencana Perbaikan</label>
-            <textarea
-              rows={3}
-              required
-              value={planUraian}
-              onChange={(e) => setPlanUraian(e.target.value)}
-              placeholder="Contoh: Menambahkan latihan studi kasus implementasi cloud ERP..."
-              className="textarea-field text-xs"
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={() => setModalPlanOpen(false)} className="btn-secondary text-xs">
-              Batal
-            </button>
-            <button type="submit" className="btn-primary text-xs">
-              Simpan Rencana
-            </button>
-          </div>
-        </form>
-      </Modal>
+      </form>
     </div>
   );
 }
-

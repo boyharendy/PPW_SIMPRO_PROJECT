@@ -1,141 +1,91 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Plus, Search, Eye } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
-import DataTable from '@/components/ui/DataTable';
-import StatusBadge from '@/components/ui/StatusBadge';
-import { mockPublications } from '@/lib/mock-data';
-import { publicationService } from '@/lib/api/services/publication.service';
-import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
-import type { Publication, PublicationType } from '@/lib/types';
-import { Plus, Search, BookOpen, ExternalLink, Eye, ArrowRight } from 'lucide-react';
+import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 
-export default function PublikasiListPage() {
-  const [publications, setPublications] = useState<Publication[]>(mockPublications);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedJenis, setSelectedJenis] = useState<string>('ALL');
+type Publikasi = {
+  id: string;
+  judul: string;
+  jenis: 'JURNAL' | 'PROSIDING' | 'BUKU' | 'HKI';
+  penulisUtama: string;
+  peringkat: string;
+  tahun: number;
+  status: string;
+};
 
-  useEffect(() => {
-    // Sinkronisasi data lokal saat mount di client
-    const local = storageSync.get<Publication[]>(STORAGE_KEYS.PUBLICATIONS, mockPublications);
-    if (local && local.length > 0) {
-      setPublications(local);
-    }
+const JENIS_COLORS: Record<string, string> = {
+  JURNAL: 'bg-blue-50 text-blue-700 border-blue-200',
+  PROSIDING: 'bg-violet-50 text-violet-700 border-violet-200',
+  BUKU: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  HKI: 'bg-amber-50 text-amber-700 border-amber-200',
+};
 
-    let active = true;
-    publicationService
-      .getPublications()
-      .then((res) => {
-        if (active && res.data && res.data.length > 0) {
-          setPublications(res.data);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, []);
+const TABS = ['Semua', 'DRAF', 'DIAJUKAN', 'DALAM_REVIEW', 'DITERIMA', 'TERBIT'] as const;
 
-  const filtered = publications.filter((p) => {
-    const matchSearch =
-      p.judul.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.nama_target.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.authors.some((a) => a.nama_penulis.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchJenis = selectedJenis === 'ALL' || p.jenis === selectedJenis;
-    return matchSearch && matchJenis;
+const mockData: Publikasi[] = [
+  { id: 'PUB-001', judul: 'Implementasi Deep Learning untuk Deteksi Anomali pada Jaringan IoT', jenis: 'JURNAL', penulisUtama: 'Dr. Rina Fitriani, M.Kom.', peringkat: 'SINTA 2', tahun: 2025, status: 'TERBIT' },
+  { id: 'PUB-002', judul: 'Analisis Performa Algoritma Clustering pada Data Spasial Skala Besar', jenis: 'PROSIDING', penulisUtama: 'Agus Prasetyo, M.T.', peringkat: 'Scopus Q3', tahun: 2025, status: 'DITERIMA' },
+  { id: 'PUB-003', judul: 'Pengembangan Sistem Rekomendasi Berbasis Collaborative Filtering', jenis: 'JURNAL', penulisUtama: 'Siti Nurhaliza, M.Cs.', peringkat: 'SINTA 3', tahun: 2025, status: 'DALAM_REVIEW' },
+  { id: 'PUB-004', judul: 'Panduan Praktis Pemrograman Web Modern dengan Next.js', jenis: 'BUKU', penulisUtama: 'Budi Hartono, M.Kom.', peringkat: 'Non-peringkat', tahun: 2024, status: 'DRAF' },
+  { id: 'PUB-005', judul: 'Hak Cipta Aplikasi Manajemen Kurikulum Berbasis AI', jenis: 'HKI', penulisUtama: 'Dewi Kartika, M.Sc.', peringkat: 'Non-peringkat', tahun: 2025, status: 'DIAJUKAN' },
+];
+
+export default function Page() {
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<string>('Semua');
+  const [search, setSearch] = useState('');
+
+  const filtered = mockData.filter((p) => {
+    const matchTab = activeTab === 'Semua' || p.status === activeTab;
+    const matchSearch = p.judul.toLowerCase().includes(search.toLowerCase()) ||
+      p.penulisUtama.toLowerCase().includes(search.toLowerCase());
+    return matchTab && matchSearch;
   });
 
-  const columns = [
+  const columns: DataTableColumn<Publikasi>[] = [
     {
       key: 'judul',
-      header: 'Judul Publikasi & Target',
-      render: (row: Publication) => (
-        <div className="space-y-1">
-          <Link
-            href={`/dashboard/publikasi/${row.id}`}
-            className="font-bold text-slate-800 hover:text-blue-600 text-xs sm:text-sm line-clamp-2 transition-colors"
-          >
-            {row.judul}
-          </Link>
-          <p className="text-[11px] text-slate-500">
-            Target: <strong className="text-slate-700">{row.nama_target}</strong> • Tahun: {row.tahun}
-          </p>
-          {row.doi && (
-            <a
-              href={`https://doi.org/${row.doi}`}
-              target="_blank"
-              rel="noreferrer"
-              className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-mono"
-            >
-              <ExternalLink size={11} />
-              <span>{row.doi}</span>
-            </a>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'jenis',
-      header: 'Jenis & Peringkat',
-      render: (row: Publication) => (
-        <div className="space-y-1">
-          <span className="font-bold text-[10px] bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded">
-            {row.jenis}
+      header: 'Judul Publikasi',
+      render: (r) => (
+        <div className="max-w-xs">
+          <p className="text-sm font-medium text-slate-800 truncate">{r.judul}</p>
+          <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full border font-medium ${JENIS_COLORS[r.jenis]}`}>
+            {r.jenis}
           </span>
-          <p className="text-[11px] font-semibold text-slate-600">
-            {row.peringkat.replace('_', ' ')}
-          </p>
         </div>
       ),
     },
+    { key: 'penulisUtama', header: 'Penulis Utama' },
     {
-      key: 'penulis',
-      header: 'Penulis',
-      render: (row: Publication) => (
-        <div className="text-xs space-y-0.5">
-          {row.authors.slice(0, 2).map((a, i) => (
-            <p key={a.id || i} className="text-slate-700 font-medium truncate max-w-[200px]">
-              {a.nama_penulis} <span className="text-[10px] text-slate-400">({a.peran.replace('_', ' ')})</span>
-            </p>
-          ))}
-          {row.authors.length > 2 && (
-            <span className="text-[10px] text-slate-400 italic">
-              +{row.authors.length - 2} penulis lainnya
-            </span>
-          )}
-        </div>
+      key: 'peringkat',
+      header: 'Peringkat',
+      render: (r) => (
+        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+          {r.peringkat}
+        </span>
       ),
     },
+    { key: 'tahun', header: 'Tahun' },
     {
-      key: 'tahap',
-      header: 'Tahapan & Verifikasi',
-      render: (row: Publication) => (
-        <div className="space-y-1">
-          <div>
-            <StatusBadge status={row.status} size="sm" />
-          </div>
-          {row.status_verifikasi !== 'TIDAK_PERLU' && (
-            <div className="text-[10px]">
-              <span className="text-slate-400 mr-1">Verifikasi:</span>
-              <StatusBadge status={row.status_verifikasi} size="sm" />
-            </div>
-          )}
-        </div>
-      ),
+      key: 'status',
+      header: 'Status',
+      render: (r) => <StatusBadge status={r.status} size="sm" />,
     },
     {
-      key: 'actions',
+      key: 'aksi',
       header: 'Aksi',
-      className: 'text-right',
-      render: (row: Publication) => (
-        <Link
-          href={`/dashboard/publikasi/${row.id}`}
-          className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1.5 font-semibold text-slate-600 hover:text-blue-600"
+      render: (r) => (
+        <button
+          onClick={() => router.push(`/dashboard/publikasi/${r.id}`)}
+          className="btn-secondary text-xs px-2.5 py-1 inline-flex items-center gap-1.5"
         >
           <Eye size={13} />
-          <span>Detail</span>
-        </Link>
+          Detail
+        </button>
       ),
     },
   ];
@@ -144,57 +94,53 @@ export default function PublikasiListPage() {
     <div className="space-y-6">
       <PageHeader
         title="Publikasi Dosen & Mahasiswa"
-        description="Pencatatan artikel jurnal, prosiding konferensi, buku, dan HKI dengan pelacakan tahapan publikasi dan verifikasi."
-        action={
-          <div className="flex items-center gap-3">
-            <Link
-              href="/dashboard/publikasi/baru"
-              className="btn-primary text-xs py-2 px-3.5 flex items-center gap-2"
-            >
-              <Plus size={15} />
-              <span>Tambah Publikasi</span>
-            </Link>
-          </div>
+        description="Pencatatan dan pelacakan publikasi ilmiah program studi"
+        actions={
+          <button
+            onClick={() => router.push('/dashboard/publikasi/baru')}
+            className="bg-blue-600 text-white rounded-xl px-4 py-2 text-sm font-semibold flex items-center gap-2 hover:bg-blue-700 transition-colors"
+          >
+            <Plus size={16} />
+            Tambah Publikasi
+          </button>
         }
       />
 
-      {/* Filter and Search Bar */}
-      <div className="card flex flex-col sm:flex-row items-center justify-between gap-4 py-3">
-        <div className="flex items-center gap-2 w-full sm:w-80 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl">
-          <Search size={16} className="text-slate-400" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Cari judul, jurnal, atau penulis..."
-            className="bg-transparent border-none outline-none text-xs w-full text-slate-800 placeholder:text-slate-400"
-          />
-        </div>
-
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <span className="text-xs text-slate-500 font-medium">Jenis:</span>
-          <select
-            value={selectedJenis}
-            onChange={(e) => setSelectedJenis(e.target.value)}
-            className="select-field text-xs py-1.5 w-40"
-          >
-            <option value="ALL">Semua Jenis</option>
-            <option value="JURNAL">Jurnal</option>
-            <option value="PROSIDING">Prosiding</option>
-            <option value="BUKU">Buku</option>
-            <option value="HKI">HKI</option>
-          </select>
+      {/* Filter Tabs + Search */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-1 overflow-x-auto">
+            {TABS.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+                  activeTab === tab
+                    ? 'bg-blue-600 text-white'
+                    : 'text-slate-500 hover:bg-slate-100'
+                }`}
+              >
+                {tab === 'Semua' ? 'Semua' : tab.replace(/_/g, ' ')}
+              </button>
+            ))}
+          </div>
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Cari judul atau penulis..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full sm:w-64 bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
         </div>
       </div>
 
-      <div className="card">
-        <DataTable
-          columns={columns}
-          data={filtered}
-          emptyMessage="Tidak ada publikasi yang sesuai pencarian"
-        />
+      {/* Table */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+        <DataTable columns={columns} data={filtered} emptyMessage="Tidak ada publikasi ditemukan" />
       </div>
     </div>
   );
 }
-

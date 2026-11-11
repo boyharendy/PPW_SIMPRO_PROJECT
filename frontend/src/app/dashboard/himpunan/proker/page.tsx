@@ -202,9 +202,9 @@ export default function HimpunanProkerPage() {
       header: 'Program Kerja & Tujuan',
       render: (row) => (
         <div className="max-w-md py-1">
-          <p className="font-semibold text-slate-900 text-sm leading-snug">{row.nama_kegiatan}</p>
-          <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">{row.tujuan}</p>
-          <span className="inline-block mt-1.5 text-[10px] font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+          <p className="font-semibold text-slate-900 text-base leading-snug">{row.nama_kegiatan}</p>
+          <p className="text-sm text-slate-500 mt-1 line-clamp-2 leading-relaxed">{row.tujuan}</p>
+          <span className="inline-block mt-1.5 text-xs font-medium text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded border border-blue-200">
             Target: {row.indikator_keberhasilan}
           </span>
         </div>
@@ -214,9 +214,9 @@ export default function HimpunanProkerPage() {
       key: 'periode_kepengurusan',
       header: 'Periode & Jadwal',
       render: (row) => (
-        <div className="whitespace-nowrap text-xs">
+        <div className="whitespace-nowrap text-sm">
           <span className="font-semibold text-slate-800">{row.periode_kepengurusan}</span>
-          <p className="text-slate-500 text-[11px] mt-0.5">
+          <p className="text-slate-500 text-xs mt-0.5">
             {formatDateShort(row.tanggal_rencana_mulai)} s.d. {formatDateShort(row.tanggal_rencana_selesai)}
           </p>
         </div>
@@ -226,9 +226,9 @@ export default function HimpunanProkerPage() {
       key: 'total_anggaran_rencana',
       header: 'Pagu Rencana & Pos',
       render: (row) => (
-        <div className="text-right whitespace-nowrap text-xs">
+        <div className="text-right whitespace-nowrap text-sm">
           <p className="font-bold text-slate-900">{formatRupiah(row.total_anggaran_rencana)}</p>
-          <p className="text-[11px] text-slate-500 mt-0.5">{row.anggaran_per_pos.length} Pos Terinci</p>
+          <p className="text-xs text-slate-500 mt-0.5">{row.anggaran_per_pos.length} Pos Terinci</p>
         </div>
       ),
     },

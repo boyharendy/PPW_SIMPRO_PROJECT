@@ -377,13 +377,11 @@ export default function LaporanPerwalianPage() {
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => setSelectedReport(row)}
-            className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1 transition-colors"
-            title="Lihat Detail Laporan"
           >
             <Eye className="h-3.5 w-3.5" />
             <span>Detail</span>
           </button>
-          {row.status === 'TERKIRIM' && (currentRole === 'DOSEN' || currentRole === 'DOSEN_WALI' || currentRole === 'KAPRODI') && (
+          {row.status === 'TERKIRIM' && (currentRole === 'DOSEN_WALI' || currentRole === 'KAPRODI') && (
             <button
               onClick={() => {
                 setSelectedReport(row);
@@ -467,7 +465,6 @@ export default function LaporanPerwalianPage() {
       render: (row: DosenWaliSessionReport) => (
         <button
           onClick={() => setSelectedSession(row)}
-          className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1 transition-colors"
         >
           <Eye className="h-3.5 w-3.5" />
           <span>Lihat Notulen</span>
@@ -485,24 +482,23 @@ export default function LaporanPerwalianPage() {
           <div className="flex items-center gap-2.5">
             <Link
               href="/dashboard/perwalian/rekap"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs transition-colors"
             >
               <PieChart className="h-4 w-4 text-blue-600" />
               <span>Rekap & Analisis Isu</span>
             </Link>
-            {(currentRole === 'KETUA_KELAS' || currentRole === 'MAHASISWA' || currentRole === 'KAPRODI') && (
+            {currentRole === 'KETUA_KELAS' && (
               <button
                 onClick={() => setShowCreateClassModal(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 shadow-xs transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 shadow-xs transition-colors"
               >
                 <Plus className="h-4 w-4" />
                 <span>Isi Laporan Ketua Kelas</span>
               </button>
             )}
-            {(currentRole === 'DOSEN' || currentRole === 'DOSEN_WALI' || currentRole === 'KAPRODI') && (
+            {(currentRole === 'DOSEN_WALI' || currentRole === 'KAPRODI') && (
               <button
                 onClick={() => setShowCreateSessionModal(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 shadow-xs transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 shadow-xs transition-colors"
               >
                 <Plus className="h-4 w-4" />
                 <span>Catat Sesi Bimbingan</span>

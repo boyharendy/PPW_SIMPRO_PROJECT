@@ -1,4 +1,34 @@
-import type { NavItem } from '@/lib/types';
+import type { Role, NavItem } from '@/lib/types';
+
+// Check if role is authorized (including backward compatibility aliases)
+export const isRoleAuthorized = (allowedRoles: Role[], currentRole: Role): boolean => {
+  if (allowedRoles.includes(currentRole)) return true;
+  if (currentRole === 'KOORDINATOR_KP_PSI_PDLK') {
+    return allowedRoles.some(r => r === 'KOORDINATOR_KP' || r === 'KOORDINATOR_PSI' || r === 'KOORDINATOR_PDLK' || r === 'KOORDINATOR_KP_PSI_PDLK');
+  }
+  if (currentRole === 'KOORDINATOR_KP' || currentRole === 'KOORDINATOR_PSI' || currentRole === 'KOORDINATOR_PDLK') {
+    return allowedRoles.includes('KOORDINATOR_KP_PSI_PDLK');
+  }
+  if (currentRole === 'MITRA') {
+    return allowedRoles.includes('MITRA_EKSTERNAL');
+  }
+  if (currentRole === 'MITRA_EKSTERNAL') {
+    return allowedRoles.includes('MITRA');
+  }
+  if (currentRole === 'PENGELOLA_ADUAN') {
+    return allowedRoles.includes('PETUGAS_KEKERASAN');
+  }
+  if (currentRole === 'PETUGAS_KEKERASAN') {
+    return allowedRoles.includes('PENGELOLA_ADUAN');
+  }
+  if (currentRole === 'PENGURUS_HIMPUNAN') {
+    return allowedRoles.includes('HIMPUNAN');
+  }
+  if (currentRole === 'HIMPUNAN') {
+    return allowedRoles.includes('PENGURUS_HIMPUNAN');
+  }
+  return false;
+};
 
 export const NAV_ITEMS: NavItem[] = [
   // 1. Dashboard
@@ -9,7 +39,7 @@ export const NAV_ITEMS: NavItem[] = [
     roles: [
       'KAPRODI', 'GKM', 'ADMIN_PRODI', 'DOSEN', 'DOSEN_VERIFIKATOR',
       'DOSEN_WALI', 'DOSEN_PEMBINA', 'KETUA_KELAS', 'MAHASISWA',
-      'PENGURUS_HIMPUNAN', 'KOORDINATOR_KP_PSI_PDLK', 'PENGELOLA_ADUAN', 'MITRA',
+      'PENGURUS_HIMPUNAN', 'KOORDINATOR_KP_PSI_PDLK', 'PENGELOLA_ADUAN',
       'KOORDINATOR_KP', 'KOORDINATOR_PSI', 'KOORDINATOR_PDLK', 'PETUGAS_KEKERASAN', 'HIMPUNAN'
     ],
     category: 'Utama',
@@ -20,14 +50,14 @@ export const NAV_ITEMS: NavItem[] = [
     title: 'Laporan Perwalian',
     href: '/dashboard/perwalian',
     icon: 'Users',
-    roles: ['KETUA_KELAS', 'DOSEN_WALI', 'DOSEN', 'KAPRODI', 'ADMIN_PRODI'],
+    roles: ['KETUA_KELAS', 'DOSEN_WALI', 'KAPRODI'],
     category: 'Laporan Perwalian',
   },
   {
     title: 'Rekap & Isu Perwalian',
     href: '/dashboard/perwalian/rekap',
     icon: 'PieChart',
-    roles: ['KAPRODI', 'DOSEN_WALI', 'DOSEN', 'ADMIN_PRODI'],
+    roles: ['KAPRODI', 'DOSEN_WALI'],
     category: 'Laporan Perwalian',
   },
 
@@ -36,29 +66,28 @@ export const NAV_ITEMS: NavItem[] = [
     title: 'Penerima Beasiswa',
     href: '/dashboard/beasiswa',
     icon: 'Award',
-    roles: ['ADMIN_PRODI', 'KAPRODI', 'DOSEN_VERIFIKATOR', 'DOSEN'],
+    roles: ['ADMIN_PRODI', 'KAPRODI'],
     category: 'Beasiswa & Jam Karya',
   },
   {
     title: 'Catat Jam Karya',
     href: '/dashboard/beasiswa/jam-karya',
     icon: 'Clock',
-    roles: ['MAHASISWA', 'KAPRODI'],
+    roles: ['MAHASISWA'],
     category: 'Beasiswa & Jam Karya',
   },
   {
     title: 'Verifikasi Jam Karya',
     href: '/dashboard/beasiswa/verifikasi',
     icon: 'FileCheck',
-    roles: ['DOSEN_VERIFIKATOR', 'DOSEN_WALI', 'DOSEN', 'KAPRODI'],
+    roles: ['DOSEN_VERIFIKATOR', 'DOSEN_WALI'],
     category: 'Beasiswa & Jam Karya',
-    badge: 2,
   },
   {
     title: 'Rekap Pemenuhan Jam',
     href: '/dashboard/beasiswa/rekap',
     icon: 'PieChart',
-    roles: ['ADMIN_PRODI', 'KAPRODI', 'DOSEN_VERIFIKATOR', 'DOSEN'],
+    roles: ['ADMIN_PRODI', 'KAPRODI'],
     category: 'Beasiswa & Jam Karya',
   },
 
@@ -67,7 +96,7 @@ export const NAV_ITEMS: NavItem[] = [
     title: 'Data Pelanggaran',
     href: '/dashboard/pelanggaran',
     icon: 'ShieldAlert',
-    roles: ['KAPRODI', 'DOSEN_WALI', 'DOSEN', 'DOSEN_VERIFIKATOR'],
+    roles: ['KAPRODI', 'DOSEN_WALI'],
     category: 'Pelanggaran & Sanksi',
   },
   {
@@ -81,9 +110,8 @@ export const NAV_ITEMS: NavItem[] = [
     title: 'Verifikasi Sanksi Sosial',
     href: '/dashboard/pelanggaran/verifikasi',
     icon: 'FileCheck',
-    roles: ['DOSEN_VERIFIKATOR', 'DOSEN_WALI', 'DOSEN', 'KAPRODI'],
+    roles: ['DOSEN_VERIFIKATOR', 'DOSEN_WALI'],
     category: 'Pelanggaran & Sanksi',
-    badge: 1,
   },
   {
     title: 'Log Retensi (UU PDP)',
@@ -98,16 +126,15 @@ export const NAV_ITEMS: NavItem[] = [
     title: 'Direktori UKM',
     href: '/dashboard/ukm',
     icon: 'Compass',
-    roles: ['ADMIN_PRODI', 'DOSEN_PEMBINA', 'DOSEN', 'MAHASISWA', 'KAPRODI'],
+    roles: ['ADMIN_PRODI', 'DOSEN_PEMBINA', 'MAHASISWA', 'KAPRODI'],
     category: 'Unit Kegiatan Mahasiswa',
   },
   {
     title: 'Keanggotaan UKM',
     href: '/dashboard/ukm/keanggotaan',
     icon: 'Users',
-    roles: ['MAHASISWA', 'DOSEN_PEMBINA', 'DOSEN', 'ADMIN_PRODI', 'KAPRODI'],
+    roles: ['MAHASISWA', 'DOSEN_PEMBINA'],
     category: 'Unit Kegiatan Mahasiswa',
-    badge: 1,
   },
   {
     title: 'Rekap Partisipasi UKM',
@@ -150,9 +177,8 @@ export const NAV_ITEMS: NavItem[] = [
     title: 'Verifikasi Proker & LPJ',
     href: '/dashboard/himpunan/verifikasi',
     icon: 'FileCheck',
-    roles: ['DOSEN_PEMBINA', 'DOSEN', 'KAPRODI'],
+    roles: ['DOSEN_PEMBINA', 'KAPRODI'],
     category: 'Program Kerja Himpunan',
-    badge: 2,
   },
   {
     title: 'Analisis Deviasi Proker',
@@ -167,22 +193,21 @@ export const NAV_ITEMS: NavItem[] = [
     title: 'Sertifikat Mahasiswa',
     href: '/dashboard/sertifikat',
     icon: 'FileBadge',
-    roles: ['MAHASISWA', 'DOSEN', 'KAPRODI', 'ADMIN_PRODI'],
+    roles: ['MAHASISWA', 'DOSEN_VERIFIKATOR', 'KAPRODI'],
     category: 'Sertifikat Mahasiswa',
   },
   {
     title: 'Verifikasi Sertifikat',
     href: '/dashboard/sertifikat/verifikasi',
     icon: 'FileCheck',
-    roles: ['DOSEN_VERIFIKATOR', 'DOSEN_WALI', 'DOSEN', 'KAPRODI'],
+    roles: ['DOSEN_VERIFIKATOR', 'DOSEN_WALI'],
     category: 'Sertifikat Mahasiswa',
-    badge: 2,
   },
   {
     title: 'Rekapitulasi & Masa Berlaku',
     href: '/dashboard/sertifikat/rekap',
     icon: 'PieChart',
-    roles: ['KAPRODI', 'DOSEN_VERIFIKATOR', 'DOSEN', 'ADMIN_PRODI'],
+    roles: ['KAPRODI', 'DOSEN_VERIFIKATOR'],
     category: 'Sertifikat Mahasiswa',
   },
 
@@ -191,21 +216,21 @@ export const NAV_ITEMS: NavItem[] = [
     title: 'Rekap Kepuasan Mitra',
     href: '/dashboard/kepuasan-mitra',
     icon: 'SmilePlus',
-    roles: ['KOORDINATOR_KP_PSI_PDLK', 'KOORDINATOR_KP', 'KOORDINATOR_PSI', 'KOORDINATOR_PDLK', 'KAPRODI', 'ADMIN_PRODI', 'GKM'],
+    roles: ['KOORDINATOR_KP_PSI_PDLK', 'KOORDINATOR_KP', 'KOORDINATOR_PSI', 'KOORDINATOR_PDLK', 'KAPRODI'],
     category: 'Kepuasan Mitra',
   },
   {
     title: 'Instrumen Kuesioner',
     href: '/dashboard/kepuasan-mitra/instrumen',
     icon: 'FileText',
-    roles: ['KOORDINATOR_KP_PSI_PDLK', 'KOORDINATOR_KP', 'KOORDINATOR_PSI', 'KOORDINATOR_PDLK', 'KAPRODI', 'ADMIN_PRODI'],
+    roles: ['KOORDINATOR_KP_PSI_PDLK', 'KOORDINATOR_KP', 'KOORDINATOR_PSI', 'KOORDINATOR_PDLK', 'KAPRODI'],
     category: 'Kepuasan Mitra',
   },
   {
     title: 'Pengiriman & Input Mitra',
     href: '/dashboard/kepuasan-mitra/pengiriman',
     icon: 'Handshake',
-    roles: ['KOORDINATOR_KP_PSI_PDLK', 'KOORDINATOR_KP', 'KOORDINATOR_PSI', 'KOORDINATOR_PDLK', 'MITRA', 'MITRA_EKSTERNAL', 'KAPRODI', 'ADMIN_PRODI'],
+    roles: ['KOORDINATOR_KP_PSI_PDLK', 'KOORDINATOR_KP', 'KOORDINATOR_PSI', 'KOORDINATOR_PDLK', 'KAPRODI'],
     category: 'Kepuasan Mitra',
   },
 
@@ -214,29 +239,28 @@ export const NAV_ITEMS: NavItem[] = [
     title: 'Daftar Publikasi',
     href: '/dashboard/publikasi',
     icon: 'BookOpen',
-    roles: ['DOSEN', 'DOSEN_VERIFIKATOR', 'MAHASISWA', 'KAPRODI', 'ADMIN_PRODI'],
+    roles: ['DOSEN', 'MAHASISWA', 'KAPRODI'],
     category: 'Publikasi',
   },
   {
     title: 'Verifikasi Publikasi',
     href: '/dashboard/publikasi/verifikasi',
     icon: 'FileCheck',
-    roles: ['DOSEN_VERIFIKATOR', 'DOSEN', 'KAPRODI', 'ADMIN_PRODI'],
+    roles: ['DOSEN_VERIFIKATOR', 'DOSEN'],
     category: 'Publikasi',
-    badge: 1,
   },
   {
     title: 'Review Internal Publikasi',
     href: '/dashboard/publikasi/review-saya',
     icon: 'ClipboardCheck',
-    roles: ['DOSEN', 'KAPRODI', 'ADMIN_PRODI'],
+    roles: ['DOSEN'],
     category: 'Publikasi',
   },
   {
     title: 'Rekap Publikasi',
     href: '/dashboard/publikasi/rekap',
     icon: 'PieChart',
-    roles: ['KAPRODI', 'ADMIN_PRODI', 'GKM'],
+    roles: ['KAPRODI'],
     category: 'Publikasi',
   },
 
@@ -254,13 +278,12 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'FileCheck',
     roles: ['KAPRODI'],
     category: 'Perjalanan Dinas',
-    badge: 1,
   },
   {
     title: 'Rekap Perjalanan & Biaya',
     href: '/dashboard/perjalanan-dinas/rekap',
     icon: 'FileSpreadsheet',
-    roles: ['ADMIN_PRODI', 'KAPRODI', 'DOSEN'],
+    roles: ['ADMIN_PRODI', 'KAPRODI'],
     category: 'Perjalanan Dinas',
   },
 
@@ -292,36 +315,35 @@ export const NAV_ITEMS: NavItem[] = [
     title: 'Pengajuan & Review RPS',
     href: '/dashboard/rps',
     icon: 'BookCheck',
-    roles: ['DOSEN', 'GKM', 'KAPRODI', 'ADMIN_PRODI'],
+    roles: ['DOSEN', 'GKM', 'KAPRODI'],
     category: 'Mutu Pembelajaran',
   },
   {
     title: 'Review RPS Saya',
     href: '/dashboard/rps/review-saya',
     icon: 'ClipboardCheck',
-    roles: ['DOSEN', 'GKM', 'KAPRODI'],
+    roles: ['DOSEN'],
     category: 'Mutu Pembelajaran',
-    badge: 1,
   },
   {
     title: 'Rekap Status RPS',
     href: '/dashboard/rps/rekap',
     icon: 'PieChart',
-    roles: ['KAPRODI', 'GKM', 'ADMIN_PRODI'],
+    roles: ['GKM', 'KAPRODI'],
     category: 'Mutu Pembelajaran',
   },
   {
     title: 'Evaluasi Perkuliahan',
     href: '/dashboard/evaluasi-perkuliahan',
     icon: 'GraduationCap',
-    roles: ['DOSEN', 'GKM', 'KAPRODI', 'ADMIN_PRODI'],
+    roles: ['DOSEN', 'GKM', 'KAPRODI'],
     category: 'Mutu Pembelajaran',
   },
   {
     title: 'Rekap CPMK & Evaluasi',
     href: '/dashboard/evaluasi-perkuliahan/rekap',
     icon: 'PieChart',
-    roles: ['GKM', 'KAPRODI', 'ADMIN_PRODI'],
+    roles: ['GKM', 'KAPRODI'],
     category: 'Mutu Pembelajaran',
   },
 
@@ -330,24 +352,22 @@ export const NAV_ITEMS: NavItem[] = [
     title: 'Kirim Aduan Anonim',
     href: '/dashboard/aduan',
     icon: 'MessageSquareHeart',
-    roles: ['MAHASISWA', 'KAPRODI', 'ADMIN_PRODI', 'DOSEN'],
+    roles: ['MAHASISWA'],
     category: 'Layanan Aduan',
   },
   {
     title: 'Antrean Aduan',
     href: '/dashboard/kelola/aduan',
     icon: 'MessageSquareHeart',
-    roles: ['PENGELOLA_ADUAN', 'KAPRODI', 'ADMIN_PRODI'],
+    roles: ['PENGELOLA_ADUAN', 'KAPRODI'],
     category: 'Layanan Aduan',
-    badge: 2,
   },
   {
     title: 'Aduan Sensitif (Satgas)',
     href: '/dashboard/kelola/aduan/sensitif',
     icon: 'ShieldAlert',
-    roles: ['PENGELOLA_ADUAN', 'PETUGAS_KEKERASAN', 'KAPRODI'],
+    roles: ['PENGELOLA_ADUAN', 'PETUGAS_KEKERASAN'],
     category: 'Layanan Aduan',
-    badge: 1,
   },
   {
     title: 'Disposisi Tugas Saya',
@@ -360,7 +380,7 @@ export const NAV_ITEMS: NavItem[] = [
     title: 'Rekap & Eskalasi Aduan',
     href: '/dashboard/kelola/aduan/rekap',
     icon: 'PieChart',
-    roles: ['PENGELOLA_ADUAN', 'PETUGAS_KEKERASAN', 'KAPRODI', 'ADMIN_PRODI'],
+    roles: ['PENGELOLA_ADUAN', 'KAPRODI'],
     category: 'Layanan Aduan',
   },
 
@@ -380,3 +400,43 @@ export const NAV_ITEMS: NavItem[] = [
     category: 'Pengaturan',
   },
 ];
+
+/**
+ * Checks whether a given role is allowed to access a URL path under /dashboard.
+ * Public routes (outside /dashboard) are universally allowed.
+ * Within /dashboard, match the longest prefix from NAV_ITEMS.
+ * Deny by default if no rule matches.
+ */
+export function canAccess(pathname: string, currentRole: Role): boolean {
+  if (!pathname || !pathname.startsWith('/dashboard')) {
+    return true;
+  }
+
+  // Exact match first
+  const exact = NAV_ITEMS.find(item => item.href === pathname);
+  if (exact) {
+    return isRoleAuthorized(exact.roles, currentRole);
+  }
+
+  // Find longest matching prefix (excluding exact /dashboard match for child routes)
+  const prefixMatches = NAV_ITEMS.filter(item => {
+    if (item.href === '/dashboard') {
+      return pathname === '/dashboard';
+    }
+    return pathname.startsWith(item.href + '/') || pathname.startsWith(item.href + '?');
+  });
+
+  if (prefixMatches.length > 0) {
+    prefixMatches.sort((a, b) => b.href.length - a.href.length);
+    return isRoleAuthorized(prefixMatches[0].roles, currentRole);
+  }
+
+  // If path is exactly /dashboard, check dashboard nav item
+  if (pathname === '/dashboard') {
+    const dash = NAV_ITEMS.find(item => item.href === '/dashboard');
+    return dash ? isRoleAuthorized(dash.roles, currentRole) : false;
+  }
+
+  // Deny by default for any unknown routes under /dashboard
+  return false;
+}

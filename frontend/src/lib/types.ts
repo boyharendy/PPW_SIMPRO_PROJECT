@@ -133,7 +133,7 @@ export type PublicationStatus =
   | 'REVISI'
   | 'DITERIMA'
   | 'TERBIT'
-  | 'DITOLAK';
+  | 'IDE' | 'PENULISAN' | 'SUBMIT' | 'REVIEW' | 'ACCEPTED' | 'DITOLAK'; export type PublicationStage = PublicationStatus;
 
 export type VerificationStatus = 'TIDAK_PERLU' | 'MENUNGGU' | 'TERVERIFIKASI' | 'DITOLAK';
 export type AuthorType = 'DOSEN' | 'MAHASISWA' | 'EKSTERNAL';
@@ -614,6 +614,7 @@ export interface UserRole {
   id: string;
   user_id: string;
   role: Role;
+  penanganan_kekerasan?: boolean; // PRDnew FR-50: penunjukan PGL-K pada peran Pengelola Aduan
   berlaku_dari?: string;
   berlaku_sampai?: string;
 }

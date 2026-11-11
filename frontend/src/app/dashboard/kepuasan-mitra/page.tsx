@@ -1,203 +1,336 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
+import { Eye, FileText, Send, Star, Users, CheckCircle2, TrendingUp, Building2 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
-import StatCard from '@/components/ui/StatCard';
-import ExportMenu from '@/components/ui/ExportMenu';
-import InteractiveBarChart, { BarSeriesConfig } from '@/components/ui/InteractiveBarChart';
-import { mockSurveyTemplates, mockSurveyResponses, mockPartners } from '@/lib/mock-data';
-import { Smile, Award, Users, TrendingUp } from 'lucide-react';
+import { StatCard } from '@/components/ui/StatCard';
+import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
+import { ExportMenu } from '@/components/ui/ExportMenu';
+import Modal from '@/components/ui/Modal';
+import { formatDateShort } from '@/lib/utils';
 
-const ASPECT_STATS = [
-  { aspek: 'Integritas & Etika', skor: 4.8, skala: 5 },
-  { aspek: 'Kompetensi Teknis', skor: 4.5, skala: 5 },
-  { aspek: 'Komunikasi & Tim', skor: 4.7, skala: 5 },
-  { aspek: 'Koordinasi Prodi', skor: 4.4, skala: 5 },
+interface SurveyResponse {
+  id: string;
+  mitra: string;
+  program: 'KP' | 'PSI' | 'PDLK';
+  mahasiswa: string;
+  penilai: string;
+  jabatan: string;
+  skor: number;
+  tanggal: string;
+  aspekScores: { aspek: string; skor: number; bobot: string }[];
+  catatan?: string;
+}
+
+const MOCK_RESPONSES: SurveyResponse[] = [
+  {
+    id: 'resp-1',
+    mitra: 'PT Telkom Indonesia (Persero) Tbk',
+    program: 'KP',
+    mahasiswa: 'Muhammad Rizky Pratama',
+    penilai: 'Budi Rahardjo',
+    jabatan: 'Lead Software Architect',
+    skor: 4.6,
+    tanggal: '2025-08-28',
+    aspekScores: [
+      { aspek: 'Integritas & Etika Profesional', skor: 5.0, bobot: '25%' },
+      { aspek: 'Kompetensi Teknis SI', skor: 4.5, bobot: '35%' },
+      { aspek: 'Komunikasi & Tim', skor: 4.5, bobot: '20%' },
+      { aspek: 'Koordinasi dengan Prodi', skor: 4.5, bobot: '20%' },
+    ],
+    catatan: 'Mahasiswa sangat adaptif terhadap teknologi stack baru dan disiplin dalam pengerjaan sprint.',
+  },
+  {
+    id: 'resp-2',
+    mitra: 'PT Astra International Tbk',
+    program: 'PSI',
+    mahasiswa: 'Anisa Putri Maharani',
+    penilai: 'Linda Setiawan',
+    jabatan: 'Senior IT Business Analyst',
+    skor: 4.4,
+    tanggal: '2025-08-24',
+    aspekScores: [
+      { aspek: 'Integritas & Etika Profesional', skor: 4.8, bobot: '25%' },
+      { aspek: 'Kompetensi Teknis SI', skor: 4.2, bobot: '35%' },
+      { aspek: 'Komunikasi & Tim', skor: 4.5, bobot: '20%' },
+      { aspek: 'Koordinasi dengan Prodi', skor: 4.0, bobot: '20%' },
+    ],
+    catatan: 'Analisis kebutuhan sistem sangat rinci, kemampuan wawancara user memuaskan.',
+  },
+  {
+    id: 'resp-3',
+    mitra: 'PT Bank Mandiri (Persero) Tbk',
+    program: 'PDLK',
+    mahasiswa: 'Fajar Nugraha',
+    penilai: 'Farhan Maulana',
+    jabatan: 'VP Digital Banking Ops',
+    skor: 4.2,
+    tanggal: '2025-08-20',
+    aspekScores: [
+      { aspek: 'Integritas & Etika Profesional', skor: 4.5, bobot: '25%' },
+      { aspek: 'Kompetensi Teknis SI', skor: 4.0, bobot: '35%' },
+      { aspek: 'Komunikasi & Tim', skor: 4.0, bobot: '20%' },
+      { aspek: 'Koordinasi dengan Prodi', skor: 4.3, bobot: '20%' },
+    ],
+    catatan: 'Kinerja baik, perlu peningkatan dalam pemahaman compliance perbankan.',
+  },
+  {
+    id: 'resp-4',
+    mitra: 'Shopee Indonesia',
+    program: 'KP',
+    mahasiswa: 'Dewi Lestari',
+    penilai: 'Hendra Wijaya',
+    jabatan: 'Engineering Manager',
+    skor: 4.8,
+    tanggal: '2025-08-15',
+    aspekScores: [
+      { aspek: 'Integritas & Etika Profesional', skor: 5.0, bobot: '25%' },
+      { aspek: 'Kompetensi Teknis SI', skor: 4.9, bobot: '35%' },
+      { aspek: 'Komunikasi & Tim', skor: 4.6, bobot: '20%' },
+      { aspek: 'Koordinasi dengan Prodi', skor: 4.5, bobot: '20%' },
+    ],
+    catatan: 'Hasil implementasi API integrasi luar biasa rapi dan terdokumentasi lengkap.',
+  },
 ];
 
-const TREND_DATA = [
-  { periode: '2023/2024 Genap', KP: 4.35, PSI: 4.20, RataRata: 4.28 },
-  { periode: '2024/2025 Ganjil', KP: 4.50, PSI: 4.38, RataRata: 4.44 },
-  { periode: '2024/2025 Genap', KP: 4.58, PSI: 4.45, RataRata: 4.52 },
-  { periode: '2025/2026 Ganjil', KP: 4.65, PSI: 4.55, RataRata: 4.60 },
+const ASPEK_RATA_RATA = [
+  { nama: 'Integritas & Etika Profesional', bobot: '25%', skor: 4.8, persen: 96 },
+  { nama: 'Kompetensi Teknis SI', bobot: '35%', skor: 4.4, persen: 88 },
+  { nama: 'Komunikasi & Kerjasama Tim', bobot: '20%', skor: 4.4, persen: 88 },
+  { nama: 'Koordinasi dengan Program Studi', bobot: '20%', skor: 4.3, persen: 86 },
 ];
 
-const TREND_SERIES: BarSeriesConfig[] = [
-  { dataKey: 'KP', fill: '#2563EB', name: 'Kerja Praktik' },
-  { dataKey: 'PSI', fill: '#10B981', name: 'Proyek SI' },
-  { dataKey: 'RataRata', fill: '#F59E0B', name: 'Rata-rata Prodi' },
-];
+export default function Page() {
+  const [selectedProgram, setSelectedProgram] = useState<'ALL' | 'KP' | 'PSI' | 'PDLK'>('ALL');
+  const [detailModal, setDetailModal] = useState<SurveyResponse | null>(null);
 
-const TREND_DOMAIN: [number, number] = [0, 5];
-const TREND_TICKS = [0, 1, 2, 3, 4, 5];
+  const filteredResponses = selectedProgram === 'ALL'
+    ? MOCK_RESPONSES
+    : MOCK_RESPONSES.filter((r) => r.program === selectedProgram);
 
-export default function KepuasanMitraDashboard() {
-  const [selectedProgram, setSelectedProgram] = useState<string>('ALL');
-
-  // Rekap Data Skor
-  const templateKP = mockSurveyTemplates[0];
-
-  const overallScore = 4.62;
-  const maxScore = 5.0;
-  const percentScore = Math.round((overallScore / maxScore) * 100);
+  const columns: DataTableColumn<SurveyResponse>[] = [
+    {
+      key: 'mitra',
+      header: 'Mitra & Mahasiswa',
+      render: (r) => (
+        <div>
+          <div className="font-semibold text-slate-800 text-sm flex items-center gap-1.5">
+            {r.mitra}
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
+              {r.program}
+            </span>
+          </div>
+          <div className="text-xs text-slate-500 mt-0.5">{r.mahasiswa}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'penilai',
+      header: 'Penilai Lapangan',
+      render: (r) => (
+        <div>
+          <div className="text-sm text-slate-800 font-medium">{r.penilai}</div>
+          <div className="text-xs text-slate-400">{r.jabatan}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'skor',
+      header: 'Indeks Skor',
+      render: (r) => (
+        <span className="inline-flex items-center gap-1 text-sm font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
+          <Star size={13} className="fill-blue-600 text-blue-600" />
+          {r.skor.toFixed(1)} <span className="text-xs text-slate-400 font-normal">/ 5.0</span>
+        </span>
+      ),
+    },
+    {
+      key: 'tanggal',
+      header: 'Waktu Pengisian',
+      render: (r) => <span className="text-xs text-slate-500">{formatDateShort(r.tanggal)}</span>,
+    },
+    {
+      key: 'aksi',
+      header: 'Aksi',
+      className: 'text-right',
+      render: (r) => (
+        <button
+          onClick={() => setDetailModal(r)}
+          className="btn-secondary text-xs px-2.5 py-1 inline-flex items-center gap-1.5"
+        >
+          <Eye size={13} />
+          Detail
+        </button>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Rekap Kepuasan Mitra (KP, PSI, PDLK)"
-        description="Pemantauan indeks kepuasan mitra eksternal, tren kepuasan antar periode, dan tingkat respons survei."
-        action={
-          <div className="flex items-center gap-3">
-            <select
-              value={selectedProgram}
-              onChange={(e) => setSelectedProgram(e.target.value)}
-              className="select-field text-xs py-2 w-44"
-            >
-              <option value="ALL">Semua Program</option>
-              <option value="KP">Kerja Praktik (KP)</option>
-              <option value="PSI">Proyek SI (PSI)</option>
-              <option value="PDLK">PDLK / Magang</option>
-            </select>
-            <ExportMenu title="Ekspor Rekap" />
+        title="Kepuasan Mitra"
+        description="Pemantauan indeks kepuasan, tren penilaian mitra industri, dan tingkat respons kuesioner mahasiswa (FR-28)."
+        actions={
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard/kepuasan-mitra/instrumen" className="btn-secondary text-sm flex items-center gap-1.5">
+              <FileText size={15} /> Instrumen
+            </Link>
+            <Link href="/dashboard/kepuasan-mitra/pengiriman" className="btn-primary text-sm flex items-center gap-1.5">
+              <Send size={15} /> Kirim Tautan
+            </Link>
+            <ExportMenu filename="rekap-kepuasan-mitra" />
           </div>
         }
       />
 
-      {/* Metric Cards */}
+      {/* 4 Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Indeks Kepuasan Keseluruhan"
-          value={`${overallScore} / ${maxScore}`}
-          subtitle={`${percentScore}% Sangat Memuaskan`}
-          icon={<Smile size={20} />}
-          gradient="bg-blue-50 text-blue-600"
+          title="Indeks Kepuasan"
+          value="4.50 / 5.0"
+          subtitle="Setara 90.0% skala maksimum"
+          badgeTone="blue"
+          badgeText="Sangat Baik"
+          icon={<Star size={16} />}
         />
         <StatCard
-          title="Tingkat Respons Survei"
-          value="85.7%"
-          subtitle="30 dari 35 kuesioner terisi"
-          icon={<Award size={20} />}
-          gradient="bg-emerald-50 text-emerald-600"
+          title="Tingkat Respons"
+          value="78%"
+          subtitle="18 dari 23 tautan diisi"
+          badgeTone="emerald"
+          badgeText="+12% YoY"
+          icon={<CheckCircle2 size={16} />}
         />
         <StatCard
-          title="Total Mitra Pengisi"
-          value={mockPartners.length}
-          subtitle="Aktif di 3 Program Akademik"
-          icon={<Users size={20} />}
-          gradient="bg-amber-50 text-amber-600"
+          title="Total Responden"
+          value="18 Mitra"
+          subtitle="Tercatat aktif di sistem"
+          badgeTone="indigo"
+          icon={<Building2 size={16} />}
         />
         <StatCard
-          title="Pertumbuhan Indeks"
-          value="+0.16"
-          subtitle="Dibandingkan semester lalu"
-          icon={<TrendingUp size={20} />}
-          color="blue"
+          title="Program Penempatan"
+          value="KP · PSI · PDLK"
+          subtitle="3 Program terintegrasi"
+          badgeTone="slate"
+          icon={<Users size={16} />}
         />
       </div>
 
-      {/* Main Charts & Aspect Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Trend Bar Chart */}
-        <div className="lg:col-span-2 card space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div>
-              <h3 className="text-sm font-bold text-slate-800">Tren Indeks Kepuasan per Periode</h3>
-              <p className="text-xs text-slate-500">Perbandingan rata-rata skor kepuasan antar semester (Skala 1–5)</p>
-            </div>
-            <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-              Target Mutu: ≥ 4.00
-            </span>
-          </div>
-
-          <div className="h-72 w-full pt-2">
-            <InteractiveBarChart
-              data={TREND_DATA}
-              xKey="periode"
-              series={TREND_SERIES}
-              domain={TREND_DOMAIN}
-              ticks={TREND_TICKS}
-              tooltipFormatter={(val) => val.toFixed(2)}
-              showLegend
-            />
-          </div>
-        </div>
-
-        {/* Aspect Scores Breakdown */}
-        <div className="card space-y-4">
-          <div className="border-b border-slate-100 pb-3">
-            <h3 className="text-sm font-bold text-slate-800">Indeks per Aspek Penilaian</h3>
-            <p className="text-xs text-slate-500">Berdasarkan {templateKP?.aspek?.length || 4} aspek utama instrumen</p>
-          </div>
-
-          <div className="space-y-4">
-            {ASPECT_STATS.map((item, idx) => {
-              const pct = (item.skor / item.skala) * 100;
-              return (
-                <div key={idx} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-700">{item.aspek}</span>
-                    <span className="font-bold text-blue-600">{item.skor.toFixed(2)} / 5.0</span>
-                  </div>
-                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-blue-600 rounded-full transition-all duration-500"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100 text-xs text-slate-600 space-y-1">
-            <p className="font-semibold text-blue-900">Catatan Mutu (GKM):</p>
-            <p className="text-[11px] leading-relaxed">
-              Aspek koordinasi prodi terus meningkat, namun kemitraan teknis pada penguasaan tools backend modern perlu diselaraskan dengan silabus praktikum.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Mitra Responses Table Summary */}
-      <div className="card space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+      {/* Rata-rata Skor per Aspek */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-sm font-bold text-slate-800">Respons Terbaru dari Mitra</h3>
-            <p className="text-xs text-slate-500">Daftar umpan balik yang telah diisi langsung oleh mitra</p>
+            <h2 className="text-base font-bold text-slate-800">Rata-rata Skor per Aspek Evaluasi</h2>
+            <p className="text-xs text-slate-500">Rekapitulasi penilaian kinerja mahasiswa berdasarkan bobot instrumen</p>
           </div>
+          <span className="text-xs font-semibold px-2.5 py-1 bg-slate-100 text-slate-600 rounded-md">
+            Skala 1.0 – 5.0
+          </span>
         </div>
 
-        <div className="divide-y divide-slate-100 text-xs">
-          {mockSurveyResponses.map((resp) => (
-            <div key={resp.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-800 text-sm">
-                    {resp.placement?.partner?.nama_mitra}
-                  </span>
-                  <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
-                    {resp.sumber === 'TAUTAN_MITRA' ? 'Diisi oleh Mitra' : 'Input Koordinator'}
-                  </span>
-                </div>
-                <p className="text-slate-500 text-[11px]">
-                  Pengisi: <strong className="text-slate-700">{resp.nama_pengisi}</strong> ({resp.jabatan_pengisi}) • Mahasiswa:{' '}
-                  <span className="text-blue-600 font-medium">{resp.placement?.student?.nama_lengkap}</span>
-                </p>
-                {resp.komentar && (
-                  <p className="text-slate-600 italic bg-slate-50 p-2 rounded-lg border border-slate-100">
-                    &ldquo;{resp.komentar}&rdquo;
-                  </p>
-                )}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {ASPEK_RATA_RATA.map((aspek, idx) => (
+            <div key={idx} className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/60">
+              <div className="flex items-center justify-between text-xs mb-1.5">
+                <span className="font-semibold text-slate-700 truncate">{aspek.nama}</span>
+                <span className="text-slate-400 font-mono">Bobot {aspek.bobot}</span>
               </div>
-
-              <div className="text-right flex-shrink-0">
-                <p className="text-[10px] text-slate-400">Rata-rata Skor</p>
-                <p className="text-base font-extrabold text-emerald-600">4.50 / 5.0</p>
+              <div className="flex items-baseline justify-between mb-2">
+                <span className="text-xl font-bold text-slate-900">{aspek.skor.toFixed(1)} <span className="text-xs text-slate-400 font-normal">/ 5.0</span></span>
+                <span className="text-xs font-semibold text-blue-600">{aspek.persen}%</span>
+              </div>
+              <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                <div className="h-full bg-blue-600 rounded-full" style={{ width: `${aspek.persen}%` }} />
               </div>
             </div>
           ))}
         </div>
       </div>
+
+      {/* Tabel Respons Mitra */}
+      <div className="card">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-base font-bold text-slate-800">Daftar Respons Evaluasi Mitra</h2>
+            <p className="text-xs text-slate-500">Ulasan dan nilai objektif kinerja mahasiswa dari pembimbing lapangan</p>
+          </div>
+
+          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 self-start sm:self-auto">
+            {(['ALL', 'KP', 'PSI', 'PDLK'] as const).map((prog) => (
+              <button
+                key={prog}
+                onClick={() => setSelectedProgram(prog)}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                  selectedProgram === prog
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {prog === 'ALL' ? 'Semua Program' : prog}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <DataTable columns={columns} data={filteredResponses} emptyMessage="Belum ada data evaluasi untuk program ini" />
+      </div>
+
+      {/* Modal Detail Respons */}
+      <Modal
+        open={Boolean(detailModal)}
+        onClose={() => setDetailModal(null)}
+        title="Detail Respons Kuesioner Mitra"
+        size="md"
+      >
+        {detailModal && (
+          <div className="space-y-4">
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 text-xs text-slate-600">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Mitra Perusahaan:</span>
+                <span className="font-semibold text-slate-800">{detailModal.mitra}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Mahasiswa & Program:</span>
+                <span className="font-semibold text-slate-800">{detailModal.mahasiswa} ({detailModal.program})</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Penilai / Jabatan:</span>
+                <span className="font-semibold text-slate-800">{detailModal.penilai} — {detailModal.jabatan}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Waktu Pengisian:</span>
+                <span className="font-semibold text-slate-800">{formatDateShort(detailModal.tanggal)}</span>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Penilaian per Aspek</h4>
+              <div className="space-y-2">
+                {detailModal.aspekScores.map((a, i) => (
+                  <div key={i} className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 bg-white text-xs">
+                    <div>
+                      <div className="font-medium text-slate-800">{a.aspek}</div>
+                      <div className="text-[10px] text-slate-400">Bobot {a.bobot}</div>
+                    </div>
+                    <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
+                      {a.skor.toFixed(1)} / 5.0
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {detailModal.catatan && (
+              <div className="p-3 rounded-lg border border-slate-200 bg-white">
+                <div className="text-xs font-semibold text-slate-700 mb-1">Komentar & Catatan Mitra:</div>
+                <p className="text-xs text-slate-600 italic leading-relaxed">"{detailModal.catatan}"</p>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

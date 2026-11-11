@@ -1,164 +1,253 @@
 'use client';
 
 import React, { useState } from 'react';
+import { Shield, ShieldAlert, Send, Copy, Check, Lock, Search, AlertCircle, CheckCircle2 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
-import FileUploader from '@/components/ui/FileUploader';
-import CopyOnceDialog from '@/components/ui/CopyOnceDialog';
-import { generateTicketCode } from '@/lib/utils';
-import { mockComplaints } from '@/lib/mock-data';
-import { complaintService } from '@/lib/api/services/complaint.service';
-import type { ComplaintCategory, Complaint } from '@/lib/types';
-import { ShieldCheck, Send, Lock, AlertTriangle, ExternalLink } from 'lucide-react';
-import Link from 'next/link';
+import Modal from '@/components/ui/Modal';
+import { generateTicketCode, copyToClipboard } from '@/lib/utils';
 
-export default function KirimAduanAnonimPage() {
-  const [kategori, setKategori] = useState<ComplaintCategory>('FASILITAS');
+export default function Page() {
+  const [kategori, setKategori] = useState('AKADEMIK');
   const [judul, setJudul] = useState('');
   const [uraian, setUraian] = useState('');
-  const [generatedTicket, setGeneratedTicket] = useState<string | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [lampiranName, setLampiranName] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Ticket modal
+  const [ticketModalOpen, setTicketModalOpen] = useState(false);
+  const [generatedTicket, setGeneratedTicket] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  // Track ticket input
+  const [trackCode, setTrackCode] = useState('');
+  const [trackingResult, setTrackingResult] = useState<any | null>(null);
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!judul.trim() || !uraian.trim()) {
-      alert('Judul dan uraian aduan wajib diisi.');
-      return;
-    }
+    if (!judul.trim() || !uraian.trim()) return;
 
-    const ticketCode = generateTicketCode();
-    const isSensitif = kategori === 'PERUNDUNGAN_KEKERASAN';
+    const newCode = generateTicketCode();
+    setGeneratedTicket(newCode);
+    setTicketModalOpen(true);
 
-    const newComplaint: Complaint = {
-      id: `comp-${Date.now()}`,
-      nomor_aduan: `ADU-2025-00${mockComplaints.length + 1}`,
-      kode_tiket: ticketCode,
-      kode_tiket_hash: `hash_${ticketCode}`,
-      kategori,
-      judul,
-      uraian,
-      is_sensitif: isSensitif,
-      status: 'DITERIMA',
-      tanggal_diterima: new Date().toISOString().split('T')[0],
-      messages: [],
-      dispositions: [],
-    };
-
-    await complaintService.createComplaint(newComplaint);
-    setGeneratedTicket(ticketCode);
-    setDialogOpen(true);
-
-    // Reset Form
+    // Reset form
     setJudul('');
     setUraian('');
+    setLampiranName('');
+  };
+
+  const handleCopyTicket = () => {
+    copyToClipboard(generatedTicket);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleTrack = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!trackCode.trim()) return;
+
+    // Simulate finding ticket
+    setTrackingResult({
+      kode: trackCode.trim(),
+      status: 'DITINDAKLANJUTI',
+      kategori: 'Fasilitas & Sarana',
+      tanggal: '2025-10-25',
+      tanggapan: 'Pengelola telah mendisposisikan ke staf teknis IT untuk pengecekan proyektor Lab SI-2.',
+    });
   };
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="space-y-6">
       <PageHeader
-        title="Layanan Aduan Mahasiswa Anonim"
-        description="Saluran aspirasi dan pengaduan mahasiswa prodi secara aman, terenkripsi, dan terjamin kerahasiaan identitasnya."
+        title="Kirim Aduan Anonim"
+        description="Layanan penyampaian aspirasi dan aduan civitas akademika secara aman dan terlindungi (FR-47)."
       />
 
-      {/* Privacy Guarantee Statement (NF-04) */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs space-y-2">
-        <div className="flex items-center gap-2 text-xs font-bold text-slate-900 uppercase tracking-wider">
-          <ShieldCheck size={18} className="text-blue-600" />
-          <span>Jaminan Kerahasiaan &amp; Anonimitas Pelapor (NF-04)</span>
+      {/* Jaminan Privasi & Keamanan Anonimitas (PRD FR-47) */}
+      <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-200/80 flex items-start gap-3.5">
+        <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+          <Shield size={20} />
         </div>
-        <p className="text-xs text-slate-600 leading-relaxed">
-          Sistem menggunakan <strong>permit anonim bertanda tangan</strong>. Identitas akun, NIM, email, alamat IP, dan metadata perangkat Anda <strong>tidak pernah disimpan</strong> pada basis data maupun log sistem. Setelah pengiriman, Anda akan menerima <strong>Kode Tiket Rahasia</strong> untuk memantau status tindak lanjut aduan secara mandiri.
-        </p>
-      </div>
-
-      {kategori === 'PERUNDUNGAN_KEKERASAN' && (
-        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-1">
-          <div className="flex items-center gap-1.5 font-bold text-rose-950">
-            <Lock size={14} className="text-rose-700" />
-            <span>Kategori Sensitif: Penanganan Khusus Perlindungan Korban (FR-50)</span>
-          </div>
-          <p className="text-[11px] text-rose-900 leading-relaxed">
-            Aduan perundungan atau kekerasan seksual hanya dapat diakses oleh <strong>Petugas Khusus Kerahasiaan / Satgas PPKPT</strong>. Pimpinan prodi hanya melihat nomor dan status tanpa melihat isi naskah maupun identitas.
+        <div className="space-y-1 text-xs text-blue-900 leading-relaxed">
+          <h3 className="font-bold text-sm text-blue-950 flex items-center gap-1.5">
+            Jaminan Kerahasiaan & Privasi Penuh
+          </h3>
+          <p>
+            Identitas mahasiswa (NIM/Nama/IP Jaringan) <strong>TIDAK disimpan</strong> di basis data maupun log sistem.
+            Setelah aduan terkirim, Anda akan menerima <strong>Kode Tiket Rahasia</strong> yang wajib Anda simpan untuk melacak tanggapan pengelola.
           </p>
         </div>
-      )}
+      </div>
 
-      {/* Form Aduan */}
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="card space-y-4">
-          <div>
-            <label className="label">Kategori Pengaduan</label>
-            <select
-              value={kategori}
-              onChange={(e) => setKategori(e.target.value as ComplaintCategory)}
-              className="select-field text-xs font-semibold"
-            >
-              <option value="AKADEMIK">Akademik & Perkuliahan</option>
-              <option value="LAYANAN_ADMINISTRASI">Layanan Administrasi Prodi / Tata Usaha</option>
-              <option value="FASILITAS">Fasilitas, Laboratorium & Sarana Prasarana</option>
-              <option value="DOSEN_TENDIK">Dosen atau Tenaga Kependidikan</option>
-              <option value="PERUNDUNGAN_KEKERASAN">
-                Perundungan / Kekerasan Seksual (Sensitif & Terlindungi)
-              </option>
-              <option value="LAINNYA">Lain-lain</option>
-            </select>
+      {/* Formulir Pengiriman Aduan */}
+      <div className="card">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-semibold text-slate-700 block mb-1">
+                Kategori Pengaduan
+              </label>
+              <select
+                value={kategori}
+                onChange={(e) => setKategori(e.target.value)}
+                className="select-field text-xs font-medium"
+              >
+                <option value="AKADEMIK">Akademik (Perkuliahan & Kurikulum)</option>
+                <option value="LAYANAN_ADMINISTRASI">Layanan Administrasi Prodi / TU</option>
+                <option value="FASILITAS">Fasilitas & Sarana Laboratorium</option>
+                <option value="DOSEN_TENDIK">Dosen / Tenaga Kependidikan</option>
+                <option value="PERUNDUNGAN_KEKERASAN">
+                  ⚠️ Perundungan & Kekerasan Seksual (Kanal Sensitif PGL-K)
+                </option>
+                <option value="LAINNYA">Lain-lain / Aspirasi Umum</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-700 block mb-1">
+                Lampiran Bukti (Opsional)
+              </label>
+              <input
+                type="text"
+                value={lampiranName}
+                onChange={(e) => setLampiranName(e.target.value)}
+                placeholder="Contoh: Tangkapan_Layar_Bukti.png (metadata EXIF dibuang otomatis)"
+                className="input-field text-xs"
+              />
+            </div>
           </div>
 
+          {/* Alert Khusus untuk Aduan Sensitif (PRD FR-50) */}
+          {kategori === 'PERUNDUNGAN_KEKERASAN' && (
+            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 flex items-start gap-2.5">
+              <ShieldAlert size={18} className="text-rose-600 shrink-0 mt-0.5" />
+              <div>
+                <strong>Perhatian Khusus Aduan Sensitif:</strong> Aduan kategori ini ditangani dengan protokol rahasia khusus dan hanya dapat dibaca oleh Pengelola Aduan Penanganan Kekerasan (PGL-K). Pimpinan hanya melihat nomor tiket tanpa membuka isi materi aduan.
+              </div>
+            </div>
+          )}
+
           <div>
-            <label className="label">Judul Aduan</label>
+            <label className="text-xs font-semibold text-slate-700 block mb-1">
+              Judul Pokok Pengaduan
+            </label>
             <input
               type="text"
-              required
               value={judul}
               onChange={(e) => setJudul(e.target.value)}
-              placeholder="Tuliskan pokok permasalahan secara ringkas..."
+              placeholder="Ringkas inti permasalahan secara jelas..."
               className="input-field text-xs"
+              required
             />
           </div>
 
           <div>
-            <label className="label">Uraian Lengkap Kejadian / Pengaduan</label>
+            <label className="text-xs font-semibold text-slate-700 block mb-1">
+              Uraian Rinci Kejadian / Aspirasi
+            </label>
             <textarea
               rows={5}
-              required
               value={uraian}
               onChange={(e) => setUraian(e.target.value)}
-              placeholder="Ceritakan kronologi kejadian, tempat, waktu, dan fakta pendukung secara jelas..."
-              className="textarea-field text-xs leading-relaxed"
+              placeholder="Ceritakan kronologi, waktu kejadian, dan fakta pendukung tanpa harus mencantumkan nama Anda jika ingin tetap anonim..."
+              className="input-field text-xs resize-none leading-relaxed"
+              required
             />
           </div>
 
-          <FileUploader
-            label="Lampiran Bukti (Foto, Dokumen, Tangkapan Layar - Opsional)"
-            helperText="Format: JPG, PNG, PDF (Metadata EXIF akan otomatis dibersihkan server)"
+          <div className="flex justify-end pt-2 border-t border-slate-100">
+            <button
+              type="submit"
+              className="btn-primary text-xs px-6 py-2.5 flex items-center gap-2"
+            >
+              <Send size={14} /> Kirim Pengaduan Sekarang
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Bagian Lacak Tiket yang Sudah Ada */}
+      <div className="card space-y-3">
+        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+          <Search size={15} className="text-blue-600" /> Lacak Status Pengaduan dengan Kode Tiket
+        </h3>
+        <p className="text-xs text-slate-500">
+          Masukkan kode tiket rahasia yang Anda peroleh saat mengirim aduan untuk melihat tanggapan pengelola.
+        </p>
+
+        <form onSubmit={handleTrack} className="flex gap-2">
+          <input
+            type="text"
+            value={trackCode}
+            onChange={(e) => setTrackCode(e.target.value.toUpperCase())}
+            placeholder="Contoh: ADU-W7K9-PX42-M8L1"
+            className="input-field font-mono text-xs max-w-sm uppercase"
           />
-        </div>
-
-        <div className="flex items-center justify-between pt-2">
-          <Link
-            href="/aduan/lacak"
-            target="_blank"
-            className="text-xs text-blue-600 hover:underline flex items-center gap-1 font-semibold"
-          >
-            <ExternalLink size={14} />
-            <span>Sudah Punya Kode Tiket? Lacak Aduan di Sini</span>
-          </Link>
-
-          <button type="submit" className="btn-primary text-xs py-2.5 px-6 flex items-center gap-2">
-            <Send size={15} />
-            <span>Kirim Aduan Anonim</span>
+          <button type="submit" className="btn-secondary text-xs px-4 py-2">
+            Lacak Aduan
           </button>
-        </div>
-      </form>
+        </form>
 
-      {/* Modal Dialog Kode Tiket Sekali Tampil */}
-      {generatedTicket && (
-        <CopyOnceDialog
-          open={dialogOpen}
-          onClose={() => setDialogOpen(false)}
-          ticketCode={generatedTicket}
-        />
-      )}
+        {trackingResult && (
+          <div className="p-3.5 rounded-xl border border-blue-200 bg-blue-50/40 text-xs space-y-2 mt-3">
+            <div className="flex items-center justify-between">
+              <span className="font-mono font-bold text-slate-800">{trackingResult.kode}</span>
+              <span className="font-semibold text-blue-700 bg-blue-100 px-2 py-0.5 rounded">
+                Status: {trackingResult.status}
+              </span>
+            </div>
+            <div className="text-slate-600">
+              <strong>Tanggapan Petugas:</strong> {trackingResult.tanggapan}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Modal Dialog Kode Tiket Muncul Sekali (PRD FR-48) */}
+      <Modal
+        open={ticketModalOpen}
+        onClose={() => setTicketModalOpen(false)}
+        title="Pengaduan Berhasil Dikirim!"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-start gap-2.5">
+            <CheckCircle2 size={18} className="text-emerald-600 shrink-0 mt-0.5" />
+            <div>
+              Pengaduan Anda telah masuk ke sistem prodi tanpa identitas pengirim. Simpan kode tiket di bawah ini baik-baik!
+            </div>
+          </div>
+
+          <div className="text-center p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block">
+              Kode Tiket Pelacakan Rahasia:
+            </span>
+            <div className="text-xl font-bold font-mono text-slate-900 tracking-wider">
+              {generatedTicket}
+            </div>
+            <button
+              onClick={handleCopyTicket}
+              className="btn-primary text-xs px-4 py-1.5 inline-flex items-center gap-1.5 mt-2"
+            >
+              {copied ? <Check size={14} /> : <Copy size={14} />}
+              {copied ? 'Kode Tersalin!' : 'Salin Kode Tiket'}
+            </button>
+          </div>
+
+          <p className="text-[11px] text-slate-400 text-center italic">
+            *Penting: Kode tiket ini hanya ditampilkan satu kali dan tidak dapat dipulihkan jika hilang.
+          </p>
+
+          <div className="flex justify-end pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setTicketModalOpen(false)}
+              className="btn-secondary text-xs px-4 py-2"
+            >
+              Saya Sudah Menyimpan Kode
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
-

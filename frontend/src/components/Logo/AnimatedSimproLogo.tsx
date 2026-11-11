@@ -262,16 +262,16 @@ export default function AnimatedSimproLogo({
               y="140"
               textAnchor="middle"
               fill="#FFFFFF"
-              fontSize="24"
+              fontSize="26"
               fontWeight="800"
               letterSpacing="-0.02em"
             >
               SIMPRO
             </text>
-            <text x="128" y="158" textAnchor="middle" fill="#DBEAFE" fontSize="11" fontWeight="500">
+            <text x="128" y="158" textAnchor="middle" fill="#DBEAFE" fontSize="12" fontWeight="500">
               Sistem Informasi Manajemen
             </text>
-            <text x="128" y="172" textAnchor="middle" fill="#DBEAFE" fontSize="11" fontWeight="500">
+            <text x="128" y="172" textAnchor="middle" fill="#DBEAFE" fontSize="12" fontWeight="500">
               Program Studi
             </text>
           </g>
