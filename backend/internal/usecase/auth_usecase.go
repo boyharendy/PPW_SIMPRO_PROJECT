@@ -14,7 +14,7 @@ type AuthUsecase interface {
 	Login(req *model.LoginRequest) (*model.AuthResponse, error)
 	Register(req *model.RegisterRequest) (*model.AuthResponse, error)
 	GetProfile(userID string) (*model.User, error)
-	SwitchRole(userID string, role model.Role) (*model.User, error)
+	SwitchRole(userID string, role model.Role) (*model.AuthResponse, error)
 	RefreshToken(refreshToken string) (*model.AuthTokens, error)
 }
 
@@ -61,10 +61,8 @@ func (u *authUsecase) Register(req *model.RegisterRequest) (*model.AuthResponse,
 		return nil, errors.New("gagal mengenkripsi password")
 	}
 
-	roles := req.Roles
-	if len(roles) == 0 {
-		roles = []model.Role{model.RoleMahasiswa}
-	}
+	// NF-02: Self-registration strictly grants MAHASISWA. Administrative/academic roles are assigned by Kaprodi.
+	roles := []model.Role{model.RoleMahasiswa}
 
 	newUser := &model.User{
 		NamaLengkap: req.NamaLengkap,
@@ -95,7 +93,7 @@ func (u *authUsecase) GetProfile(userID string) (*model.User, error) {
 	return u.userRepo.FindByID(userID)
 }
 
-func (u *authUsecase) SwitchRole(userID string, role model.Role) (*model.User, error) {
+func (u *authUsecase) SwitchRole(userID string, role model.Role) (*model.AuthResponse, error) {
 	user, err := u.userRepo.FindByID(userID)
 	if err != nil {
 		return nil, errors.New("pengguna tidak ditemukan")
@@ -114,7 +112,21 @@ func (u *authUsecase) SwitchRole(userID string, role model.Role) (*model.User, e
 	}
 
 	user.ActiveRole = role
-	return u.userRepo.Update(userID, user)
+	updatedUser, err := u.userRepo.Update(userID, user)
+	if err != nil {
+		return nil, errors.New("gagal memperbarui peran aktif")
+	}
+
+	// Generate fresh JWT with the new active_role claim
+	tokens, err := utils.GenerateTokens(updatedUser, u.cfg.JWTSecret, u.cfg.JWTExpirationHours, u.cfg.JWTRefreshDays)
+	if err != nil {
+		return nil, errors.New("gagal memperbarui token autentikasi")
+	}
+
+	return &model.AuthResponse{
+		User:   updatedUser,
+		Tokens: tokens,
+	}, nil
 }
 
 func (u *authUsecase) RefreshToken(refreshToken string) (*model.AuthTokens, error) {

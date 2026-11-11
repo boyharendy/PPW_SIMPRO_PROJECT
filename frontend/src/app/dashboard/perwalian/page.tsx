@@ -359,7 +359,7 @@ export default function LaporanPerwalianPage() {
             <Eye className="h-3.5 w-3.5" />
             <span>Detail</span>
           </button>
-          {row.status === 'TERKIRIM' && (currentRole === 'DOSEN' || currentRole === 'DOSEN_WALI' || currentRole === 'KAPRODI') && (
+          {row.status === 'TERKIRIM' && (currentRole === 'DOSEN_WALI' || currentRole === 'KAPRODI') && (
             <button
               onClick={() => {
                 setSelectedReport(row);
@@ -464,7 +464,7 @@ export default function LaporanPerwalianPage() {
               <PieChart className="h-4 w-4 text-blue-600" />
               <span>Rekap & Analisis Isu</span>
             </Link>
-            {(currentRole === 'KETUA_KELAS' || currentRole === 'MAHASISWA' || currentRole === 'KAPRODI') && (
+            {currentRole === 'KETUA_KELAS' && (
               <button
                 onClick={() => setShowCreateClassModal(true)}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 shadow-xs transition-colors"
@@ -473,7 +473,7 @@ export default function LaporanPerwalianPage() {
                 <span>Isi Laporan Ketua Kelas</span>
               </button>
             )}
-            {(currentRole === 'DOSEN' || currentRole === 'DOSEN_WALI' || currentRole === 'KAPRODI') && (
+            {(currentRole === 'DOSEN_WALI' || currentRole === 'KAPRODI') && (
               <button
                 onClick={() => setShowCreateSessionModal(true)}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 shadow-xs transition-colors"

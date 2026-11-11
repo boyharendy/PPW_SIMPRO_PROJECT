@@ -26,6 +26,11 @@ func (h *TripHandler) GetTrips(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 
+	// NF-02: Dosen hanya dapat melihat perjalanannya sendiri; Kaprodi dan Admin Prodi dapat melihat seluruhnya.
+	if r := middleware.NormalizeRole(middleware.ActiveRole(c)); r != model.RoleKaprodi && r != model.RoleAdminProdi {
+		userID = c.GetString(middleware.CtxUserID)
+	}
+
 	trips, total, err := h.usecase.GetTrips(status, userID, page, limit)
 	if err != nil {
 		response.InternalServerError(c, "Gagal mengambil daftar perjalanan dinas: "+err.Error())

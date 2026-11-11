@@ -45,8 +45,8 @@ export default function HimpunanDashboardPage() {
   const pendingKaprodi = mockHimpunanProposals.filter((p) => p.status === 'DISETUJUI_PEMBINA').length +
     mockHimpunanLpjs.filter((l) => l.status === 'DISETUJUI_PEMBINA').length;
 
-  const isPengurus = currentRole === 'PENGURUS_HIMPUNAN' || currentRole === 'HIMPUNAN' || currentRole === 'MAHASISWA';
-  const isApprover = currentRole === 'DOSEN_PEMBINA' || currentRole === 'KAPRODI' || currentRole === 'DOSEN';
+  const isPengurus = currentRole === 'PENGURUS_HIMPUNAN' || currentRole === 'HIMPUNAN';
+  const isApprover = currentRole === 'DOSEN_PEMBINA' || currentRole === 'KAPRODI';
 
   return (
     <div className="space-y-6">

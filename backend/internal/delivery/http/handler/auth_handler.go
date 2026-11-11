@@ -69,13 +69,13 @@ func (h *AuthHandler) SwitchRole(c *gin.Context) {
 		return
 	}
 
-	user, err := h.authUsecase.SwitchRole(userID, req.Role)
+	res, err := h.authUsecase.SwitchRole(userID, req.Role)
 	if err != nil {
 		response.BadRequest(c, err.Error(), nil)
 		return
 	}
 
-	response.Success(c, http.StatusOK, "Peran aktif berhasil diubah", user)
+	response.Success(c, http.StatusOK, "Peran aktif berhasil diubah", res)
 }
 
 func (h *AuthHandler) RefreshToken(c *gin.Context) {

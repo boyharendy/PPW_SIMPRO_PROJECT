@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"simpro-backend/internal/delivery/http/middleware"
 	"simpro-backend/internal/model"
 	"simpro-backend/internal/usecase"
 	"simpro-backend/pkg/response"
@@ -29,6 +30,13 @@ func (h *AdminHandler) GetSettings(c *gin.Context) {
 
 func (h *AdminHandler) UpdateSetting(c *gin.Context) {
 	key := c.Param("key")
+
+	activeRole := middleware.NormalizeRole(middleware.ActiveRole(c))
+	if activeRole == model.RoleAdminProdi && key != "max_upload_mb" {
+		response.Forbidden(c, "Akses ditolak: Admin Prodi hanya memiliki hak akses mengubah batasan unggahan (max_upload_mb)")
+		return
+	}
+
 	var req struct {
 		Value string `json:"value" binding:"required"`
 	}

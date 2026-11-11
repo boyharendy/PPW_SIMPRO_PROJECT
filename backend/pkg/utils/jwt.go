@@ -9,10 +9,11 @@ import (
 )
 
 type JWTClaims struct {
-	UserID     string       `json:"user_id"`
-	Email      string       `json:"email"`
-	Roles      []model.Role `json:"roles"`
-	ActiveRole model.Role   `json:"active_role"`
+	UserID              string       `json:"user_id"`
+	Email               string       `json:"email"`
+	Roles               []model.Role `json:"roles"`
+	ActiveRole          model.Role   `json:"active_role"`
+	PenangananKekerasan bool         `json:"penanganan_kekerasan"`
 	jwt.RegisteredClaims
 }
 
@@ -22,10 +23,11 @@ func GenerateTokens(user *model.User, secretKey string, expHours int, refreshDay
 
 	// Access Token Claims
 	claims := JWTClaims{
-		UserID:     user.ID,
-		Email:      user.Email,
-		Roles:      user.Roles,
-		ActiveRole: user.ActiveRole,
+		UserID:              user.ID,
+		Email:               user.Email,
+		Roles:               user.Roles,
+		ActiveRole:          user.ActiveRole,
+		PenangananKekerasan: user.PenangananKekerasan,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(accessExpiry),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

@@ -41,7 +41,7 @@ func (h *ComplaintHandler) GetComplaints(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 
-	activeRole := model.Role(c.GetString(middleware.CtxActiveRole))
+	activeRole := middleware.ActiveRole(c)
 	isViolenceHandler := c.GetBool("is_violence_handler") || activeRole == model.RolePetugasKekerasan
 
 	complaints, total, err := h.usecase.GetComplaints(activeRole, isViolenceHandler, kategori, status, page, limit)
@@ -65,7 +65,7 @@ func (h *ComplaintHandler) GetComplaints(c *gin.Context) {
 
 func (h *ComplaintHandler) GetComplaintByID(c *gin.Context) {
 	id := c.Param("id")
-	activeRole := model.Role(c.GetString(middleware.CtxActiveRole))
+	activeRole := middleware.ActiveRole(c)
 	isViolenceHandler := c.GetBool("is_violence_handler") || activeRole == model.RolePetugasKekerasan
 
 	complaint, err := h.usecase.GetComplaintByID(id, activeRole, isViolenceHandler)
@@ -245,7 +245,7 @@ func (h *ComplaintHandler) GetMyDispositions(c *gin.Context) {
 func (h *ComplaintHandler) AddInternalMessage(c *gin.Context) {
 	id := c.Param("id")
 	userID := c.GetString(middleware.CtxUserID)
-	activeRole := model.Role(c.GetString(middleware.CtxActiveRole))
+	activeRole := middleware.ActiveRole(c)
 
 	var req struct {
 		Pesan string `json:"pesan" binding:"required"`

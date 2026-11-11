@@ -5,6 +5,7 @@ import (
 	"simpro-backend/internal/config"
 	"simpro-backend/internal/delivery/http/handler"
 	"simpro-backend/internal/delivery/http/middleware"
+	"simpro-backend/internal/model"
 )
 
 type RouterParams struct {
@@ -34,6 +35,8 @@ func SetupRouter(params RouterParams) *gin.Engine {
 
 	// Apply CORS
 	r.Use(middleware.CORSMiddleware(params.Config.FrontendURL))
+
+	allow := middleware.RequireRole
 
 	// API Group
 	api := r.Group(params.Config.APIPrefix)
@@ -101,12 +104,12 @@ func SetupRouter(params RouterParams) *gin.Engine {
 		users := api.Group("/users")
 		users.Use(middleware.AuthMiddleware(params.Config.JWTSecret))
 		{
-			users.GET("", params.UserHandler.GetUsers)
-			users.POST("", params.UserHandler.CreateUser)
+			users.GET("", allow(model.RoleKaprodi, model.RoleGKM, model.RoleAdminProdi, model.RolePengelolaAduan, model.RoleKoordKP_PSI_PDLK), params.UserHandler.GetUsers)
+			users.POST("", allow(model.RoleKaprodi), params.UserHandler.CreateUser)
 			users.GET("/roles", params.UserHandler.GetRoles)
-			users.GET("/:id", params.UserHandler.GetUserByID)
-			users.PUT("/:id", params.UserHandler.UpdateUser)
-			users.DELETE("/:id", params.UserHandler.DeleteUser)
+			users.GET("/:id", allow(model.RoleKaprodi, model.RoleGKM, model.RoleAdminProdi, model.RolePengelolaAduan, model.RoleKoordKP_PSI_PDLK), params.UserHandler.GetUserByID)
+			users.PUT("/:id", allow(model.RoleKaprodi), params.UserHandler.UpdateUser)
+			users.DELETE("/:id", allow(model.RoleKaprodi), params.UserHandler.DeleteUser)
 		}
 
 		// Reference Data Routes (Protected)
@@ -124,24 +127,24 @@ func SetupRouter(params RouterParams) *gin.Engine {
 		// Modul 7: Kepuasan Mitra (Protected)
 		if params.SurveyHandler != nil {
 			registerSurveyRoutes := func(grp *gin.RouterGroup) {
-				grp.GET("", params.SurveyHandler.GetSurveys)
-				grp.POST("", params.SurveyHandler.CreateSurvey)
-				grp.POST("/templates/:id/activate", params.SurveyHandler.ActivateTemplate)
-				grp.POST("/templates/:id/duplicate", params.SurveyHandler.DuplicateTemplate)
-				grp.POST("/templates/:id/archive", params.SurveyHandler.ArchiveTemplate)
-				grp.GET("/invitations", params.SurveyHandler.GetInvitations)
-				grp.POST("/invitations", params.SurveyHandler.CreateInvitation)
-				grp.POST("/invitations/:id/send", params.SurveyHandler.SendInvitation)
-				grp.POST("/invitations/:id/remind", params.SurveyHandler.RemindInvitation)
-				grp.POST("/invitations/:id/resend", params.SurveyHandler.ResendInvitation)
-				grp.POST("/invitations/:id/cancel", params.SurveyHandler.CancelInvitation)
-				grp.GET("/placements", params.SurveyHandler.GetPlacements)
-				grp.POST("/responses/:id/void", params.SurveyHandler.VoidResponse)
-				grp.POST("/manual-responses", params.SurveyHandler.SubmitManualResponse)
-				grp.GET("/:id", params.SurveyHandler.GetSurveyByID)
-				grp.PUT("/:id", params.SurveyHandler.UpdateSurvey)
-				grp.DELETE("/:id", params.SurveyHandler.DeleteSurvey)
-				grp.GET("/:id/recap", params.SurveyHandler.GetRecap)
+				grp.GET("", allow(model.RoleKoordKP_PSI_PDLK, model.RoleKaprodi), params.SurveyHandler.GetSurveys)
+				grp.POST("", allow(model.RoleKoordKP_PSI_PDLK), params.SurveyHandler.CreateSurvey)
+				grp.POST("/templates/:id/activate", allow(model.RoleKoordKP_PSI_PDLK), params.SurveyHandler.ActivateTemplate)
+				grp.POST("/templates/:id/duplicate", allow(model.RoleKoordKP_PSI_PDLK), params.SurveyHandler.DuplicateTemplate)
+				grp.POST("/templates/:id/archive", allow(model.RoleKoordKP_PSI_PDLK), params.SurveyHandler.ArchiveTemplate)
+				grp.GET("/invitations", allow(model.RoleKoordKP_PSI_PDLK, model.RoleKaprodi), params.SurveyHandler.GetInvitations)
+				grp.POST("/invitations", allow(model.RoleKoordKP_PSI_PDLK), params.SurveyHandler.CreateInvitation)
+				grp.POST("/invitations/:id/send", allow(model.RoleKoordKP_PSI_PDLK), params.SurveyHandler.SendInvitation)
+				grp.POST("/invitations/:id/remind", allow(model.RoleKoordKP_PSI_PDLK), params.SurveyHandler.RemindInvitation)
+				grp.POST("/invitations/:id/resend", allow(model.RoleKoordKP_PSI_PDLK), params.SurveyHandler.ResendInvitation)
+				grp.POST("/invitations/:id/cancel", allow(model.RoleKoordKP_PSI_PDLK), params.SurveyHandler.CancelInvitation)
+				grp.GET("/placements", allow(model.RoleKoordKP_PSI_PDLK, model.RoleKaprodi), params.SurveyHandler.GetPlacements)
+				grp.POST("/responses/:id/void", allow(model.RoleKoordKP_PSI_PDLK), params.SurveyHandler.VoidResponse)
+				grp.POST("/manual-responses", allow(model.RoleKoordKP_PSI_PDLK), params.SurveyHandler.SubmitManualResponse)
+				grp.GET("/:id", allow(model.RoleKoordKP_PSI_PDLK, model.RoleKaprodi), params.SurveyHandler.GetSurveyByID)
+				grp.PUT("/:id", allow(model.RoleKoordKP_PSI_PDLK), params.SurveyHandler.UpdateSurvey)
+				grp.DELETE("/:id", allow(model.RoleKoordKP_PSI_PDLK), params.SurveyHandler.DeleteSurvey)
+				grp.GET("/:id/recap", allow(model.RoleKoordKP_PSI_PDLK, model.RoleKaprodi), params.SurveyHandler.GetRecap)
 			}
 
 			surveys := api.Group("/surveys")
@@ -156,19 +159,19 @@ func SetupRouter(params RouterParams) *gin.Engine {
 		// Modul 13: Layanan Aduan (Protected)
 		if params.ComplaintHandler != nil {
 			registerComplaintRoutes := func(grp *gin.RouterGroup) {
-				grp.POST("/permit", params.ComplaintHandler.IssuePermit)
-				grp.GET("", params.ComplaintHandler.GetComplaints)
-				grp.GET("/recap", params.ComplaintHandler.GetRecap)
-				grp.GET("/escalations", params.ComplaintHandler.GetEscalations)
-				grp.GET("/my-dispositions", params.ComplaintHandler.GetMyDispositions)
-				grp.GET("/:id", params.ComplaintHandler.GetComplaintByID)
-				grp.PATCH("/:id/status", params.ComplaintHandler.UpdateStatus)
-				grp.POST("/:id/verify", params.ComplaintHandler.Verify)
-				grp.POST("/:id/resolve", params.ComplaintHandler.Resolve)
-				grp.POST("/:id/close", params.ComplaintHandler.Close)
-				grp.POST("/:id/messages", params.ComplaintHandler.AddInternalMessage)
-				grp.POST("/:id/dispositions", params.ComplaintHandler.AddDisposition)
-				grp.POST("/:id/forward-satgas", params.ComplaintHandler.ForwardToSatgas)
+				grp.POST("/permit", allow(model.RoleMahasiswa), params.ComplaintHandler.IssuePermit)
+				grp.GET("", allow(model.RolePengelolaAduan, model.RoleKaprodi), params.ComplaintHandler.GetComplaints)
+				grp.GET("/recap", allow(model.RolePengelolaAduan, model.RoleKaprodi), params.ComplaintHandler.GetRecap)
+				grp.GET("/escalations", allow(model.RolePengelolaAduan, model.RoleKaprodi), params.ComplaintHandler.GetEscalations)
+				grp.GET("/my-dispositions", allow(model.RoleKaprodi, model.RoleGKM, model.RoleAdminProdi, model.RoleDosen, model.RolePengelolaAduan), params.ComplaintHandler.GetMyDispositions)
+				grp.GET("/:id", allow(model.RolePengelolaAduan, model.RoleKaprodi), params.ComplaintHandler.GetComplaintByID)
+				grp.PATCH("/:id/status", allow(model.RolePengelolaAduan, model.RoleKaprodi), params.ComplaintHandler.UpdateStatus)
+				grp.POST("/:id/verify", allow(model.RolePengelolaAduan, model.RoleKaprodi), params.ComplaintHandler.Verify)
+				grp.POST("/:id/resolve", allow(model.RoleKaprodi, model.RoleGKM, model.RoleAdminProdi, model.RoleDosen, model.RolePengelolaAduan), params.ComplaintHandler.Resolve)
+				grp.POST("/:id/close", allow(model.RolePengelolaAduan, model.RoleKaprodi), params.ComplaintHandler.Close)
+				grp.POST("/:id/messages", allow(model.RoleKaprodi, model.RoleGKM, model.RoleAdminProdi, model.RoleDosen, model.RolePengelolaAduan), params.ComplaintHandler.AddInternalMessage)
+				grp.POST("/:id/dispositions", allow(model.RolePengelolaAduan, model.RoleKaprodi), params.ComplaintHandler.AddDisposition)
+				grp.POST("/:id/forward-satgas", allow(model.RolePengelolaAduan, model.RoleKaprodi), params.ComplaintHandler.ForwardToSatgas)
 			}
 
 			complaints := api.Group("/complaints")
@@ -185,21 +188,21 @@ func SetupRouter(params RouterParams) *gin.Engine {
 			pubs := api.Group("/publications")
 			pubs.Use(middleware.AuthMiddleware(params.Config.JWTSecret))
 			{
-				pubs.GET("", params.PublicationHandler.GetPublications)
-				pubs.POST("", params.PublicationHandler.CreatePublication)
-				pubs.GET("/recap", params.PublicationHandler.GetRecap)
-				pubs.GET("/verification-queue", params.PublicationHandler.GetVerificationQueue)
-				pubs.GET("/:id", params.PublicationHandler.GetPublicationByID)
-				pubs.PUT("/:id", params.PublicationHandler.UpdatePublication)
-				pubs.DELETE("/:id", params.PublicationHandler.DeletePublication)
-				pubs.PUT("/:id/authors", params.PublicationHandler.UpdateAuthors)
-				pubs.PUT("/:id/verifier", params.PublicationHandler.AssignVerifier)
-				pubs.POST("/:id/submit", params.PublicationHandler.SubmitPublication)
-				pubs.POST("/:id/stages", params.PublicationHandler.AddStageLog)
-				pubs.POST("/stages/:stageId/verify", params.PublicationHandler.VerifyStage)
-				pubs.POST("/:id/verify", params.PublicationHandler.VerifyPublication)
-				pubs.POST("/:id/reviews", params.PublicationHandler.AddReview)
-				pubs.POST("/reviews/:reviewId/complete", params.PublicationHandler.CompleteReview)
+				pubs.GET("", allow(model.RoleDosen, model.RoleDosenVerifikator, model.RoleMahasiswa, model.RoleKaprodi), params.PublicationHandler.GetPublications)
+				pubs.POST("", allow(model.RoleDosen, model.RoleMahasiswa), params.PublicationHandler.CreatePublication)
+				pubs.GET("/recap", allow(model.RoleKaprodi), params.PublicationHandler.GetRecap)
+				pubs.GET("/verification-queue", allow(model.RoleDosenVerifikator, model.RoleDosen), params.PublicationHandler.GetVerificationQueue)
+				pubs.GET("/:id", allow(model.RoleDosen, model.RoleDosenVerifikator, model.RoleMahasiswa, model.RoleKaprodi), params.PublicationHandler.GetPublicationByID)
+				pubs.PUT("/:id", allow(model.RoleDosen, model.RoleMahasiswa), params.PublicationHandler.UpdatePublication)
+				pubs.DELETE("/:id", allow(model.RoleDosen, model.RoleMahasiswa), params.PublicationHandler.DeletePublication)
+				pubs.PUT("/:id/authors", allow(model.RoleDosen, model.RoleMahasiswa), params.PublicationHandler.UpdateAuthors)
+				pubs.PUT("/:id/verifier", allow(model.RoleKaprodi), params.PublicationHandler.AssignVerifier)
+				pubs.POST("/:id/submit", allow(model.RoleDosen, model.RoleMahasiswa), params.PublicationHandler.SubmitPublication)
+				pubs.POST("/:id/stages", allow(model.RoleDosen, model.RoleMahasiswa), params.PublicationHandler.AddStageLog)
+				pubs.POST("/stages/:stageId/verify", allow(model.RoleDosenVerifikator, model.RoleDosen), params.PublicationHandler.VerifyStage)
+				pubs.POST("/:id/verify", allow(model.RoleDosenVerifikator, model.RoleDosen), params.PublicationHandler.VerifyPublication)
+				pubs.POST("/:id/reviews", allow(model.RoleDosen), params.PublicationHandler.AddReview)
+				pubs.POST("/reviews/:reviewId/complete", allow(model.RoleDosen), params.PublicationHandler.CompleteReview)
 			}
 		}
 
@@ -208,21 +211,21 @@ func SetupRouter(params RouterParams) *gin.Engine {
 			trips := api.Group("/trips")
 			trips.Use(middleware.AuthMiddleware(params.Config.JWTSecret))
 			{
-				trips.GET("", params.TripHandler.GetTrips)
-				trips.POST("", params.TripHandler.CreateTrip)
-				trips.GET("/recap", params.TripHandler.GetRecap)
-				trips.GET("/flags", params.TripHandler.GetFlags)
-				trips.GET("/:id", params.TripHandler.GetTripByID)
-				trips.PUT("/:id", params.TripHandler.UpdateTrip)
-				trips.DELETE("/:id", params.TripHandler.DeleteTrip)
-				trips.POST("/:id/submit", params.TripHandler.SubmitTrip)
-				trips.POST("/:id/approve", params.TripHandler.ApproveTrip)
-				trips.POST("/:id/report", params.TripHandler.SubmitReport)
-				trips.POST("/:id/proofs", params.TripHandler.AddProof)
-				trips.PUT("/:id/costs", params.TripHandler.UpdateCosts)
-				trips.PUT("/:id/costs/realization", params.TripHandler.UpdateRealizationCosts)
-				trips.POST("/:id/confirm", params.TripHandler.ConfirmTrip)
-				trips.GET("/:id/completeness", params.TripHandler.GetCompleteness)
+				trips.GET("", allow(model.RoleDosen, model.RoleAdminProdi, model.RoleKaprodi), params.TripHandler.GetTrips)
+				trips.POST("", allow(model.RoleDosen, model.RoleAdminProdi), params.TripHandler.CreateTrip)
+				trips.GET("/recap", allow(model.RoleAdminProdi, model.RoleKaprodi), params.TripHandler.GetRecap)
+				trips.GET("/flags", allow(model.RoleAdminProdi, model.RoleKaprodi), params.TripHandler.GetFlags)
+				trips.GET("/:id", allow(model.RoleDosen, model.RoleAdminProdi, model.RoleKaprodi), params.TripHandler.GetTripByID)
+				trips.PUT("/:id", allow(model.RoleDosen, model.RoleAdminProdi), params.TripHandler.UpdateTrip)
+				trips.DELETE("/:id", allow(model.RoleDosen, model.RoleAdminProdi), params.TripHandler.DeleteTrip)
+				trips.POST("/:id/submit", allow(model.RoleDosen, model.RoleAdminProdi), params.TripHandler.SubmitTrip)
+				trips.POST("/:id/approve", allow(model.RoleKaprodi), params.TripHandler.ApproveTrip)
+				trips.POST("/:id/report", allow(model.RoleDosen, model.RoleAdminProdi), params.TripHandler.SubmitReport)
+				trips.POST("/:id/proofs", allow(model.RoleDosen, model.RoleAdminProdi), params.TripHandler.AddProof)
+				trips.PUT("/:id/costs", allow(model.RoleDosen, model.RoleAdminProdi), params.TripHandler.UpdateCosts)
+				trips.PUT("/:id/costs/realization", allow(model.RoleDosen, model.RoleAdminProdi), params.TripHandler.UpdateRealizationCosts)
+				trips.POST("/:id/confirm", allow(model.RoleAdminProdi), params.TripHandler.ConfirmTrip)
+				trips.GET("/:id/completeness", allow(model.RoleDosen, model.RoleAdminProdi, model.RoleKaprodi), params.TripHandler.GetCompleteness)
 			}
 		}
 
@@ -231,18 +234,18 @@ func SetupRouter(params RouterParams) *gin.Engine {
 			rka := api.Group("/rka")
 			rka.Use(middleware.AuthMiddleware(params.Config.JWTSecret))
 			{
-				rka.GET("", params.RkaHandler.GetRkaList)
-				rka.POST("", params.RkaHandler.CreateRka)
-				rka.GET("/:tahun", params.RkaHandler.GetRkaByYear)
-				rka.PUT("/:tahun", params.RkaHandler.UpdateRka)
-				rka.POST("/:tahun/realizations", params.RkaHandler.AddRealization)
-				rka.GET("/:tahun/serapan", params.RkaHandler.GetSerapan)
-				rka.GET("/:id/working-version", params.RkaHandler.GetWorkingVersion)
-				rka.PUT("/:id/working-version", params.RkaHandler.UpdateWorkingVersion)
-				rka.POST("/:id/working-version/submit", params.RkaHandler.SubmitWorkingVersion)
-				rka.GET("/:id/versions/:nomor/diff", params.RkaHandler.GetVersionDiff)
-				rka.POST("/:id/versions/:nomor/decision", params.RkaHandler.DecideVersion)
-				rka.POST("/:id/close", params.RkaHandler.CloseRka)
+				rka.GET("", allow(model.RoleAdminProdi, model.RoleKaprodi), params.RkaHandler.GetRkaList)
+				rka.POST("", allow(model.RoleAdminProdi, model.RoleKaprodi), params.RkaHandler.CreateRka)
+				rka.GET("/:tahun", allow(model.RoleAdminProdi, model.RoleKaprodi), params.RkaHandler.GetRkaByYear)
+				rka.PUT("/:tahun", allow(model.RoleAdminProdi, model.RoleKaprodi), params.RkaHandler.UpdateRka)
+				rka.POST("/:tahun/realizations", allow(model.RoleAdminProdi), params.RkaHandler.AddRealization)
+				rka.GET("/:tahun/serapan", allow(model.RoleAdminProdi, model.RoleKaprodi), params.RkaHandler.GetSerapan)
+				rka.GET("/:id/working-version", allow(model.RoleAdminProdi, model.RoleKaprodi), params.RkaHandler.GetWorkingVersion)
+				rka.PUT("/:id/working-version", allow(model.RoleAdminProdi, model.RoleKaprodi), params.RkaHandler.UpdateWorkingVersion)
+				rka.POST("/:id/working-version/submit", allow(model.RoleAdminProdi, model.RoleKaprodi), params.RkaHandler.SubmitWorkingVersion)
+				rka.GET("/:id/versions/:nomor/diff", allow(model.RoleAdminProdi, model.RoleKaprodi), params.RkaHandler.GetVersionDiff)
+				rka.POST("/:id/versions/:nomor/decision", allow(model.RoleKaprodi), params.RkaHandler.DecideVersion)
+				rka.POST("/:id/close", allow(model.RoleKaprodi), params.RkaHandler.CloseRka)
 			}
 		}
 
@@ -251,18 +254,18 @@ func SetupRouter(params RouterParams) *gin.Engine {
 			rps := api.Group("/rps")
 			rps.Use(middleware.AuthMiddleware(params.Config.JWTSecret))
 			{
-				rps.GET("", params.RpsHandler.GetSubmissions)
-				rps.POST("", params.RpsHandler.CreateSubmission)
-				rps.GET("/recap", params.RpsHandler.GetRecap)
-				rps.GET("/:id", params.RpsHandler.GetSubmissionByID)
-				rps.POST("/:id/submit", params.RpsHandler.SubmitForReview)
-				rps.POST("/:id/assign-reviewer", params.RpsHandler.AssignReviewer)
-				rps.POST("/submissions/:id/assign-reviewers", params.RpsHandler.AssignReviewer)
-				rps.POST("/:id/review", params.RpsHandler.ReviewSubmission)
-				rps.PUT("/reviews/:reviewId/items", params.RpsHandler.UpdateReviewItems)
-				rps.POST("/reviews/:reviewId/complete", params.RpsHandler.CompleteReview)
-				rps.PUT("/submissions/:id/improvement-plans", params.RpsHandler.UpdateImprovementPlans)
-				rps.POST("/:id/ratify", params.RpsHandler.RatifySubmission)
+				rps.GET("", allow(model.RoleDosen, model.RoleGKM, model.RoleKaprodi), params.RpsHandler.GetSubmissions)
+				rps.POST("", allow(model.RoleDosen), params.RpsHandler.CreateSubmission)
+				rps.GET("/recap", allow(model.RoleGKM, model.RoleKaprodi), params.RpsHandler.GetRecap)
+				rps.GET("/:id", allow(model.RoleDosen, model.RoleGKM, model.RoleKaprodi), params.RpsHandler.GetSubmissionByID)
+				rps.POST("/:id/submit", allow(model.RoleDosen), params.RpsHandler.SubmitForReview)
+				rps.POST("/:id/assign-reviewer", allow(model.RoleGKM, model.RoleKaprodi), params.RpsHandler.AssignReviewer)
+				rps.POST("/submissions/:id/assign-reviewers", allow(model.RoleGKM, model.RoleKaprodi), params.RpsHandler.AssignReviewer)
+				rps.POST("/:id/review", allow(model.RoleDosen), params.RpsHandler.ReviewSubmission)
+				rps.PUT("/reviews/:reviewId/items", allow(model.RoleDosen), params.RpsHandler.UpdateReviewItems)
+				rps.POST("/reviews/:reviewId/complete", allow(model.RoleDosen), params.RpsHandler.CompleteReview)
+				rps.PUT("/submissions/:id/improvement-plans", allow(model.RoleDosen), params.RpsHandler.UpdateImprovementPlans)
+				rps.POST("/:id/ratify", allow(model.RoleKaprodi), params.RpsHandler.RatifySubmission)
 			}
 		}
 
@@ -271,16 +274,16 @@ func SetupRouter(params RouterParams) *gin.Engine {
 			evals := api.Group("/evaluations")
 			evals.Use(middleware.AuthMiddleware(params.Config.JWTSecret))
 			{
-				evals.GET("", params.EvaluationHandler.GetEvaluations)
-				evals.POST("", params.EvaluationHandler.SaveEvaluation)
-				evals.GET("/recap", params.EvaluationHandler.GetRecap)
-				evals.GET("/:id", params.EvaluationHandler.GetEvaluationByID)
-				evals.GET("/:id/student-feedback", params.EvaluationHandler.GetStudentFeedback)
-				evals.POST("/:id/review", params.EvaluationHandler.ReviewEvaluation)
-				evals.GET("/class/:classId", params.EvaluationHandler.GetEvaluationByClass)
-				evals.POST("/class/:classId/submit", params.EvaluationHandler.SubmitEvaluation)
-				evals.GET("/course/:courseId/improvement-plans", params.EvaluationHandler.GetImprovementPlansByCourse)
-				evals.PATCH("/improvement-plans/:planId", params.EvaluationHandler.UpdateImprovementPlan)
+				evals.GET("", allow(model.RoleDosen, model.RoleGKM, model.RoleKaprodi), params.EvaluationHandler.GetEvaluations)
+				evals.POST("", allow(model.RoleDosen), params.EvaluationHandler.SaveEvaluation)
+				evals.GET("/recap", allow(model.RoleGKM, model.RoleKaprodi), params.EvaluationHandler.GetRecap)
+				evals.GET("/:id", allow(model.RoleDosen, model.RoleGKM, model.RoleKaprodi), params.EvaluationHandler.GetEvaluationByID)
+				evals.GET("/:id/student-feedback", allow(model.RoleDosen, model.RoleGKM, model.RoleKaprodi), params.EvaluationHandler.GetStudentFeedback)
+				evals.POST("/:id/review", allow(model.RoleGKM, model.RoleKaprodi), params.EvaluationHandler.ReviewEvaluation)
+				evals.GET("/class/:classId", allow(model.RoleDosen, model.RoleGKM, model.RoleKaprodi), params.EvaluationHandler.GetEvaluationByClass)
+				evals.POST("/class/:classId/submit", allow(model.RoleDosen), params.EvaluationHandler.SubmitEvaluation)
+				evals.GET("/course/:courseId/improvement-plans", allow(model.RoleDosen, model.RoleGKM, model.RoleKaprodi), params.EvaluationHandler.GetImprovementPlansByCourse)
+				evals.PATCH("/improvement-plans/:planId", allow(model.RoleDosen), params.EvaluationHandler.UpdateImprovementPlan)
 			}
 		}
 
@@ -289,7 +292,7 @@ func SetupRouter(params RouterParams) *gin.Engine {
 			dash := api.Group("/dashboard")
 			dash.Use(middleware.AuthMiddleware(params.Config.JWTSecret))
 			{
-				dash.GET("/stats", params.DashboardHandler.GetDashboardStats)
+				dash.GET("/stats", allow(model.RoleKaprodi), params.DashboardHandler.GetDashboardStats)
 			}
 
 			notifs := api.Group("/notifications")
@@ -306,12 +309,12 @@ func SetupRouter(params RouterParams) *gin.Engine {
 			admin.Use(middleware.AuthMiddleware(params.Config.JWTSecret))
 			{
 				admin.GET("/settings", params.AdminHandler.GetSettings)
-				admin.PUT("/settings/:key", params.AdminHandler.UpdateSetting)
-				admin.GET("/user-roles", params.AdminHandler.GetUserRoles)
-				admin.POST("/user-roles", params.AdminHandler.AssignUserRole)
-				admin.DELETE("/user-roles/:id", params.AdminHandler.RevokeUserRole)
-				admin.GET("/audit-logs", params.AdminHandler.GetAuditLogs)
-				admin.POST("/scheduler/run", params.AdminHandler.RunScheduler)
+				admin.PUT("/settings/:key", allow(model.RoleKaprodi, model.RoleAdminProdi), params.AdminHandler.UpdateSetting)
+				admin.GET("/user-roles", allow(model.RoleKaprodi), params.AdminHandler.GetUserRoles)
+				admin.POST("/user-roles", allow(model.RoleKaprodi), params.AdminHandler.AssignUserRole)
+				admin.DELETE("/user-roles/:id", allow(model.RoleKaprodi), params.AdminHandler.RevokeUserRole)
+				admin.GET("/audit-logs", allow(model.RoleKaprodi), params.AdminHandler.GetAuditLogs)
+				admin.POST("/scheduler/run", allow(model.RoleKaprodi), params.AdminHandler.RunScheduler)
 			}
 		}
 	}

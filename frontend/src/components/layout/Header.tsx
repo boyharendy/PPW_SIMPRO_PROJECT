@@ -55,6 +55,10 @@ export default function Header() {
   const notifBtnRef = useRef<HTMLButtonElement>(null);
   const rolesBtnRef = useRef<HTMLButtonElement>(null);
 
+  const availableRoles = (user?.roles && user.roles.length > 0)
+    ? CANONICAL_ROLES.filter((r) => user.roles.includes(r))
+    : [user.activeRole];
+
   return (
     <div className="sticky top-0 z-30 bg-blue-600">
       <header className="relative h-16 bg-white/95 backdrop-blur-xl rounded-tl-[2rem] border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 lg:px-8 shadow-[0_4px_20px_-4px_rgba(37,99,235,0.08)] text-slate-800">
@@ -124,7 +128,7 @@ export default function Header() {
                 Ganti Peran Pengguna
               </p>
               <div className="max-h-72 overflow-y-auto">
-                {CANONICAL_ROLES.map((role) => (
+                {availableRoles.map((role) => (
                   <button
                     key={role}
                     onClick={() => {

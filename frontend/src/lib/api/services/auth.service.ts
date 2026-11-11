@@ -59,10 +59,19 @@ export const authService = {
   },
 
   /**
-   * Switch user active role
+   * Switch user active role and store the newly minted JWT
    */
-  async switchRole(role: Role): Promise<ApiResponse<UserSession>> {
-    return apiClient.post<UserSession>(API_ENDPOINTS.AUTH.SWITCH_ROLE, { role });
+  async switchRole(role: Role): Promise<ApiResponse<AuthResponse>> {
+    const res = await apiClient.post<AuthResponse>(API_ENDPOINTS.AUTH.SWITCH_ROLE, { role });
+
+    if (res.data?.tokens?.access_token) {
+      tokenStorage.setAccessToken(res.data.tokens.access_token);
+      if (res.data.tokens.refresh_token) {
+        tokenStorage.setRefreshToken(res.data.tokens.refresh_token);
+      }
+    }
+
+    return res;
   },
 
   /**
