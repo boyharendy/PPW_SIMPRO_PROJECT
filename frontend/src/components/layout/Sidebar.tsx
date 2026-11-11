@@ -14,6 +14,7 @@ import {
   mockPublications,
 } from '@/lib/mock-data';
 import AnimatedSimproLogo from '@/components/Logo/AnimatedSimproLogo';
+import AnimatedCollapse from '@/components/ui/AnimatedCollapse';
 import {
   LayoutDashboard, FileCheck, Wallet, SmilePlus, FileText,
   GraduationCap, Users, BookOpen, Handshake, Settings,
@@ -335,51 +336,53 @@ export default function Sidebar() {
                   </button>
 
                   {/* Dropdown Items: Direct vertical list matching Image 2 composition without truncation */}
-                  {isCatOpen && sidebarOpen && (
-                    <div className="mt-0.5 mb-1 space-y-0.5 pl-2 pr-0.5 py-0.5">
-                      {catItems.map((item) => {
-                        const Icon = iconMap[item.icon] || LayoutDashboard;
-                        const isExactActive = item.href === activeItemHref;
-                        const itemBadge = getItemBadge(item);
+                  {sidebarOpen && (
+                    <AnimatedCollapse open={isCatOpen} duration={220}>
+                      <div className="mt-0.5 mb-1 space-y-0.5 pl-2 pr-0.5 py-0.5">
+                        {catItems.map((item) => {
+                          const Icon = iconMap[item.icon] || LayoutDashboard;
+                          const isExactActive = item.href === activeItemHref;
+                          const itemBadge = getItemBadge(item);
 
-                        return (
-                          <Link
-                            key={item.href}
-                            href={item.href}
-                            onClick={() => {
-                              if (typeof window !== 'undefined' && window.innerWidth < 1024) setSidebarOpen(false);
-                            }}
-                            className={`
-                              group flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium
-                              transition-all duration-150 cursor-pointer
-                              ${isExactActive
-                                ? 'bg-blue-600 text-white font-semibold shadow-xs'
-                                : 'text-slate-600 hover:text-blue-600 hover:bg-slate-100/70'
-                              }
-                            `}
-                            title={item.title}
-                          >
-                            <Icon
-                              className={`w-4 h-4 flex-shrink-0 transition-colors ${
-                                isExactActive ? 'text-white' : 'text-slate-400 group-hover:text-blue-600'
-                              }`}
-                            />
-                            <span className="leading-snug text-left flex-1 break-words">
-                              {item.title}
-                            </span>
-                            {itemBadge > 0 && (
-                              <span
-                                className={`ml-1.5 flex-shrink-0 text-xs font-bold px-2 py-0.5 rounded-full ${
-                                  isExactActive ? 'bg-white text-blue-600' : 'bg-red-600 text-white'
+                          return (
+                            <Link
+                              key={item.href}
+                              href={item.href}
+                              onClick={() => {
+                                if (typeof window !== 'undefined' && window.innerWidth < 1024) setSidebarOpen(false);
+                              }}
+                              className={`
+                                anime-collapse-item group flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium
+                                transition-all duration-150 cursor-pointer
+                                ${isExactActive
+                                  ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                                  : 'text-slate-600 hover:text-blue-600 hover:bg-slate-100/70'
+                                }
+                              `}
+                              title={item.title}
+                            >
+                              <Icon
+                                className={`w-4 h-4 flex-shrink-0 transition-colors ${
+                                  isExactActive ? 'text-white' : 'text-slate-400 group-hover:text-blue-600'
                                 }`}
-                              >
-                                {itemBadge}
+                              />
+                              <span className="leading-snug text-left flex-1 break-words">
+                                {item.title}
                               </span>
-                            )}
-                          </Link>
-                        );
-                      })}
-                    </div>
+                              {itemBadge > 0 && (
+                                <span
+                                  className={`ml-1.5 flex-shrink-0 text-xs font-bold px-2 py-0.5 rounded-full ${
+                                    isExactActive ? 'bg-white text-blue-600' : 'bg-red-600 text-white'
+                                  }`}
+                                >
+                                  {itemBadge}
+                                </span>
+                              )}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </AnimatedCollapse>
                   )}
                 </div>
               );

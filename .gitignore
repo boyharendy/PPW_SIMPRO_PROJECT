@@ -56,3 +56,11 @@ prd.md
 prf.md
 *.docx
 
+# AI Agent & Editor Tooling (Local workspace configs)
+.agents/
+.gemini/
+.cursor/
+.vscode/
+.idea/
+
+
