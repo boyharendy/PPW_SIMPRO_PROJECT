@@ -32,7 +32,7 @@ export function PageHeader({
           {badge}
         </div>
         {descText && (
-          <p className="text-xs sm:text-sm text-slate-500 max-w-3xl leading-relaxed">
+          <p className="text-[13.5px] sm:text-sm text-slate-500 max-w-3xl leading-relaxed">
             {descText}
           </p>
         )}
