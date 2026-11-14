@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, Copy, FileEdit } from 'lucide-react';
+import { Plus, Copy, FileEdit, Trash2 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -14,12 +14,25 @@ import type { PartnerSurveyTemplate } from '@/lib/types';
 export default function Page() {
   const [templates, setTemplates] = useState<PartnerSurveyTemplate[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<PartnerSurveyTemplate | null>(null);
   const [newProgram, setNewProgram] = useState<'KP' | 'PSI' | 'PDLK'>('KP');
   const [newNama, setNewNama] = useState('');
 
-  useEffect(() => {
+  const refreshTemplates = () => {
     const loaded = storageSync.get<PartnerSurveyTemplate[]>(STORAGE_KEYS.SURVEYS, mockSurveyTemplates);
     setTemplates(loaded);
+  };
+
+  useEffect(() => {
+    refreshTemplates();
+
+    const handleStorageChange = () => refreshTemplates();
+    window.addEventListener('simpro_storage_change', handleStorageChange);
+    window.addEventListener('focus', handleStorageChange);
+    return () => {
+      window.removeEventListener('simpro_storage_change', handleStorageChange);
+      window.removeEventListener('focus', handleStorageChange);
+    };
   }, []);
 
   const handleCreate = (e: React.FormEvent) => {
@@ -72,6 +85,17 @@ export default function Page() {
     const updated = [duplicated, ...templates];
     storageSync.set(STORAGE_KEYS.SURVEYS, updated);
     setTemplates(updated);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!deleteTarget) return;
+    const updated = storageSync.remove<PartnerSurveyTemplate>(
+      STORAGE_KEYS.SURVEYS,
+      deleteTarget.id,
+      templates
+    );
+    setTemplates(updated);
+    setDeleteTarget(null);
   };
 
   const columns: DataTableColumn<PartnerSurveyTemplate>[] = [
@@ -139,6 +163,13 @@ export default function Page() {
           >
             <FileEdit size={12} /> Kelola Aspek
           </Link>
+          <button
+            onClick={() => setDeleteTarget(r)}
+            className="btn-secondary text-xs px-2.5 py-1 inline-flex items-center gap-1 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200"
+            title="Hapus Kuesioner"
+          >
+            <Trash2 size={12} /> Hapus
+          </button>
         </div>
       ),
     },
@@ -224,6 +255,44 @@ export default function Page() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Modal Konfirmasi Hapus Kuesioner */}
+      <Modal
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        title="Hapus Template Kuesioner"
+        size="sm"
+      >
+        {deleteTarget && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Apakah Anda yakin ingin menghapus instrumen kuesioner{' '}
+              <strong className="text-slate-800">{deleteTarget.nama}</strong> ({deleteTarget.program})?
+            </p>
+            {deleteTarget.total_responden && deleteTarget.total_responden > 0 ? (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 leading-relaxed">
+                <strong>Perhatian:</strong> Kuesioner ini memiliki catatan <strong>{deleteTarget.total_responden} responden</strong>. Menghapusnya akan membersihkan kuesioner dari daftar instrumen aktif.
+              </div>
+            ) : null}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="btn-secondary text-xs px-3.5 py-1.5"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                className="bg-rose-600 hover:bg-rose-700 text-white text-xs px-3.5 py-1.5 rounded-lg font-semibold inline-flex items-center gap-1.5 transition-colors"
+              >
+                <Trash2 size={13} /> Ya, Hapus Instrumen
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

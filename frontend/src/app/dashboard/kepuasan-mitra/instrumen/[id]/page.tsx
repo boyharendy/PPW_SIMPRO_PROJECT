@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Plus, CheckCircle2, Edit2, Trash2 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
@@ -14,17 +14,25 @@ import type { PartnerSurveyTemplate, PartnerSurveyAspect } from '@/lib/types';
 
 export default function Page() {
   const params = useParams();
+  const router = useRouter();
   const id = params?.id as string;
 
   const [template, setTemplate] = useState<PartnerSurveyTemplate | null>(null);
   const [aspeks, setAspeks] = useState<PartnerSurveyAspect[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [editingAspek, setEditingAspek] = useState<PartnerSurveyAspect | null>(null);
 
   // Form states
   const [nama, setNama] = useState('');
   const [deskripsi, setDeskripsi] = useState('');
   const [bobot, setBobot] = useState(25);
+
+  const handleDeleteTemplate = () => {
+    if (!template) return;
+    storageSync.remove(STORAGE_KEYS.SURVEYS, template.id, mockSurveyTemplates);
+    router.push('/dashboard/kepuasan-mitra/instrumen');
+  };
 
   useEffect(() => {
     const tmpls = storageSync.get<PartnerSurveyTemplate[]>(STORAGE_KEYS.SURVEYS, mockSurveyTemplates);
@@ -221,6 +229,13 @@ export default function Page() {
             >
               <Plus size={14} /> Tambah Aspek
             </button>
+            <button
+              onClick={() => setDeleteModalOpen(true)}
+              className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200"
+              title="Hapus template kuesioner ini"
+            >
+              <Trash2 size={14} /> Hapus
+            </button>
           </div>
         }
       />
@@ -345,6 +360,42 @@ export default function Page() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Modal Konfirmasi Hapus Template */}
+      <Modal
+        open={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        title="Hapus Template Kuesioner"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600 leading-relaxed">
+            Apakah Anda yakin ingin menghapus template kuesioner{' '}
+            <strong className="text-slate-800">{template.nama}</strong> ({template.program})?
+          </p>
+          {template.total_responden && template.total_responden > 0 ? (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 leading-relaxed">
+              <strong>Perhatian:</strong> Template ini memiliki <strong>{template.total_responden} responden</strong>. Menghapusnya akan membersihkan template dari daftar instrumen aktif.
+            </div>
+          ) : null}
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setDeleteModalOpen(false)}
+              className="btn-secondary text-xs px-3.5 py-1.5"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={handleDeleteTemplate}
+              className="bg-rose-600 hover:bg-rose-700 text-white text-xs px-3.5 py-1.5 rounded-lg font-semibold inline-flex items-center gap-1.5 transition-colors"
+            >
+              <Trash2 size={13} /> Ya, Hapus Template
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
