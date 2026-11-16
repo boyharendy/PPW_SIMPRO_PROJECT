@@ -146,29 +146,29 @@ export default function Page() {
     {
       key: 'aksi',
       header: 'Aksi',
-      className: 'text-right',
+      className: 'text-right min-w-[280px] whitespace-nowrap',
       render: (r) => (
-        <div className="flex items-center justify-end gap-1.5">
+        <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
           <button
             onClick={() => handleDuplicate(r)}
-            className="btn-secondary text-xs px-2.5 py-1 inline-flex items-center gap-1"
+            className="h-8 px-3 text-xs font-semibold rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all shadow-2xs"
             title="Duplikasi Template Kuesioner"
           >
-            <Copy size={12} /> Duplikasi
+            <Copy size={13} /> Duplikasi
           </button>
           <Link
             href={`/dashboard/kepuasan-mitra/instrumen/${r.id}`}
-            className="btn-primary text-xs px-2.5 py-1 inline-flex items-center gap-1"
+            className="h-8 px-3 text-xs font-semibold rounded-full bg-blue-600 hover:bg-blue-700 text-white inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all shadow-xs"
             title="Kelola butir aspek dan bobot kuesioner"
           >
-            <FileEdit size={12} /> Kelola Aspek
+            <FileEdit size={13} /> Kelola Aspek
           </Link>
           <button
             onClick={() => setDeleteTarget(r)}
-            className="btn-secondary text-xs px-2.5 py-1 inline-flex items-center gap-1 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200"
+            className="h-8 px-3 text-xs font-semibold rounded-full border border-rose-200 bg-rose-50/70 text-rose-600 hover:bg-rose-100 hover:text-rose-700 inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all"
             title="Hapus Kuesioner"
           >
-            <Trash2 size={12} /> Hapus
+            <Trash2 size={13} /> Hapus
           </button>
         </div>
       ),

@@ -168,11 +168,11 @@ export default function Page() {
     {
       key: 'aksi',
       header: 'Aksi',
-      className: 'text-right',
+      className: 'text-right min-w-[120px] whitespace-nowrap',
       render: (r) => (
         <button
           onClick={() => setDetailModal(r)}
-          className="btn-secondary text-xs px-2.5 py-1 inline-flex items-center gap-1.5"
+          className="h-8 px-3 text-xs font-semibold rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all shadow-2xs"
         >
           <Eye size={13} />
           Detail

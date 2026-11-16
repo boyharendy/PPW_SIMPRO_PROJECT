@@ -213,35 +213,35 @@ function PengirimanMitraContent() {
     {
       key: 'aksi',
       header: 'Aksi Pengiriman & Pengisian',
-      className: 'text-right',
+      className: 'text-right min-w-[280px] whitespace-nowrap',
       render: (r) => (
-        <div className="flex items-center justify-end gap-1.5">
+        <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
           {r.status === 'DIISI' ? (
-            <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100 inline-flex items-center gap-1">
-              <Check size={12} /> Kuesioner Selesai
+            <span className="h-8 px-3 text-xs font-semibold text-emerald-600 bg-emerald-50 rounded-full border border-emerald-200 inline-flex items-center gap-1.5 whitespace-nowrap">
+              <Check size={13} /> Kuesioner Selesai
             </span>
           ) : (
             <>
               <button
                 onClick={() => handleSendLink(r)}
-                className="btn-primary text-xs px-2.5 py-1 inline-flex items-center gap-1"
+                className="h-8 px-3 text-xs font-semibold rounded-full bg-blue-600 hover:bg-blue-700 text-white inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all shadow-xs"
                 title="Dapatkan tautan unik kuesioner"
               >
-                <Send size={12} /> {r.status === 'TERKIRIM' ? 'Kirim Ulang' : 'Kirim Tautan'}
+                <Send size={13} /> {r.status === 'TERKIRIM' ? 'Kirim Ulang' : 'Kirim Tautan'}
               </button>
               <button
                 onClick={() => handleWhatsApp(r)}
-                className="btn-secondary text-xs px-2 py-1 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 inline-flex items-center gap-1"
+                className="h-8 px-3 text-xs font-semibold rounded-full border border-emerald-200 bg-emerald-50/70 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100/70 inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all"
                 title="Bagikan pesan ke WhatsApp PIC Mitra"
               >
-                <MessageSquare size={12} /> WA
+                <MessageSquare size={13} /> WA
               </button>
               <button
                 onClick={() => setManualModalInv(r)}
-                className="btn-secondary text-xs px-2 py-1 inline-flex items-center gap-1"
+                className="h-8 px-3 text-xs font-semibold rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all shadow-2xs"
                 title="Input nilai kuesioner jika mitra mengisi via form cetak"
               >
-                <Edit3 size={12} /> Manual
+                <Edit3 size={13} /> Manual
               </button>
             </>
           )}
