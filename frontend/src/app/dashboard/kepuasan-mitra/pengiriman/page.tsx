@@ -224,21 +224,21 @@ function PengirimanMitraContent() {
             <>
               <button
                 onClick={() => handleSendLink(r)}
-                className="h-8 px-3 text-xs font-semibold rounded-full bg-blue-600 hover:bg-blue-700 text-white inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all shadow-xs"
+                className="h-8 px-3 text-xs font-medium rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all shadow-2xs"
                 title="Dapatkan tautan unik kuesioner"
               >
                 <Send size={13} /> {r.status === 'TERKIRIM' ? 'Kirim Ulang' : 'Kirim Tautan'}
               </button>
               <button
                 onClick={() => handleWhatsApp(r)}
-                className="h-8 px-3 text-xs font-semibold rounded-full border border-emerald-200 bg-emerald-50/70 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100/70 inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all"
+                className="h-8 px-3 text-xs font-medium rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all shadow-2xs"
                 title="Bagikan pesan ke WhatsApp PIC Mitra"
               >
                 <MessageSquare size={13} /> WA
               </button>
               <button
                 onClick={() => setManualModalInv(r)}
-                className="h-8 px-3 text-xs font-semibold rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all shadow-2xs"
+                className="h-8 px-3 text-xs font-medium rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all shadow-2xs"
                 title="Input nilai kuesioner jika mitra mengisi via form cetak"
               >
                 <Edit3 size={13} /> Manual

@@ -151,21 +151,21 @@ export default function Page() {
         <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
           <button
             onClick={() => handleDuplicate(r)}
-            className="h-8 px-3 text-xs font-semibold rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all shadow-2xs"
+            className="h-8 px-3 text-xs font-medium rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all shadow-2xs"
             title="Duplikasi Template Kuesioner"
           >
             <Copy size={13} /> Duplikasi
           </button>
           <Link
             href={`/dashboard/kepuasan-mitra/instrumen/${r.id}`}
-            className="h-8 px-3 text-xs font-semibold rounded-full bg-blue-600 hover:bg-blue-700 text-white inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all shadow-xs"
+            className="h-8 px-3 text-xs font-medium rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all shadow-2xs"
             title="Kelola butir aspek dan bobot kuesioner"
           >
             <FileEdit size={13} /> Kelola Aspek
           </Link>
           <button
             onClick={() => setDeleteTarget(r)}
-            className="h-8 px-3 text-xs font-semibold rounded-full border border-rose-200 bg-rose-50/70 text-rose-600 hover:bg-rose-100 hover:text-rose-700 inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all"
+            className="h-8 px-3 text-xs font-medium rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-rose-600 hover:border-rose-200 inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all shadow-2xs"
             title="Hapus Kuesioner"
           >
             <Trash2 size={13} /> Hapus
