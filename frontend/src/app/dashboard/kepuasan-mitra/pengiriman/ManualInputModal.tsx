@@ -85,7 +85,7 @@ export default function ManualInputModal({ open, onClose, invitation, template, 
               <div key={aspek.id} className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 bg-white">
                 <div>
                   <div className="text-xs font-semibold text-slate-800">{idx + 1}. {aspek.nama_aspek}</div>
-                  <div className="text-[11px] text-slate-400">Bobot {aspek.bobot}% {aspek.deskripsi ? `• ${aspek.deskripsi}` : ''}</div>
+                  <div className="text-xs text-slate-500 mt-0.5">Bobot {aspek.bobot}% {aspek.deskripsi ? `• ${aspek.deskripsi}` : ''}</div>
                 </div>
                 <select
                   value={scores[aspek.id] || 5}

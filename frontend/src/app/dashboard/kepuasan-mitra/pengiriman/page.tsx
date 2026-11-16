@@ -158,8 +158,8 @@ function PengirimanMitraContent() {
       render: (r) => (
         <div>
           <div className="font-semibold text-slate-800 text-sm">{r.placement?.partner?.nama_mitra || 'Mitra Industri'}</div>
-          <div className="text-xs text-slate-500 mt-0.5">PIC: {r.placement?.partner?.nama_kontak || '-'} ({r.placement?.partner?.telepon_kontak || '-'})</div>
-          <div className="text-xs text-slate-400 mt-0.5">Mhs: {r.placement?.student?.nama_lengkap || '-'} • NIM: {r.placement?.student?.nomor_induk || '-'}</div>
+          <div className="text-xs text-slate-500 mt-1">PIC: {r.placement?.partner?.nama_kontak || '-'} ({r.placement?.partner?.telepon_kontak || '-'})</div>
+          <div className="text-xs text-slate-500 mt-0.5">Mhs: {r.placement?.student?.nama_lengkap || '-'} • NIM: {r.placement?.student?.nomor_induk || '-'}</div>
         </div>
       ),
     },
@@ -167,7 +167,7 @@ function PengirimanMitraContent() {
       key: 'program',
       header: 'Program',
       render: (r) => (
-        <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 border border-blue-100">
+        <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
           {r.placement?.program || 'KP'}
         </span>
       ),
@@ -182,7 +182,7 @@ function PengirimanMitraContent() {
             <select
               value={r.template_id}
               onChange={(e) => handleTemplateChange(r.id, e.target.value)}
-              className="select-field text-xs py-1 px-2 font-medium"
+              className="select-field text-xs py-1.5 px-2.5 font-medium rounded-lg border-slate-200"
               title="Pilih instrumen template untuk penempatan ini"
             >
               {templates.map((tmpl) => (
@@ -191,7 +191,7 @@ function PengirimanMitraContent() {
                 </option>
               ))}
             </select>
-            <div className="text-[11px] text-slate-400">
+            <div className="text-xs text-slate-500">
               {assignedTmpl?.aspek?.length || 0} Aspek • Skala 1–{assignedTmpl?.skala_maks || 5}
             </div>
           </div>
@@ -205,7 +205,7 @@ function PengirimanMitraContent() {
         <div>
           <StatusBadge status={r.status} size="sm" />
           {r.dikirim_at && (
-            <div className="text-[10px] text-slate-400 mt-0.5">Kirim: {r.dikirim_at.split('T')[0]}</div>
+            <div className="text-xs text-slate-500 mt-1">Kirim: {r.dikirim_at.split('T')[0]}</div>
           )}
         </div>
       ),
@@ -254,7 +254,7 @@ function PengirimanMitraContent() {
     <div className="space-y-6">
       <PageHeader
         title="Pengiriman & Input Mitra"
-        description="Kirim tautan kuesioner ke mitra via email/WhatsApp atau catat hasil evaluasi secara manual (FR-27)."
+        description="Distribusi tautan kuesioner ke pembimbing mitra industri serta pencatatan evaluasi manual."
         actions={
           <button
             onClick={() => setCreateModalOpen(true)}
@@ -266,7 +266,7 @@ function PengirimanMitraContent() {
       />
 
       <div className="card">
-        {/* Filter Bar: Hanya Filter Program Sesuai Arahan */}
+        {/* Filter Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-slate-500">Program:</span>
@@ -275,7 +275,7 @@ function PengirimanMitraContent() {
                 <button
                   key={prog}
                   onClick={() => setFilterProgram(prog)}
-                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                     filterProgram === prog ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
@@ -285,7 +285,7 @@ function PengirimanMitraContent() {
             </div>
           </div>
 
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-slate-500 font-medium">
             Menampilkan {filtered.length} penempatan mitra
           </span>
         </div>

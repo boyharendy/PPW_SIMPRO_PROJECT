@@ -130,13 +130,13 @@ export default function Page() {
       header: 'Mitra & Mahasiswa',
       render: (r) => (
         <div>
-          <div className="font-semibold text-slate-800 text-sm flex items-center gap-1.5">
+          <div className="font-semibold text-slate-800 text-sm flex items-center gap-2">
             {r.mitra}
-            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
+            <span className="px-2 py-0.5 rounded-md text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
               {r.program}
             </span>
           </div>
-          <div className="text-xs text-slate-500 mt-0.5">{r.mahasiswa}</div>
+          <div className="text-xs text-slate-500 mt-1">{r.mahasiswa}</div>
         </div>
       ),
     },
@@ -146,7 +146,7 @@ export default function Page() {
       render: (r) => (
         <div>
           <div className="text-sm text-slate-800 font-medium">{r.penilai}</div>
-          <div className="text-xs text-slate-400">{r.jabatan}</div>
+          <div className="text-xs text-slate-500 mt-0.5">{r.jabatan}</div>
         </div>
       ),
     },
@@ -154,8 +154,8 @@ export default function Page() {
       key: 'skor',
       header: 'Indeks Skor',
       render: (r) => (
-        <span className="inline-flex items-center gap-1 text-sm font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
-          <Star size={13} className="fill-blue-600 text-blue-600" />
+        <span className="inline-flex items-center gap-1.5 text-sm font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
+          <Star size={14} className="fill-blue-600 text-blue-600" />
           {r.skor.toFixed(1)} <span className="text-xs text-slate-400 font-normal">/ 5.0</span>
         </span>
       ),
@@ -172,7 +172,7 @@ export default function Page() {
       render: (r) => (
         <button
           onClick={() => setDetailModal(r)}
-          className="h-8 px-3 text-xs font-semibold rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all shadow-2xs"
+          className="h-8 px-3 text-xs font-medium rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all shadow-2xs"
         >
           <Eye size={13} />
           Detail
@@ -185,7 +185,7 @@ export default function Page() {
     <div className="space-y-6">
       <PageHeader
         title="Kepuasan Mitra"
-        description="Pemantauan indeks kepuasan, tren penilaian mitra industri, dan tingkat respons kuesioner mahasiswa (FR-28)."
+        description="Pemantauan indeks kepuasan dan hasil evaluasi mitra industri terhadap mahasiswa."
         actions={
           <div className="flex items-center gap-2">
             <Link
@@ -205,46 +205,52 @@ export default function Page() {
         }
       />
 
-      {/* 3 Ringkasan Metrik Akreditasi (Ringkas & Seimbang) */}
+      {/* 3 Ringkasan Metrik Akreditasi (Komposisi Seragam & Selaras) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="card p-4 flex flex-col justify-between bg-white shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 mb-1">
-            <span className="text-xs font-semibold tracking-tight uppercase">Indeks Kepuasan</span>
-            <Star size={16} className="text-amber-500 fill-amber-400" />
+        <div className="card p-4 sm:p-5 flex flex-col justify-between bg-white shadow-xs">
+          <div className="flex items-start justify-between text-slate-500 mb-2">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Indeks Kepuasan</span>
+            <div className="p-1.5 rounded-lg border border-amber-200 bg-amber-50 text-amber-600">
+              <Star size={16} className="fill-amber-400" />
+            </div>
           </div>
           <div>
-            <div className="text-2xl font-bold text-slate-800">
+            <div className="text-2xl font-bold text-slate-900 tracking-tight">
               {overallAvgScore > 0 ? overallAvgScore.toFixed(2) : '4.50'}
               <span className="text-sm text-slate-400 font-normal ml-1">/ 5.0</span>
             </div>
-            <div className="text-xs font-semibold text-emerald-600 mt-0.5">Sangat Baik (90% Skala Maksimum)</div>
+            <div className="text-xs font-medium text-emerald-600 mt-1">Sangat Baik (90% Skala Maksimum)</div>
           </div>
         </div>
 
-        <div className="card p-4 flex flex-col justify-between bg-white shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 mb-1">
-            <span className="text-xs font-semibold tracking-tight uppercase">Tingkat Respons</span>
-            <CheckCircle2 size={16} className="text-blue-500" />
+        <div className="card p-4 sm:p-5 flex flex-col justify-between bg-white shadow-xs">
+          <div className="flex items-start justify-between text-slate-500 mb-2">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tingkat Respons</span>
+            <div className="p-1.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-600">
+              <CheckCircle2 size={16} />
+            </div>
           </div>
           <div>
-            <div className="text-2xl font-bold text-slate-800">
+            <div className="text-2xl font-bold text-slate-900 tracking-tight">
               {responseRate || 75}%
             </div>
-            <div className="text-xs text-slate-500 mt-0.5">{diisiTotal} dari {invitations.length || 4} Tautan Survei Diisi</div>
+            <div className="text-xs font-medium text-slate-500 mt-1">{diisiTotal} dari {invitations.length || 4} survei terisi</div>
           </div>
         </div>
 
-        <div className="card p-4 flex flex-col justify-between bg-white shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 mb-1">
-            <span className="text-xs font-semibold tracking-tight uppercase">Total Mitra Responden</span>
-            <Building2 size={16} className="text-indigo-500" />
+        <div className="card p-4 sm:p-5 flex flex-col justify-between bg-white shadow-xs">
+          <div className="flex items-start justify-between text-slate-500 mb-2">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Mitra Responden</span>
+            <div className="p-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-600">
+              <Building2 size={16} />
+            </div>
           </div>
           <div>
-            <div className="text-2xl font-bold text-slate-800">
+            <div className="text-2xl font-bold text-slate-900 tracking-tight">
               {viewItems.length || diisiTotal || 1}
-              <span className="text-sm text-slate-400 font-normal ml-1">Mitra Industri</span>
+              <span className="text-sm text-slate-400 font-normal ml-1">Mitra</span>
             </div>
-            <div className="text-xs text-slate-500 mt-0.5">Terdaftar pada program KP, PSI, dan PDLK</div>
+            <div className="text-xs font-medium text-slate-500 mt-1">Program KP, PSI, dan PDLK</div>
           </div>
         </div>
       </div>
@@ -253,8 +259,8 @@ export default function Page() {
       <div className="card">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
-            <h2 className="text-base font-bold text-slate-800">Daftar Respons Evaluasi Mitra</h2>
-            <p className="text-xs text-slate-500">
+            <h2 className="text-base font-bold text-slate-900">Daftar Respons Evaluasi Mitra</h2>
+            <p className="text-xs text-slate-500 mt-0.5">
               Ulasan dan nilai objektif kinerja mahasiswa dari pembimbing lapangan
             </p>
           </div>
@@ -264,7 +270,7 @@ export default function Page() {
               <button
                 key={prog}
                 onClick={() => setSelectedProgram(prog)}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                   selectedProgram === prog
                     ? 'bg-blue-600 text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
@@ -334,10 +340,10 @@ export default function Page() {
                     className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 bg-white text-xs"
                   >
                     <div>
-                      <div className="font-medium text-slate-800">{a.aspek}</div>
-                      <div className="text-[10px] text-slate-400">Bobot {a.bobot}</div>
+                      <div className="font-medium text-slate-800 text-sm">{a.aspek}</div>
+                      <div className="text-xs text-slate-500">Bobot {a.bobot}</div>
                     </div>
-                    <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
+                    <span className="font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md text-xs border border-blue-100">
                       {a.skor.toFixed(1)} / 5.0
                     </span>
                   </div>

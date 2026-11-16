@@ -103,7 +103,7 @@ export default function Page() {
       key: 'program',
       header: 'Program',
       render: (r) => (
-        <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 border border-blue-100">
+        <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
           {r.program}
         </span>
       ),
@@ -114,8 +114,8 @@ export default function Page() {
       render: (r) => (
         <div>
           <div className="font-semibold text-slate-800 text-sm">{r.nama}</div>
-          <div className="text-xs text-slate-400 mt-0.5">
-            Skala 1–{r.skala_maks} • Dibuat: {r.created_at}
+          <div className="text-xs text-slate-500 mt-0.5">
+            Skala 1–{r.skala_maks} • Dibuat: {r.created_at ? r.created_at.split('T')[0] : '-'}
           </div>
         </div>
       ),
@@ -124,7 +124,7 @@ export default function Page() {
       key: 'aspek',
       header: 'Aspek Penilaian',
       render: (r) => (
-        <span className="text-sm font-medium text-slate-700">
+        <span className="text-sm font-medium text-slate-800">
           {r.aspek?.filter((a) => a.is_active !== false).length || 0} Aspek
         </span>
       ),
@@ -133,7 +133,7 @@ export default function Page() {
       key: 'total_responden',
       header: 'Responden',
       render: (r) => (
-        <span className="text-sm text-slate-600">
+        <span className="text-sm font-medium text-slate-600">
           {r.total_responden || 0} Mitra
         </span>
       ),
@@ -179,7 +179,7 @@ export default function Page() {
     <div className="space-y-6">
       <PageHeader
         title="Instrumen Kuesioner"
-        description="Kelola kuesioner evaluasi mitra lapangan untuk program KP, PSI, dan PDLK (FR-26)."
+        description="Kelola template kuesioner evaluasi mitra lapangan untuk program KP, PSI, dan PDLK."
         actions={
           <button
             onClick={() => setModalOpen(true)}

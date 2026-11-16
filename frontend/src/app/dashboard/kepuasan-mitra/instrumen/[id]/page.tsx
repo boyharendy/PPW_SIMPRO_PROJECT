@@ -169,22 +169,22 @@ export default function Page() {
     {
       key: 'aksi',
       header: 'Aksi',
-      className: 'text-right w-24',
+      className: 'text-right min-w-[150px] whitespace-nowrap',
       render: (r) => (
-        <div className="flex items-center justify-end gap-1">
+        <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
           <button
             onClick={() => openEditModal(r)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+            className="h-8 px-3 text-xs font-medium rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all shadow-2xs"
             title="Edit Aspek"
           >
-            <Edit2 size={14} />
+            <Edit2 size={13} /> Edit
           </button>
           <button
             onClick={() => handleDelete(r.id)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+            className="h-8 px-3 text-xs font-medium rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-rose-600 hover:border-rose-200 inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all shadow-2xs"
             title="Hapus Aspek"
           >
-            <Trash2 size={14} />
+            <Trash2 size={13} /> Hapus
           </button>
         </div>
       ),
@@ -218,20 +218,20 @@ export default function Page() {
           <div className="flex items-center gap-2">
             <button
               onClick={handleToggleStatus}
-              className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"
+              className="h-8 px-3 text-xs font-medium rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 inline-flex items-center gap-1.5 shadow-2xs transition-all"
             >
               <CheckCircle2 size={14} />
               {template.status === 'AKTIF' ? 'Set ke DRAF' : 'Aktifkan Template'}
             </button>
             <button
               onClick={openAddModal}
-              className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5"
+              className="h-8 px-3.5 text-xs font-medium rounded-full border border-blue-600 bg-blue-600 text-white hover:bg-blue-700 inline-flex items-center gap-1.5 shadow-2xs transition-all"
             >
               <Plus size={14} /> Tambah Aspek
             </button>
             <button
               onClick={() => setDeleteModalOpen(true)}
-              className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200"
+              className="h-8 px-3 text-xs font-medium rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-rose-600 hover:border-rose-200 inline-flex items-center gap-1.5 shadow-2xs transition-all"
               title="Hapus template kuesioner ini"
             >
               <Trash2 size={14} /> Hapus
@@ -240,39 +240,45 @@ export default function Page() {
         }
       />
 
-      {/* Ringkasan Konfigurasi & Status Bobot */}
+      {/* Ringkasan Konfigurasi & Status Bobot (Komposisi Seragam & Selaras) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="card p-4">
-          <div className="text-xs text-slate-400 font-semibold uppercase">Program & Skala</div>
-          <div className="text-base font-bold text-slate-800 mt-1">Program {template.program}</div>
-          <div className="text-xs text-slate-500 mt-0.5">Skala Likert 1.0 s.d. {template.skala_maks}.0</div>
+        <div className="card p-4 sm:p-5 flex flex-col justify-between bg-white shadow-xs">
+          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Program & Skala</div>
+          <div className="mt-2">
+            <div className="text-2xl font-bold text-slate-900 tracking-tight">Program {template.program}</div>
+            <div className="text-xs font-medium text-slate-500 mt-1">Skala Likert 1.0 s.d. {template.skala_maks}.0</div>
+          </div>
         </div>
 
-        <div className="card p-4">
-          <div className="text-xs text-slate-400 font-semibold uppercase">Total Responden Terkumpul</div>
-          <div className="text-base font-bold text-slate-800 mt-1">{template.total_responden || 0} Mitra Lapangan</div>
-          <div className="text-xs text-slate-500 mt-0.5">Respons tersimpan dari instrumen ini</div>
+        <div className="card p-4 sm:p-5 flex flex-col justify-between bg-white shadow-xs">
+          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Responden</div>
+          <div className="mt-2">
+            <div className="text-2xl font-bold text-slate-900 tracking-tight">{template.total_responden || 0} Mitra</div>
+            <div className="text-xs font-medium text-slate-500 mt-1">Respons tersimpan dari instrumen ini</div>
+          </div>
         </div>
 
-        <div className="card p-4">
+        <div className="card p-4 sm:p-5 flex flex-col justify-between bg-white shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-semibold uppercase">Total Akumulasi Bobot</span>
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Akumulasi Bobot</span>
             <span
-              className={`text-xs font-bold px-2 py-0.5 rounded ${
+              className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
                 totalBobot === 100
-                  ? 'bg-emerald-50 text-emerald-700'
-                  : 'bg-rose-50 text-rose-700'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : 'bg-rose-50 text-rose-700 border-rose-200'
               }`}
             >
-              {totalBobot === 100 ? 'Sesuai (100%)' : 'Perlu Perbaikan'}
+              {totalBobot === 100 ? 'Sesuai 100%' : 'Perlu Perbaikan'}
             </span>
           </div>
-          <div className="text-2xl font-bold text-slate-900 mt-1">{totalBobot}%</div>
-          <div className="w-full h-1.5 bg-slate-100 rounded-full mt-2 overflow-hidden">
-            <div
-              className={`h-full ${totalBobot === 100 ? 'bg-emerald-500' : 'bg-rose-500'}`}
-              style={{ width: `${Math.min(totalBobot, 100)}%` }}
-            />
+          <div className="mt-2">
+            <div className="text-2xl font-bold text-slate-900 tracking-tight">{totalBobot}%</div>
+            <div className="w-full h-1.5 bg-slate-100 rounded-full mt-2 overflow-hidden">
+              <div
+                className={`h-full ${totalBobot === 100 ? 'bg-emerald-500' : 'bg-rose-500'}`}
+                style={{ width: `${Math.min(totalBobot, 100)}%` }}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -339,7 +345,7 @@ export default function Page() {
               className="input-field"
               required
             />
-            <span className="text-[11px] text-slate-400 mt-1 block">
+            <span className="text-xs text-slate-500 mt-1.5 block">
               Total seluruh bobot aspek aktif dianjurkan berjumlah 100%.
             </span>
           </div>
