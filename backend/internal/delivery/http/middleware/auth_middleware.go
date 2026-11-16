@@ -45,24 +45,60 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 		c.Set(CtxUserEmail, claims.Email)
 		c.Set(CtxUserRoles, claims.Roles)
 		c.Set(CtxActiveRole, claims.ActiveRole)
+		c.Set("is_violence_handler", claims.PenangananKekerasan)
 
 		c.Next()
 	}
 }
 
-// RequireRole guards endpoints by specific roles
+// roleAlias maps legacy or specific roles to the 13 canonical actors (SKPL Bab 2)
+var roleAlias = map[model.Role]model.Role{
+	model.RoleKoordKP:          model.RoleKoordKP_PSI_PDLK,
+	model.RoleKoordPSI:         model.RoleKoordKP_PSI_PDLK,
+	model.RoleKoordPDLK:        model.RoleKoordKP_PSI_PDLK,
+	model.RolePetugasKekerasan: model.RolePengelolaAduan,
+	model.RoleHimpunan:         model.RolePengurusHimpunan,
+	model.RoleMitraEksternal:   model.RoleMitra,
+}
+
+// NormalizeRole resolves aliases to canonical 13 roles
+func NormalizeRole(r model.Role) model.Role {
+	if canonical, ok := roleAlias[r]; ok {
+		return canonical
+	}
+	return r
+}
+
+// ActiveRole safely extracts the active role from gin context
+func ActiveRole(c *gin.Context) model.Role {
+	val, exists := c.Get(CtxActiveRole)
+	if !exists || val == nil {
+		return ""
+	}
+	switch v := val.(type) {
+	case model.Role:
+		return v
+	case string:
+		return model.Role(v)
+	default:
+		return ""
+	}
+}
+
+// RequireRole guards endpoints by specific roles (with canonical role normalization)
 func RequireRole(allowedRoles ...model.Role) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		activeRoleVal, exists := c.Get(CtxActiveRole)
-		if !exists {
+		activeRole := ActiveRole(c)
+		if activeRole == "" {
 			response.Forbidden(c, "Akses ditolak: role tidak ditemukan")
 			c.Abort()
 			return
 		}
 
-		activeRole := activeRoleVal.(model.Role)
+		normalizedActive := NormalizeRole(activeRole)
+
 		for _, r := range allowedRoles {
-			if r == activeRole {
+			if r == activeRole || NormalizeRole(r) == normalizedActive {
 				c.Next()
 				return
 			}

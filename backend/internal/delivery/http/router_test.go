@@ -278,3 +278,76 @@ func TestRouter_Auth_LoginAndProtectedRoutes(t *testing.T) {
 		t.Errorf("expected 200 for /notifications, got %d: %s", w.Code, w.Body.String())
 	}
 }
+
+func TestRouter_RBAC_StudentRestricted(t *testing.T) {
+	params := setupTestRouter()
+	r := deliveryHttp.SetupRouter(*params)
+
+	// 1. Register a student trying to escalate role to KAPRODI
+	regBody, _ := json.Marshal(map[string]interface{}{
+		"nama_lengkap": "Budi Mahasiswa",
+		"email":        "budi@mahasiswa.ac.id",
+		"password":     "password123",
+		"roles":        []string{"KAPRODI"}, // Should be ignored; strictly MAHASISWA
+	})
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewBuffer(regBody))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201 created, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var regResp struct {
+		Data struct {
+			Tokens struct {
+				AccessToken string `json:"access_token"`
+			} `json:"tokens"`
+			User struct {
+				ActiveRole string   `json:"active_role"`
+				Roles      []string `json:"roles"`
+			} `json:"user"`
+		} `json:"data"`
+	}
+	_ = json.Unmarshal(w.Body.Bytes(), &regResp)
+	mhsToken := regResp.Data.Tokens.AccessToken
+	if regResp.Data.User.ActiveRole != "MAHASISWA" {
+		t.Errorf("expected active role MAHASISWA, got %s", regResp.Data.User.ActiveRole)
+	}
+
+	// 2. Mahasiswa cannot access Kaprodi/Staff-only endpoints (Expect 403)
+	forbiddenEndpoints := []struct {
+		method string
+		url    string
+	}{
+		{http.MethodGet, "/api/v1/dashboard/stats"},
+		{http.MethodPost, "/api/v1/rps/sub-1/ratify"},
+		{http.MethodPost, "/api/v1/trips/trip-1/approve"},
+		{http.MethodPost, "/api/v1/admin/user-roles"},
+		{http.MethodGet, "/api/v1/admin/audit-logs"},
+		{http.MethodGet, "/api/v1/rka"},
+		{http.MethodGet, "/api/v1/complaints"},
+		{http.MethodGet, "/api/v1/surveys"},
+	}
+
+	for _, ep := range forbiddenEndpoints {
+		req, _ = http.NewRequest(ep.method, ep.url, nil)
+		req.Header.Set("Authorization", "Bearer "+mhsToken)
+		w = httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		if w.Code != http.StatusForbidden {
+			t.Errorf("expected 403 Forbidden for Mahasiswa on %s %s, got %d", ep.method, ep.url, w.Code)
+		}
+	}
+
+	// 3. Mahasiswa CAN access permit request
+	req, _ = http.NewRequest(http.MethodPost, "/api/v1/complaints/permit", nil)
+	req.Header.Set("Authorization", "Bearer "+mhsToken)
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code == http.StatusForbidden {
+		t.Errorf("Mahasiswa should NOT get 403 on /complaints/permit, got %d", w.Code)
+	}
+}

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
+import Link from '@/components/layout/RoleLink';
 import {
   Building2,
   BookOpen,
@@ -274,11 +274,24 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between pb-2.5 mb-2">
               <h3 className="text-base sm:text-lg font-bold text-slate-900">Tugas Prioritas</h3>
               <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-bold text-indigo-700 border border-indigo-200">
-                4 Menunggu
+                {currentRole === 'MAHASISWA' ? '0 Tugas' : '4 Menunggu'}
               </span>
             </div>
 
-            <div className="space-y-2">
+            {currentRole === 'MAHASISWA' ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 p-4 text-center my-3">
+                <p className="text-xs font-medium text-slate-500">
+                  Tidak ada antrean tugas verifikasi untuk peran Mahasiswa.
+                </p>
+                <Link
+                  href="/dashboard/aduan"
+                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:underline"
+                >
+                  Ajukan Aduan atau Pertanyaan &rarr;
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2">
               {/* Trip Approval (Highlighted First Card in Lavender Tint) */}
               {pendingTrips.slice(0, 1).map((trip) => (
                 <Link
@@ -367,6 +380,7 @@ export default function DashboardPage() {
                 </Link>
               ))}
             </div>
+            )}
           </div>
         </div>
 

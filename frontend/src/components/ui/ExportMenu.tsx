@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Download, FileSpreadsheet, FileText, ChevronDown, Check } from 'lucide-react';
+import AnimatedDropdown from '@/components/ui/AnimatedDropdown';
 
 export interface ExportMenuProps {
   onExport?: (format: 'xlsx' | 'pdf') => void;
@@ -13,17 +14,7 @@ export interface ExportMenuProps {
 export function ExportMenu({ onExport, title = 'Ekspor Laporan', filename = 'rekap-laporan-simpro', className = '' }: ExportMenuProps) {
   const [open, setOpen] = useState(false);
   const [downloading, setDownloading] = useState<'xlsx' | 'pdf' | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const triggerTableCsvDownload = (baseFilename: string) => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
@@ -89,44 +80,55 @@ export function ExportMenu({ onExport, title = 'Ekspor Laporan', filename = 'rek
   };
 
   return (
-    <div className={`relative inline-block ${className}`} ref={menuRef}>
+    <div className={`relative inline-block ${className}`}>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen(!open)}
-        className="btn-secondary text-sm px-4 py-2 flex items-center gap-2"
+        className="btn-secondary text-sm px-4 py-2 flex items-center gap-2 cursor-pointer"
+        aria-haspopup="true"
+        aria-expanded={open}
       >
         <Download size={14} className="text-slate-500" />
         <span className="font-semibold">{title}</span>
-        <ChevronDown size={14} className="text-slate-400" />
+        <ChevronDown
+          size={14}
+          className={`text-slate-400 transition-transform duration-250 ease-out ${
+            open ? 'rotate-180 text-blue-600' : ''
+          }`}
+        />
       </button>
 
-      {open && (
-        <div className="absolute right-0 mt-2 w-52 bg-white border border-slate-200 rounded-lg shadow-md py-1.5 z-40">
-          <button
-            type="button"
-            onClick={() => handleExport('xlsx')}
-            className="w-full text-left px-3.5 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center justify-between transition-colors"
-          >
-            <div className="flex items-center gap-2.5">
-              <FileSpreadsheet size={16} className="text-emerald-700" />
-              <span>Format Spreadsheet (.csv/.xlsx)</span>
-            </div>
-            {downloading === 'xlsx' && <Check size={14} className="text-emerald-700" />}
-          </button>
+      <AnimatedDropdown
+        open={open}
+        onClose={() => setOpen(false)}
+        triggerRef={triggerRef}
+        className="w-52 py-1.5"
+      >
+        <button
+          type="button"
+          onClick={() => handleExport('xlsx')}
+          className="anime-dropdown-item w-full text-left px-3.5 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center justify-between transition-colors cursor-pointer"
+        >
+          <div className="flex items-center gap-2.5">
+            <FileSpreadsheet size={16} className="text-emerald-700" />
+            <span>Format Spreadsheet (.csv/.xlsx)</span>
+          </div>
+          {downloading === 'xlsx' && <Check size={14} className="text-emerald-700" />}
+        </button>
 
-          <button
-            type="button"
-            onClick={() => handleExport('pdf')}
-            className="w-full text-left px-3.5 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center justify-between transition-colors"
-          >
-            <div className="flex items-center gap-2.5">
-              <FileText size={16} className="text-rose-700" />
-              <span>Format Dokumen (.pdf)</span>
-            </div>
-            {downloading === 'pdf' && <Check size={14} className="text-rose-700" />}
-          </button>
-        </div>
-      )}
+        <button
+          type="button"
+          onClick={() => handleExport('pdf')}
+          className="anime-dropdown-item w-full text-left px-3.5 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center justify-between transition-colors cursor-pointer"
+        >
+          <div className="flex items-center gap-2.5">
+            <FileText size={16} className="text-rose-700" />
+            <span>Format Dokumen (.pdf)</span>
+          </div>
+          {downloading === 'pdf' && <Check size={14} className="text-rose-700" />}
+        </button>
+      </AnimatedDropdown>
     </div>
   );
 }

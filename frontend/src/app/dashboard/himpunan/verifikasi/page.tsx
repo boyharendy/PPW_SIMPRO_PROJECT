@@ -53,7 +53,7 @@ export default function HimpunanVerifikasiPage() {
 
   // Role detection
   const isKaprodi = currentRole === 'KAPRODI';
-  const isPembina = currentRole === 'DOSEN_PEMBINA' || currentRole === 'DOSEN';
+  const isPembina = currentRole === 'DOSEN_PEMBINA';
 
   // Handle Proposal Review Action
   const handleReviewProposal = (action: 'APPROVE' | 'REVISE' | 'REJECT') => {

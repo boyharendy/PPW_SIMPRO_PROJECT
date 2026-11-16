@@ -112,9 +112,9 @@ export default function Page() {
       render: (row: PerjalananDinas) => (
         <button
           onClick={() => router.push(`/dashboard/perjalanan-dinas/${row.id}`)}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700"
+          className="btn-secondary text-xs px-2.5 py-1 inline-flex items-center gap-1.5"
         >
-          <Eye size={14} /> Detail
+          <Eye size={13} /> Detail
         </button>
       ),
     },

@@ -90,7 +90,6 @@ export interface RegisterPayload {
   nama_lengkap: string;
   email: string;
   password: string;
-  roles?: Role[];
 }
 
 /**

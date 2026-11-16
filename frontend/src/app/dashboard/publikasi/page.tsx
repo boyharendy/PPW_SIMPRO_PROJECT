@@ -81,9 +81,9 @@ export default function Page() {
       render: (r) => (
         <button
           onClick={() => router.push(`/dashboard/publikasi/${r.id}`)}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
+          className="btn-secondary text-xs px-2.5 py-1 inline-flex items-center gap-1.5"
         >
-          <Eye size={14} />
+          <Eye size={13} />
           Detail
         </button>
       ),

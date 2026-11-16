@@ -120,10 +120,14 @@ export default function Page() {
             setRekomendasi(r.rekomendasi || 'LAYAK_DIAJUKAN');
             setCatatan(r.catatan || '');
           }}
-          className="btn-primary text-xs px-3 py-1 inline-flex items-center gap-1.5"
+          className={
+            r.status === 'SELESAI'
+              ? 'btn-secondary text-xs px-2.5 py-1 inline-flex items-center gap-1.5'
+              : 'btn-primary text-xs px-3 py-1 inline-flex items-center gap-1.5'
+          }
         >
-          {r.status === 'SELESAI' ? <Eye size={12} /> : <FileCheck size={12} />}
-          {r.status === 'SELESAI' ? 'Lihat Hasil' : 'Beri Telaah'}
+          {r.status === 'SELESAI' ? <Eye size={13} /> : <FileCheck size={12} />}
+          {r.status === 'SELESAI' ? 'Detail' : 'Beri Telaah'}
         </button>
       ),
     },

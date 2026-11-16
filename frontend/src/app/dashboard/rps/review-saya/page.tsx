@@ -105,10 +105,14 @@ export default function Page() {
       render: (r) => (
         <Link
           href={`/dashboard/rps/review/${r.id}`}
-          className="btn-primary text-xs px-3 py-1 inline-flex items-center gap-1.5"
+          className={
+            r.status === 'SELESAI'
+              ? 'btn-secondary text-xs px-2.5 py-1 inline-flex items-center gap-1.5'
+              : 'btn-primary text-xs px-3 py-1 inline-flex items-center gap-1.5'
+          }
         >
-          <FileCheck size={13} />
-          {r.status === 'SELESAI' ? 'Lihat Hasil' : 'Telaah RPS'}
+          {r.status === 'SELESAI' ? <Eye size={13} /> : <FileCheck size={13} />}
+          {r.status === 'SELESAI' ? 'Detail' : 'Telaah RPS'}
         </Link>
       ),
     },

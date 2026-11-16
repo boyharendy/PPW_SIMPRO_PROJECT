@@ -217,7 +217,7 @@ export default function BeasiswaListPage() {
               <FileCheck className="h-4 w-4 text-emerald-600" />
               <span>Verifikasi Jam Karya</span>
             </Link>
-            {(currentRole === 'MAHASISWA' || currentRole === 'KAPRODI') && (
+            {currentRole === 'MAHASISWA' && (
               <Link
                 href="/dashboard/beasiswa/jam-karya"
                 className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100 shadow-xs transition-colors"
