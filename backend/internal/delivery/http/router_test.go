@@ -44,6 +44,8 @@ func setupTestRouter() *deliveryHttp.RouterParams {
 	rkaUsecase := usecase.NewRkaUsecase(rkaRepo)
 	rpsUsecase := usecase.NewRpsUsecase(rpsRepo)
 	evalUsecase := usecase.NewEvaluationUsecase(evalRepo)
+	adminRepo := repository.NewMemoryAdminRepository()
+	adminUsecase := usecase.NewAdminUsecase(adminRepo, nil)
 
 	return &deliveryHttp.RouterParams{
 		Config:             cfg,
@@ -59,6 +61,7 @@ func setupTestRouter() *deliveryHttp.RouterParams {
 		RpsHandler:         handler.NewRpsHandler(rpsUsecase),
 		EvaluationHandler:  handler.NewEvaluationHandler(evalUsecase),
 		DashboardHandler:   handler.NewDashboardHandler(surveyRepo, pubRepo, tripRepo, rkaRepo, rpsRepo, evalRepo, complaintRepo),
+		AdminHandler:       handler.NewAdminHandler(adminUsecase),
 	}
 }
 
