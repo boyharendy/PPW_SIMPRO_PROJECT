@@ -90,7 +90,7 @@ export default function ManualInputModal({ open, onClose, invitation, template, 
                 <select
                   value={scores[aspek.id] || 5}
                   onChange={(e) => setScores({ ...scores, [aspek.id]: Number(e.target.value) })}
-                  className="select-field w-32 text-xs font-bold text-blue-700"
+                  className="select-compact w-36 font-semibold text-blue-700 text-xs"
                 >
                   <option value={5}>5 - Sangat Baik</option>
                   <option value={4}>4 - Baik</option>

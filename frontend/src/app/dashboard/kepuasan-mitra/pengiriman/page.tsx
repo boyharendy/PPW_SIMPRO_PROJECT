@@ -178,11 +178,11 @@ function PengirimanMitraContent() {
       render: (r) => {
         const assignedTmpl = getTemplateForInv(r);
         return (
-          <div className="space-y-1 max-w-xs">
+          <div className="space-y-1 min-w-[220px] max-w-[280px]">
             <select
               value={r.template_id}
               onChange={(e) => handleTemplateChange(r.id, e.target.value)}
-              className="select-field text-xs py-1.5 px-2.5 font-medium rounded-lg border-slate-200"
+              className="select-compact w-full text-xs font-medium text-slate-700"
               title="Pilih instrumen template untuk penempatan ini"
             >
               {templates.map((tmpl) => (
@@ -191,7 +191,7 @@ function PengirimanMitraContent() {
                 </option>
               ))}
             </select>
-            <div className="text-xs text-slate-500">
+            <div className="text-xs text-slate-500 pl-0.5">
               {assignedTmpl?.aspek?.length || 0} Aspek • Skala 1–{assignedTmpl?.skala_maks || 5}
             </div>
           </div>
