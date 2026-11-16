@@ -190,7 +190,7 @@ export const NAV_ITEMS: NavItem[] = [
 
   // Modul 6 — Sertifikat Bahasa & Profesi
   {
-    title: 'Sertifikat Mahasiswa',
+    title: 'Daftar Sertifikat',
     href: '/dashboard/sertifikat',
     icon: 'FileBadge',
     roles: ['MAHASISWA', 'DOSEN_VERIFIKATOR', 'KAPRODI'],

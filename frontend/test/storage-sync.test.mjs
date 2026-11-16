@@ -34,6 +34,7 @@ test('STORAGE_KEYS contains all keys for Modul 7-13', async () => {
   assert.equal(STORAGE_KEYS.RPS_SUBMISSIONS, 'simpro_rps_submissions');
   assert.equal(STORAGE_KEYS.EVALUATIONS, 'simpro_evaluations');
   assert.equal(STORAGE_KEYS.COMPLAINTS, 'simpro_complaints');
+  assert.equal(STORAGE_KEYS.CERTIFICATES, 'simpro_certificates');
 });
 
 test('storageSync get returns fallback if key does not exist', async () => {
