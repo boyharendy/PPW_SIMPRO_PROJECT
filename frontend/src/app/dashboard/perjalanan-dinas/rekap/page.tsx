@@ -83,18 +83,18 @@ export default function Page() {
     {
       key: 'noST',
       header: 'No. Surat Tugas',
-      render: (r) => <span className="font-mono text-xs text-slate-600">{r.noST}</span>,
+      render: (r) => <span className="text-xs text-slate-600">{r.noST}</span>,
     },
     {
       key: 'estimasi',
       header: 'Estimasi Biaya',
-      render: (r) => <span className="font-mono text-xs text-slate-600">{formatRupiah(r.estimasi)}</span>,
+      render: (r) => <span className="text-xs text-slate-600">{formatRupiah(r.estimasi)}</span>,
     },
     {
       key: 'realisasi',
       header: 'Realisasi Riil',
       render: (r) => (
-        <span className="font-mono font-bold text-xs text-slate-900">
+        <span className="text-xs text-slate-700 font-normal">
           {formatRupiah(r.realisasi)}
         </span>
       ),
@@ -105,7 +105,7 @@ export default function Page() {
       render: (r) => {
         const diff = r.estimasi - r.realisasi;
         return (
-          <span className={`font-mono text-xs font-semibold ${diff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+          <span className={`text-xs font-normal ${diff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
             {diff >= 0 ? `+ ${formatRupiah(diff)}` : `- ${formatRupiah(Math.abs(diff))}`}
           </span>
         );
@@ -136,11 +136,11 @@ export default function Page() {
     <div className="space-y-6">
       <PageHeader
         title="Rekapitulasi Perjalanan Dinas"
-        description="Rekap pelaksanaan dan monitoring realisasi perjalanan dinas prodi (FR-38)."
+        description="Rekapitulasi pelaksanaan dan monitoring realisasi perjalanan dinas program studi."
         actions={<ExportMenu filename="rekap-perjalanan-dinas" />}
       />
 
-      {/* 3 StatCards */}
+      {/* 3 StatCards - Komposisi Seragam & Selaras */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
           title="Total Perjalanan 2025"
@@ -159,9 +159,8 @@ export default function Page() {
         <StatCard
           title="Total Realisasi Riil"
           value={formatRupiah(62140000)}
-          subtitle="Efisiensi anggaran 9.3%"
+          subtitle="Efisiensi 9.3% • Hemat Rp 6.36 Jt"
           badgeTone="emerald"
-          badgeText="Hemat Rp 6.36 Jt"
           icon={<TrendingDown size={16} />}
         />
       </div>

@@ -125,7 +125,7 @@ export default function Page() {
       {/* Komparasi Estimasi vs Realisasi Biaya */}
       <div className="card">
         <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-3">
-          Rincian Estimasi vs Realisasi Biaya (FR-35)
+          Rincian Estimasi vs Realisasi Biaya
         </h3>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
@@ -143,9 +143,9 @@ export default function Page() {
                 return (
                   <tr key={idx} className="hover:bg-slate-50/50">
                     <td className="py-2.5 px-3 font-medium text-slate-800">{b.komponen}</td>
-                    <td className="py-2.5 px-3 text-right text-slate-600 font-mono">{formatRupiah(b.estimasi)}</td>
-                    <td className="py-2.5 px-3 text-right text-slate-800 font-mono font-semibold">{formatRupiah(b.realisasi)}</td>
-                    <td className={`py-2.5 px-3 text-right font-mono font-bold ${diff <= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    <td className="py-2.5 px-3 text-right text-slate-600">{formatRupiah(b.estimasi)}</td>
+                    <td className="py-2.5 px-3 text-right text-slate-700">{formatRupiah(b.realisasi)}</td>
+                    <td className={`py-2.5 px-3 text-right ${diff <= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                       {diff <= 0 ? `- ${formatRupiah(Math.abs(diff))}` : `+ ${formatRupiah(diff)}`}
                     </td>
                   </tr>
@@ -153,11 +153,11 @@ export default function Page() {
               })}
             </tbody>
             <tfoot>
-              <tr className="border-t-2 border-slate-200 font-bold bg-slate-50/70">
-                <td className="py-3 px-3 text-slate-900">Total Akumulasi Biaya</td>
-                <td className="py-3 px-3 text-right text-slate-700 font-mono">{formatRupiah(totalEstimasi)}</td>
-                <td className="py-3 px-3 text-right text-blue-700 font-mono text-sm">{formatRupiah(totalRealisasi)}</td>
-                <td className="py-3 px-3 text-right font-mono text-emerald-700">
+              <tr className="border-t-2 border-slate-200 font-medium bg-slate-50/70">
+                <td className="py-3 px-3 text-slate-900 font-semibold">Total Akumulasi Biaya</td>
+                <td className="py-3 px-3 text-right text-slate-700">{formatRupiah(totalEstimasi)}</td>
+                <td className="py-3 px-3 text-right text-blue-700 font-semibold">{formatRupiah(totalRealisasi)}</td>
+                <td className="py-3 px-3 text-right text-emerald-700 font-medium">
                   Hemat {formatRupiah(totalEstimasi - totalRealisasi)}
                 </td>
               </tr>

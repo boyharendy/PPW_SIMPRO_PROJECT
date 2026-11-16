@@ -48,7 +48,7 @@ export default function Page() {
 
       <PageHeader
         title="Laporan Realisasi Perjalanan Dinas"
-        description="Unggah laporan kegiatan dan bukti pertanggungjawaban riil perjalanan dinas (FR-37)."
+        description="Unggah laporan kegiatan dan bukti pertanggungjawaban riil perjalanan dinas."
       />
 
       <form onSubmit={handleSubmit} className="space-y-6">

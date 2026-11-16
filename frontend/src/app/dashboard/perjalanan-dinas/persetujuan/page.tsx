@@ -114,10 +114,10 @@ export default function Page() {
       header: 'Estimasi Biaya',
       render: (r) => (
         <div>
-          <span className="font-mono font-bold text-slate-900 text-xs">
+          <span className="text-xs text-slate-700 font-normal">
             {formatRupiah(r.estimasi)}
           </span>
-          <div className="text-[10px] text-slate-400">{r.sumberDana.replace('_', ' ')}</div>
+          <div className="text-xs text-slate-500 mt-0.5">{r.sumberDana.replace('_', ' ')}</div>
         </div>
       ),
     },
@@ -161,7 +161,7 @@ export default function Page() {
     <div className="space-y-6">
       <PageHeader
         title="Persetujuan Perjalanan Dinas"
-        description="Verifikasi dan persetujuan usulan perjalanan dinas oleh Kaprodi / Pimpinan (FR-36)."
+        description="Verifikasi dan persetujuan usulan perjalanan dinas oleh Kaprodi dan Pimpinan."
       />
 
       <div className="card">
