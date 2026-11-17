@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Search, Eye } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 
-type Publikasi = {
+export type Publikasi = {
   id: string;
   judul: string;
   jenis: 'JURNAL' | 'PROSIDING' | 'BUKU' | 'HKI';
@@ -15,6 +16,9 @@ type Publikasi = {
   peringkat: string;
   tahun: number;
   status: string;
+  target?: string;
+  status_verifikasi?: string;
+  verifikator?: string;
 };
 
 const JENIS_COLORS: Record<string, string> = {
@@ -26,20 +30,35 @@ const JENIS_COLORS: Record<string, string> = {
 
 const TABS = ['Semua', 'DRAF', 'DIAJUKAN', 'DALAM_REVIEW', 'DITERIMA', 'TERBIT'] as const;
 
-const mockData: Publikasi[] = [
-  { id: 'PUB-001', judul: 'Implementasi Deep Learning untuk Deteksi Anomali pada Jaringan IoT', jenis: 'JURNAL', penulisUtama: 'Dr. Rina Fitriani, M.Kom.', peringkat: 'SINTA 2', tahun: 2025, status: 'TERBIT' },
-  { id: 'PUB-002', judul: 'Analisis Performa Algoritma Clustering pada Data Spasial Skala Besar', jenis: 'PROSIDING', penulisUtama: 'Agus Prasetyo, M.T.', peringkat: 'Scopus Q3', tahun: 2025, status: 'DITERIMA' },
-  { id: 'PUB-003', judul: 'Pengembangan Sistem Rekomendasi Berbasis Collaborative Filtering', jenis: 'JURNAL', penulisUtama: 'Siti Nurhaliza, M.Cs.', peringkat: 'SINTA 3', tahun: 2025, status: 'DALAM_REVIEW' },
-  { id: 'PUB-004', judul: 'Panduan Praktis Pemrograman Web Modern dengan Next.js', jenis: 'BUKU', penulisUtama: 'Budi Hartono, M.Kom.', peringkat: 'Non-peringkat', tahun: 2024, status: 'DRAF' },
-  { id: 'PUB-005', judul: 'Hak Cipta Aplikasi Manajemen Kurikulum Berbasis AI', jenis: 'HKI', penulisUtama: 'Dewi Kartika, M.Sc.', peringkat: 'Non-peringkat', tahun: 2025, status: 'DIAJUKAN' },
+export const mockData: Publikasi[] = [
+  { id: 'PUB-001', judul: 'Implementasi Deep Learning untuk Deteksi Anomali pada Jaringan IoT', jenis: 'JURNAL', penulisUtama: 'Dr. Rina Fitriani, M.Kom.', peringkat: 'SINTA 2', tahun: 2025, status: 'TERBIT', status_verifikasi: 'TIDAK_PERLU' },
+  { id: 'PUB-002', judul: 'Analisis Performa Algoritma Clustering pada Data Spasial Skala Besar', jenis: 'PROSIDING', penulisUtama: 'Agus Prasetyo, M.T.', peringkat: 'Scopus Q3', tahun: 2025, status: 'DITERIMA', status_verifikasi: 'TIDAK_PERLU' },
+  { id: 'PUB-003', judul: 'Pengembangan Sistem Rekomendasi Berbasis Collaborative Filtering', jenis: 'JURNAL', penulisUtama: 'Siti Nurhaliza, M.Cs.', peringkat: 'SINTA 3', tahun: 2025, status: 'DALAM_REVIEW', status_verifikasi: 'TIDAK_PERLU' },
+  { id: 'PUB-004', judul: 'Panduan Praktis Pemrograman Web Modern dengan Next.js', jenis: 'BUKU', penulisUtama: 'Budi Hartono, M.Kom.', peringkat: 'Non-peringkat', tahun: 2024, status: 'DRAF', status_verifikasi: 'TIDAK_PERLU' },
+  { id: 'PUB-005', judul: 'Hak Cipta Aplikasi Manajemen Kurikulum Berbasis AI', jenis: 'HKI', penulisUtama: 'Dewi Kartika, M.Sc.', peringkat: 'Non-peringkat', tahun: 2025, status: 'DIAJUKAN', status_verifikasi: 'TIDAK_PERLU' },
 ];
 
 export default function Page() {
   const router = useRouter();
+  const [data, setData] = useState<Publikasi[]>(() => {
+    return storageSync.get<Publikasi[]>(STORAGE_KEYS.PUBLICATIONS, mockData);
+  });
   const [activeTab, setActiveTab] = useState<string>('Semua');
   const [search, setSearch] = useState('');
 
-  const filtered = mockData.filter((p) => {
+  useEffect(() => {
+    const handleSync = () => {
+      setData(storageSync.get<Publikasi[]>(STORAGE_KEYS.PUBLICATIONS, mockData));
+    };
+    window.addEventListener('simpro_storage_change', handleSync);
+    window.addEventListener('focus', handleSync);
+    return () => {
+      window.removeEventListener('simpro_storage_change', handleSync);
+      window.removeEventListener('focus', handleSync);
+    };
+  }, []);
+
+  const filtered = data.filter((p) => {
     const matchTab = activeTab === 'Semua' || p.status === activeTab;
     const matchSearch = p.judul.toLowerCase().includes(search.toLowerCase()) ||
       p.penulisUtama.toLowerCase().includes(search.toLowerCase());
@@ -53,7 +72,7 @@ export default function Page() {
       render: (r) => (
         <div className="max-w-xs">
           <p className="text-sm font-medium text-slate-800 truncate">{r.judul}</p>
-          <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full border font-medium ${JENIS_COLORS[r.jenis]}`}>
+          <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full border font-medium ${JENIS_COLORS[r.jenis] || 'bg-slate-50 text-slate-700 border-slate-200'}`}>
             {r.jenis}
           </span>
         </div>
@@ -73,7 +92,24 @@ export default function Page() {
     {
       key: 'status',
       header: 'Status',
-      render: (r) => <StatusBadge status={r.status} size="sm" />,
+      render: (r) => (
+        <div className="flex flex-col gap-1 items-start">
+          <StatusBadge status={r.status} size="sm" />
+          {r.status_verifikasi && r.status_verifikasi !== 'TIDAK_PERLU' && (
+            <span
+              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                r.status_verifikasi === 'TERVERIFIKASI'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : r.status_verifikasi === 'DITOLAK'
+                  ? 'bg-rose-50 text-rose-700 border-rose-200'
+                  : 'bg-amber-50 text-amber-700 border-amber-200'
+              }`}
+            >
+              Verif: {r.status_verifikasi}
+            </span>
+          )}
+        </div>
+      ),
     },
     {
       key: 'aksi',
@@ -81,7 +117,7 @@ export default function Page() {
       render: (r) => (
         <button
           onClick={() => router.push(`/dashboard/publikasi/${r.id}`)}
-          className="btn-secondary text-xs px-2.5 py-1 inline-flex items-center gap-1.5"
+          className="btn-secondary text-xs px-2.5 py-1 inline-flex items-center gap-1.5 cursor-pointer"
         >
           <Eye size={13} />
           Detail
@@ -98,7 +134,7 @@ export default function Page() {
         actions={
           <button
             onClick={() => router.push('/dashboard/publikasi/baru')}
-            className="bg-blue-600 text-white rounded-xl px-4 py-2 text-sm font-semibold flex items-center gap-2 hover:bg-blue-700 transition-colors"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-4 py-2 text-sm font-semibold flex items-center gap-2 transition-colors shadow-sm cursor-pointer"
           >
             <Plus size={16} />
             Tambah Publikasi
@@ -114,9 +150,9 @@ export default function Page() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
                   activeTab === tab
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-emerald-600 text-white'
                     : 'text-slate-500 hover:bg-slate-100'
                 }`}
               >
@@ -131,7 +167,7 @@ export default function Page() {
               placeholder="Cari judul atau penulis..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full sm:w-64 bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full sm:w-64 bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
         </div>

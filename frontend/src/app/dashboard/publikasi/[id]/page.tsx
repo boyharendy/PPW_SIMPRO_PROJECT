@@ -3,28 +3,51 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, Clock, CheckCircle2, UserCheck, ExternalLink, Plus, FileText, Send } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ExternalLink, Plus } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import Modal from '@/components/ui/Modal';
 import { formatDateShort } from '@/lib/utils';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
+import { mockData as defaultPubs, type Publikasi } from '../page';
 
 export default function Page() {
   const { id } = useParams<{ id: string }>();
 
-  // Mock publication data
-  const [pub, setPub] = useState({
-    id: id || 'PUB-001',
-    judul: 'Implementasi Deep Learning untuk Deteksi Anomali pada Jaringan IoT',
-    jenis: 'JURNAL',
-    target: 'Jurnal Teknologi Informasi dan Ilmu Komputer (JTIIK)',
-    peringkat: 'SINTA 2',
-    tahun: 2025,
-    doi: '10.25126/jtiik.2025.12.3.4412',
-    url: 'https://jtiik.ub.ac.id/index.php/jtiik/article/view/4412',
-    status: 'TERBIT',
-    statusVerifikasi: 'TERVERIFIKASI',
-    verifikator: 'Dr. Ahmad Fauzi (Kaprodi)',
+  // Resolve publication from storage if exists, fallback to standard mock
+  const [pub] = useState(() => {
+    const list = storageSync.get<Publikasi[]>(STORAGE_KEYS.PUBLICATIONS, defaultPubs);
+    const found = list.find((p) => p.id === id);
+    if (found) {
+      return {
+        id: found.id,
+        judul: found.judul,
+        jenis: found.jenis,
+        target: found.target || 'Jurnal / Konferensi Terdaftar',
+        peringkat: found.peringkat,
+        tahun: found.tahun,
+        doi: '',
+        url: '',
+        status: found.status,
+        statusVerifikasi: found.status_verifikasi || 'TERVERIFIKASI',
+        verifikator: found.verifikator || 'Dr. Ahmad Fauzi (Kaprodi)',
+        penulisUtama: found.penulisUtama,
+      };
+    }
+    return {
+      id: id || 'PUB-001',
+      judul: 'Implementasi Deep Learning untuk Deteksi Anomali pada Jaringan IoT',
+      jenis: 'JURNAL',
+      target: 'Jurnal Teknologi Informasi dan Ilmu Komputer (JTIIK)',
+      peringkat: 'SINTA 2',
+      tahun: 2025,
+      doi: '10.25126/jtiik.2025.12.3.4412',
+      url: 'https://jtiik.ub.ac.id/index.php/jtiik/article/view/4412',
+      status: 'TERBIT',
+      statusVerifikasi: 'TERVERIFIKASI',
+      verifikator: 'Dr. Ahmad Fauzi (Kaprodi)',
+      penulisUtama: 'Dr. Rina Fitriani, M.Kom.',
+    };
   });
 
   const [tahapan, setTahapan] = useState([
@@ -36,11 +59,20 @@ export default function Page() {
     { tahap: 'DRAF', tanggal: '2024-12-05', bukti: '-', statusVerif: 'TERVERIFIKASI' },
   ]);
 
-  const [penulis] = useState([
-    { urutan: 1, nama: 'Dr. Rina Fitriani, M.Kom.', tipe: 'DOSEN', peran: 'PENULIS_PERTAMA' },
-    { urutan: 2, nama: 'Muhammad Rizky Pratama', tipe: 'MAHASISWA', peran: 'ANGGOTA' },
-    { urutan: 3, nama: 'Ir. Bambang Tri, Ph.D.', tipe: 'DOSEN', peran: 'KORESPONDENSI' },
-  ]);
+  const [penulis] = useState(() => {
+    const list = storageSync.get<Publikasi[]>(STORAGE_KEYS.PUBLICATIONS, defaultPubs);
+    const found = list.find((p) => p.id === id);
+    if (found) {
+      return [
+        { urutan: 1, nama: found.penulisUtama, tipe: 'PENULIS UTAMA', peran: 'PENULIS_PERTAMA' },
+      ];
+    }
+    return [
+      { urutan: 1, nama: 'Dr. Rina Fitriani, M.Kom.', tipe: 'DOSEN', peran: 'PENULIS_PERTAMA' },
+      { urutan: 2, nama: 'Muhammad Rizky Pratama', tipe: 'MAHASISWA', peran: 'ANGGOTA' },
+      { urutan: 3, nama: 'Ir. Bambang Tri, Ph.D.', tipe: 'DOSEN', peran: 'KORESPONDENSI' },
+    ];
+  });
 
   const [stageModal, setStageModal] = useState(false);
   const [newTahap, setNewTahap] = useState('REVISI');
@@ -65,7 +97,7 @@ export default function Page() {
       <div className="flex items-center gap-2">
         <Link
           href="/dashboard/publikasi"
-          className="text-xs text-slate-500 hover:text-slate-800 inline-flex items-center gap-1 font-medium"
+          className="text-xs text-slate-500 hover:text-slate-800 inline-flex items-center gap-1 font-medium cursor-pointer"
         >
           <ArrowLeft size={14} /> Kembali ke Daftar Publikasi
         </Link>
@@ -79,7 +111,7 @@ export default function Page() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setStageModal(true)}
-              className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold px-3 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
             >
               <Plus size={14} /> Perbarui Tahapan
             </button>
@@ -100,7 +132,7 @@ export default function Page() {
             </div>
             <div>
               <span className="text-slate-400 block mb-0.5">Peringkat / Indeksasi:</span>
-              <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+              <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
                 {pub.peringkat}
               </span>
             </div>
@@ -177,7 +209,7 @@ export default function Page() {
         <div className="space-y-4 relative before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
           {tahapan.map((t, i) => (
             <div key={i} className="flex items-start gap-4 relative">
-              <div className="w-7 h-7 rounded-full bg-blue-50 border-2 border-blue-500 text-blue-600 flex items-center justify-center shrink-0 z-10">
+              <div className="w-7 h-7 rounded-full bg-emerald-50 border-2 border-emerald-500 text-emerald-600 flex items-center justify-center shrink-0 z-10">
                 <CheckCircle2 size={14} />
               </div>
               <div className="flex-1 p-3 rounded-xl border border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -237,11 +269,14 @@ export default function Page() {
             <button
               type="button"
               onClick={() => setStageModal(false)}
-              className="btn-secondary text-xs px-4 py-2"
+              className="btn-secondary text-xs px-4 py-2 cursor-pointer"
             >
               Batal
             </button>
-            <button type="submit" className="btn-primary text-xs px-4 py-2">
+            <button
+              type="submit"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold px-4 py-2 transition-colors cursor-pointer shadow-sm"
+            >
               Simpan Tahap
             </button>
           </div>

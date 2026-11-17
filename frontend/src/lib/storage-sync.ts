@@ -9,6 +9,7 @@ export const STORAGE_KEYS = {
   SURVEY_INVITATIONS: 'simpro_survey_invitations',
   SURVEY_RESPONSES: 'simpro_survey_responses',
   PUBLICATIONS: 'simpro_publications',
+  PUBLICATION_VERIFICATIONS: 'simpro_publication_verifications',
   TRIPS: 'simpro_trips',
   RKA_DOCUMENTS: 'simpro_rka_documents',
   RKA_REALIZATIONS: 'simpro_rka_realizations',
