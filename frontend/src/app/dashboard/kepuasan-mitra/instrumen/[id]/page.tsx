@@ -225,7 +225,7 @@ export default function Page() {
             </button>
             <button
               onClick={openAddModal}
-              className="h-8 px-3.5 text-xs font-medium rounded-full border border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 inline-flex items-center gap-1.5 shadow-2xs transition-all"
+              className="h-8 px-3.5 text-xs font-medium rounded-full border border-blue-600 bg-blue-600 text-white hover:bg-blue-700 inline-flex items-center gap-1.5 shadow-2xs transition-all"
             >
               <Plus size={14} /> Tambah Aspek
             </button>

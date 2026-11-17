@@ -183,7 +183,7 @@ export default function Page() {
         <button onClick={() => router.back()} className="bg-white text-slate-700 border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center gap-2">
           <Save size={14} /> Simpan Draf
         </button>
-        <button className="bg-emerald-600 text-white rounded-xl px-4 py-2 text-sm font-semibold hover:bg-emerald-700 transition-colors flex items-center gap-2">
+        <button className="bg-blue-600 text-white rounded-xl px-4 py-2 text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2">
           <Send size={14} /> Ajukan
         </button>
       </div>

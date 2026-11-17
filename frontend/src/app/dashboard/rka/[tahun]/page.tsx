@@ -93,7 +93,7 @@ export default function Page() {
             </button>
             <button
               onClick={() => router.push(`/dashboard/rka/${tahun}/realisasi`)}
-              className="bg-emerald-600 text-white rounded-xl px-4 py-2 text-sm font-semibold flex items-center gap-1.5 hover:bg-emerald-700 transition-colors"
+              className="bg-blue-600 text-white rounded-xl px-4 py-2 text-sm font-semibold flex items-center gap-1.5 hover:bg-blue-700 transition-colors"
             >
               <Receipt size={15} /> Catat Realisasi
             </button>

@@ -564,7 +564,7 @@ export default function HimpunanAnalisisPage() {
                   </button>
                   <button
                     onClick={handleSaveNarrative}
-                    className="rounded-lg bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 inline-flex items-center gap-1 shadow-xs"
+                    className="rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 inline-flex items-center gap-1 shadow-xs"
                   >
                     <Save className="h-3.5 w-3.5" />
                     Simpan &amp; Terbitkan Ringkasan Resmi

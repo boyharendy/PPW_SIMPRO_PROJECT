@@ -108,7 +108,7 @@ export default function Page() {
         actions={
           <button
             onClick={() => setShowModal(true)}
-            className="bg-emerald-600 text-white rounded-xl px-4 py-2 text-sm font-semibold flex items-center gap-2 hover:bg-emerald-700 transition-colors"
+            className="bg-blue-600 text-white rounded-xl px-4 py-2 text-sm font-semibold flex items-center gap-2 hover:bg-blue-700 transition-colors"
           >
             <Plus size={16} /> Buat RKA Tahun Baru
           </button>
@@ -145,7 +145,7 @@ export default function Page() {
             <button onClick={() => setShowModal(false)} className="bg-white text-slate-700 border border-slate-200 rounded-xl px-4 py-2 text-sm font-medium">
               Batal
             </button>
-            <button className="bg-emerald-600 text-white rounded-xl px-4 py-2 text-sm font-semibold hover:bg-emerald-700 transition-colors">
+            <button className="bg-blue-600 text-white rounded-xl px-4 py-2 text-sm font-semibold hover:bg-blue-700 transition-colors">
               Simpan
             </button>
           </div>
