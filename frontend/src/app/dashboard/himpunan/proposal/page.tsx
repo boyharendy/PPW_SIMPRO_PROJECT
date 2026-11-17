@@ -324,7 +324,7 @@ export default function HimpunanProposalPage() {
               setIsSubmitModalOpen(true);
               setFormError(null);
             }}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition-colors inline-flex items-center gap-1.5 shadow-xs"
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors inline-flex items-center gap-1.5 shadow-xs"
           >
             <PlusCircle className="h-4 w-4" />
             Ajukan Proposal Baru
@@ -562,7 +562,7 @@ export default function HimpunanProposalPage() {
             </button>
             <button
               type="submit"
-              className="rounded-lg bg-blue-600 px-5 py-2 font-semibold text-white hover:bg-blue-700 transition-colors shadow-xs"
+              className="rounded-lg bg-emerald-600 px-5 py-2 font-semibold text-white hover:bg-emerald-700 transition-colors shadow-xs"
             >
               Validasi &amp; Kirim Proposal
             </button>

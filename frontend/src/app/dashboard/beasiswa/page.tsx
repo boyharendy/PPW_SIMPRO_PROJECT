@@ -229,7 +229,7 @@ export default function BeasiswaListPage() {
             {(currentRole === 'ADMIN_PRODI' || currentRole === 'KAPRODI') && (
               <button
                 onClick={() => setShowAddModal(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 shadow-xs transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 shadow-xs transition-colors"
               >
                 <Plus className="h-4 w-4" />
                 <span>Tambah Penerima Beasiswa</span>
@@ -407,7 +407,7 @@ export default function BeasiswaListPage() {
                     </select>
                     <button
                       onClick={handleUpdateStatus}
-                      className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 shadow-xs"
+                      className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 shadow-xs"
                     >
                       Simpan Perubahan
                     </button>
@@ -538,7 +538,7 @@ export default function BeasiswaListPage() {
             </button>
             <button
               onClick={handleAddRecipient}
-              className="px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 shadow-xs"
+              className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 shadow-xs"
             >
               Simpan Penerima Beasiswa
             </button>

@@ -71,7 +71,7 @@ export default function HimpunanDashboardPage() {
             {isPengurus && (
               <Link
                 href="/dashboard/himpunan/proker"
-                className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition-colors inline-flex items-center gap-1.5 shadow-xs"
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors inline-flex items-center gap-1.5 shadow-xs"
               >
                 <PlusCircle className="h-4 w-4" />
                 Input Proker Baru
@@ -348,7 +348,7 @@ export default function HimpunanDashboardPage() {
 
               <Link
                 href="/dashboard/himpunan/verifikasi"
-                className="w-full rounded-lg bg-blue-600 py-2 text-center text-xs font-semibold text-white hover:bg-blue-700 transition-colors block"
+                className="w-full rounded-lg bg-emerald-600 py-2 text-center text-xs font-semibold text-white hover:bg-emerald-700 transition-colors block"
               >
                 Buka Meja Verifikasi
               </Link>

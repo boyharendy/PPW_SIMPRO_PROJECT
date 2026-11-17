@@ -467,7 +467,7 @@ export default function LaporanPerwalianPage() {
             {currentRole === 'KETUA_KELAS' && (
               <button
                 onClick={() => setShowCreateClassModal(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 shadow-xs transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 shadow-xs transition-colors"
               >
                 <Plus className="h-4 w-4" />
                 <span>Isi Laporan Ketua Kelas</span>
@@ -654,7 +654,7 @@ export default function LaporanPerwalianPage() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={handleSendBroadcastReminder}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-xs font-semibold shadow-xs transition-colors"
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-semibold shadow-xs transition-colors"
                 >
                   <Send className="h-4 w-4" />
                   <span>Kirim Pengingat ke Semua Kelas Belum Mengisi</span>
@@ -927,7 +927,7 @@ export default function LaporanPerwalianPage() {
             </button>
             <button
               onClick={() => handleSaveClassReport('TERKIRIM')}
-              className="px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 shadow-xs transition-colors"
+              className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 shadow-xs transition-colors"
             >
               Kirim Resmi ke Dosen Wali
             </button>

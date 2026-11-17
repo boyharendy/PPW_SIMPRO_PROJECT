@@ -203,7 +203,7 @@ export default function RekapPerwalianPage() {
             <button
               onClick={() => handleExport('WORD')}
               disabled={isExporting}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 shadow-xs transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 shadow-xs transition-colors"
             >
               <FileText className="h-4 w-4 text-white" />
               <span>Export Word (.docx)</span>
@@ -450,7 +450,7 @@ export default function RekapPerwalianPage() {
               </button>
               <button
                 onClick={handleSaveIssueAction}
-                className="px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 shadow-xs"
+                className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 shadow-xs"
               >
                 Simpan Tindak Lanjut
               </button>
@@ -521,7 +521,7 @@ export default function RekapPerwalianPage() {
                 onClick={() => {
                   window.print();
                 }}
-                className="px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 flex items-center gap-1.5 shadow-xs"
+                className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 flex items-center gap-1.5 shadow-xs"
               >
                 <Printer className="h-4 w-4" />
                 <span>Cetak Dokumen Sekarang</span>
