@@ -113,22 +113,8 @@ export default function Page() {
     },
     {
       key: 'status',
-      header: 'Status & Keterangan',
-      render: (r) => (
-        <div className="space-y-1">
-          <StatusBadge status={r.status} size="sm" />
-          {r.penanda === 'MELEBIHI_ESTIMASI' && (
-            <div className="text-[10px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100">
-              Melebihi Estimasi (&gt;10%)
-            </div>
-          )}
-          {r.penanda === 'BELUM_LENGKAP' && (
-            <div className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">
-              Bukti Belum Lengkap
-            </div>
-          )}
-        </div>
-      ),
+      header: 'Status',
+      render: (r) => <StatusBadge status={r.status} size="sm" />,
     },
   ];
 
