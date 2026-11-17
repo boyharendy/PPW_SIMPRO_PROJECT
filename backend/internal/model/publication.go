@@ -62,6 +62,7 @@ type PublicationReview struct {
 	ID             string    `json:"id"`
 	PublicationID  string    `json:"publication_id"`
 	ReviewerID     string    `json:"reviewer_id"`
+	ReviewerNama   string    `json:"reviewer_nama,omitempty"`
 	DitetapkanOleh string    `json:"ditetapkan_oleh,omitempty"`
 	Status         string    `json:"status,omitempty"` // DITUGASKAN | SELESAI_REVIEW
 	TenggatReview  string    `json:"tenggat_review,omitempty"`
@@ -70,12 +71,30 @@ type PublicationReview struct {
 	CreatedAt      time.Time `json:"created_at"`
 }
 
+func IsValidPublicationStageStatus(s PublicationStatus) bool {
+	switch s {
+	case PubStatusDraft,
+		PubStatusDraf,
+		PubStatusReviewInternal,
+		PubStatusDiajukan,
+		PubStatusDalamReview,
+		PubStatusRevisi,
+		PubStatusDiterima,
+		PubStatusTerbit,
+		PubStatusDitolak:
+		return true
+	default:
+		return false
+	}
+}
+
 type Publication struct {
 	ID                   string                 `json:"id"`
 	Judul                string                 `json:"judul"`
 	Tipe                 PublicationType        `json:"tipe"`
 	Jenis                string                 `json:"jenis,omitempty"`
 	Status               PublicationStatus      `json:"status"`
+	TipePencatat         string                 `json:"tipe_pencatat,omitempty"` // DOSEN | MAHASISWA
 	NamaJurnalKonferensi string                 `json:"nama_jurnal_konferensi,omitempty"`
 	NamaTarget           string                 `json:"nama_target,omitempty"`
 	Peringkat            string                 `json:"peringkat,omitempty"` // SINTA_1..6, SCOPUS_Q1..Q4, NON_PERINGKAT

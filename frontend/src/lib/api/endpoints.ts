@@ -59,10 +59,15 @@ export const API_ENDPOINTS = {
     RECAP: '/publications/recap',
     DETAIL: (id: string) => `/publications/${id}`,
     UPDATE: (id: string) => `/publications/${id}`,
+    STATUS: (id: string) => `/publications/${id}/status`,
     DELETE: (id: string) => `/publications/${id}`,
     SUBMIT: (id: string) => `/publications/${id}/submit`,
+    STAGES: (id: string) => `/publications/${id}/stages`,
     VERIFY: (id: string) => `/publications/${id}/verify`,
+    VERIFIER: (id: string) => `/publications/${id}/verifier`,
     REVIEWS: (id: string) => `/publications/${id}/reviews`,
+    REVIEWS_LIST: '/publications/reviews',
+    COMPLETE_REVIEW: (reviewId: string) => `/publications/reviews/${reviewId}/complete`,
   },
 
   // Modul 9: Perjalanan Dinas

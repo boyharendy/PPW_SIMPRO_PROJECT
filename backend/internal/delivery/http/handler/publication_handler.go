@@ -88,6 +88,27 @@ func (h *PublicationHandler) UpdatePublication(c *gin.Context) {
 	response.Success(c, http.StatusOK, "Publikasi berhasil diperbarui", updated)
 }
 
+func (h *PublicationHandler) UpdatePublicationStatus(c *gin.Context) {
+	id := c.Param("id")
+	userID := c.GetString(middleware.CtxUserID)
+	var req struct {
+		Status  model.PublicationStatus `json:"status" binding:"required"`
+		Catatan string                  `json:"catatan"`
+		Bukti   string                  `json:"bukti"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Status publikasi tidak valid", err.Error())
+		return
+	}
+
+	updated, err := h.usecase.UpdatePublicationStatus(id, userID, req.Status, req.Catatan, req.Bukti)
+	if err != nil {
+		response.BadRequest(c, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusOK, "Status publikasi berhasil diperbarui", updated)
+}
+
 func (h *PublicationHandler) DeletePublication(c *gin.Context) {
 	id := c.Param("id")
 	if err := h.usecase.DeletePublication(id); err != nil {
@@ -146,11 +167,40 @@ func (h *PublicationHandler) AddReview(c *gin.Context) {
 	userID := c.GetString(middleware.CtxUserID)
 
 	var req struct {
-		Catatan     string `json:"catatan" binding:"required"`
-		Rekomendasi string `json:"rekomendasi" binding:"required"`
+		ReviewerID    string `json:"reviewer_id"`
+		ReviewerNama  string `json:"reviewer_nama"`
+		TenggatReview string `json:"tenggat_review"`
+		Catatan       string `json:"catatan"`
+		Rekomendasi   string `json:"rekomendasi"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "Catatan dan rekomendasi wajib diisi", err.Error())
+		response.BadRequest(c, "Format data review publikasi tidak valid", err.Error())
+		return
+	}
+
+	if req.ReviewerID != "" {
+		review := &model.PublicationReview{
+			ReviewerID:    req.ReviewerID,
+			ReviewerNama:  req.ReviewerNama,
+			TenggatReview: req.TenggatReview,
+			Catatan:       req.Catatan,
+			Rekomendasi:   req.Rekomendasi,
+		}
+		if err := h.usecase.AssignReviewer(id, userID, review); err != nil {
+			response.BadRequest(c, err.Error(), nil)
+			return
+		}
+		response.Success(c, http.StatusCreated, "Reviewer internal publikasi berhasil ditetapkan", review)
+		return
+	}
+
+	if middleware.NormalizeRole(middleware.ActiveRole(c)) == model.RoleMahasiswa {
+		response.Forbidden(c, "Hanya dosen reviewer internal yang dapat mengisi hasil review")
+		return
+	}
+
+	if req.Catatan == "" || req.Rekomendasi == "" {
+		response.BadRequest(c, "Catatan dan rekomendasi wajib diisi", nil)
 		return
 	}
 
@@ -159,6 +209,17 @@ func (h *PublicationHandler) AddReview(c *gin.Context) {
 		return
 	}
 	response.Success(c, http.StatusCreated, "Review publikasi berhasil ditambahkan", nil)
+}
+
+// GetReviews handles GET /api/v1/publications/reviews
+func (h *PublicationHandler) GetReviews(c *gin.Context) {
+	reviewerID := c.Query("reviewer_id")
+	reviews, err := h.usecase.GetReviews(reviewerID)
+	if err != nil {
+		response.InternalServerError(c, "Gagal mengambil daftar review internal: "+err.Error())
+		return
+	}
+	response.Success(c, http.StatusOK, "Daftar review internal publikasi berhasil diambil", reviews)
 }
 
 // UpdateAuthors handles PUT /api/v1/publications/:id/authors

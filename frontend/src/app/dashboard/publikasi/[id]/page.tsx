@@ -1,63 +1,150 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, Clock, CheckCircle2, UserCheck, ExternalLink, Plus, FileText, Send } from 'lucide-react';
+import {
+  ArrowLeft,
+  CheckCircle2,
+  ClipboardCheck,
+  ExternalLink,
+  Eye,
+  Plus,
+  ShieldCheck,
+  UserPlus,
+} from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import Modal from '@/components/ui/Modal';
 import { formatDateShort } from '@/lib/utils';
+import { useUser } from '@/lib/context';
+import { publicationService } from '@/lib/api/services/publication.service';
+import { mockPublications } from '@/lib/mock-data';
+import type { Publication, PublicationReview } from '@/lib/types';
+import {
+  AssignReviewerModal,
+  CompleteReviewModal,
+  UpdateStageModal,
+  VerifyStudentPubModal,
+} from './PublicationActionModals';
+
+const DOSEN_LIST = [
+  { id: 'u-dosen1', nama: 'Dr. Eng. Hendra Wijaya, M.Sc.' },
+  { id: 'u-dosen2', nama: 'Dewi Lestari, M.T.' },
+  { id: 'u-gkm', nama: 'Siti Rahmawati, M.Kom.' },
+  { id: 'u-koordinator', nama: 'Ir. Agus Pratama, M.Kom.' },
+];
 
 export default function Page() {
   const { id } = useParams<{ id: string }>();
+  const { user, currentRole } = useUser();
 
-  // Mock publication data
-  const [pub, setPub] = useState({
-    id: id || 'PUB-001',
-    judul: 'Implementasi Deep Learning untuk Deteksi Anomali pada Jaringan IoT',
-    jenis: 'JURNAL',
-    target: 'Jurnal Teknologi Informasi dan Ilmu Komputer (JTIIK)',
-    peringkat: 'SINTA 2',
-    tahun: 2025,
-    doi: '10.25126/jtiik.2025.12.3.4412',
-    url: 'https://jtiik.ub.ac.id/index.php/jtiik/article/view/4412',
-    status: 'TERBIT',
-    statusVerifikasi: 'TERVERIFIKASI',
-    verifikator: 'Dr. Ahmad Fauzi (Kaprodi)',
-  });
-
-  const [tahapan, setTahapan] = useState([
-    { tahap: 'TERBIT', tanggal: '2025-08-20', bukti: 'DOI: 10.25126/jtiik.2025.12.3.4412', statusVerif: 'TERVERIFIKASI' },
-    { tahap: 'DITERIMA', tanggal: '2025-06-15', bukti: 'LoA_JTIIK_2025.pdf', statusVerif: 'TERVERIFIKASI' },
-    { tahap: 'REVISI', tanggal: '2025-04-10', bukti: 'Revisi_Mayor_V2.pdf', statusVerif: 'TERVERIFIKASI' },
-    { tahap: 'DALAM_REVIEW', tanggal: '2025-02-18', bukti: '-', statusVerif: 'TERVERIFIKASI' },
-    { tahap: 'DIAJUKAN', tanggal: '2025-01-12', bukti: 'Bukti_Submit_JTIIK.pdf', statusVerif: 'TERVERIFIKASI' },
-    { tahap: 'DRAF', tanggal: '2024-12-05', bukti: '-', statusVerif: 'TERVERIFIKASI' },
-  ]);
-
-  const [penulis] = useState([
-    { urutan: 1, nama: 'Dr. Rina Fitriani, M.Kom.', tipe: 'DOSEN', peran: 'PENULIS_PERTAMA' },
-    { urutan: 2, nama: 'Muhammad Rizky Pratama', tipe: 'MAHASISWA', peran: 'ANGGOTA' },
-    { urutan: 3, nama: 'Ir. Bambang Tri, Ph.D.', tipe: 'DOSEN', peran: 'KORESPONDENSI' },
-  ]);
-
+  const [pub, setPub] = useState<Publication>(
+    () => mockPublications.find((p) => p.id === id) || mockPublications[0]
+  );
   const [stageModal, setStageModal] = useState(false);
-  const [newTahap, setNewTahap] = useState('REVISI');
+  const [newTahap, setNewTahap] = useState<string>('DIAJUKAN');
   const [newBukti, setNewBukti] = useState('');
+  const [newCatatan, setNewCatatan] = useState('');
 
-  const handleAddStage = (e: React.FormEvent) => {
+  const [assignRevModal, setAssignRevModal] = useState(false);
+  const [selectedReviewerId, setSelectedReviewerId] = useState('');
+  const [tenggatReview, setTenggatReview] = useState('2025-11-30');
+
+  const [completeRevModal, setCompleteRevModal] = useState<PublicationReview | null>(null);
+  const [rekomendasi, setRekomendasi] = useState<'LAYAK_DIAJUKAN' | 'PERLU_PERBAIKAN'>('LAYAK_DIAJUKAN');
+  const [catatanReview, setCatatanReview] = useState('');
+
+  const [verifyModal, setVerifyModal] = useState(false);
+  const [verifyDecision, setVerifyDecision] = useState<'TERVERIFIKASI' | 'DITOLAK'>('TERVERIFIKASI');
+  const [verifyCatatan, setVerifyCatatan] = useState('');
+
+  useEffect(() => {
+    if (!id) return;
+    let active = true;
+    publicationService.getPublicationById(id).then((res) => {
+      if (active && res.data) {
+        setPub(res.data);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [id]);
+
+  const isKaprodi = currentRole === 'KAPRODI';
+  const publisherType =
+    pub.tipe_pencatat || (pub.authors?.[0]?.tipe_penulis === 'MAHASISWA' ? 'MAHASISWA' : 'DOSEN');
+  const isPublisher =
+    !isKaprodi &&
+    (publisherType === 'MAHASISWA' ? currentRole === 'MAHASISWA' : currentRole === 'DOSEN');
+  const canVerifyStudentPub =
+    !isKaprodi &&
+    (currentRole === 'DOSEN' || currentRole === 'DOSEN_VERIFIKATOR') &&
+    pub.status_verifikasi === 'MENUNGGU';
+  const canReviewInternal = !isKaprodi && currentRole === 'DOSEN';
+
+  const authorIds = new Set(pub.authors?.map((a) => a.user_id).filter(Boolean));
+  const authorNames = new Set(pub.authors?.map((a) => a.nama_penulis.toLowerCase()));
+  const eligibleReviewers = DOSEN_LIST.filter(
+    (d) => !authorIds.has(d.id) && !authorNames.has(d.nama.toLowerCase())
+  );
+
+  const verifikatorDisplay =
+    pub.verifikator_nama ||
+    pub.authors?.find((a) => a.tipe_penulis === 'DOSEN')?.nama_penulis ||
+    (publisherType === 'MAHASISWA'
+      ? 'Dosen Pembimbing / Penulis Pendamping'
+      : 'Tidak Diperlukan (Publikasi Dosen)');
+
+  const handleUpdateStage = async (e: React.FormEvent) => {
     e.preventDefault();
-    setTahapan([
-      {
-        tahap: newTahap,
-        tanggal: new Date().toISOString().split('T')[0],
-        bukti: newBukti || 'Dokumen_Tahap.pdf',
-        statusVerif: 'MENUNGGU',
-      },
-      ...tahapan,
-    ]);
+    const res = await publicationService.updateStatus(pub.id, {
+      status: newTahap,
+      bukti: newBukti.trim() || undefined,
+      catatan: newCatatan.trim() || undefined,
+    });
+    if (res.data) setPub(res.data);
+    setNewBukti('');
+    setNewCatatan('');
     setStageModal(false);
+  };
+
+  const handleAssignReviewer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const chosen = eligibleReviewers.find((d) => d.id === selectedReviewerId);
+    if (!chosen) return;
+    const res = await publicationService.assignReviewer(pub.id, {
+      reviewer_id: chosen.id,
+      reviewer_nama: chosen.nama,
+      tenggat_review: tenggatReview,
+    });
+    if (res.data) setPub(res.data);
+    setSelectedReviewerId('');
+    setAssignRevModal(false);
+  };
+
+  const handleCompleteReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!completeRevModal) return;
+    const res = await publicationService.completeReview(completeRevModal.id, {
+      rekomendasi,
+      catatan: catatanReview,
+    });
+    if (res.data) setPub(res.data);
+    setCompleteRevModal(null);
+    setCatatanReview('');
+  };
+
+  const handleVerifySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const res = await publicationService.verifyPublication(pub.id, {
+      status: verifyDecision,
+      catatan: verifyCatatan.trim(),
+      verifikator_nama: user.nama_lengkap,
+    });
+    if (res.data) setPub(res.data);
+    setVerifyModal(false);
+    setVerifyCatatan('');
   };
 
   return (
@@ -73,21 +160,47 @@ export default function Page() {
 
       <PageHeader
         title={pub.judul}
-        description={`Katalog karya ilmiah prodi — ID: ${pub.id}`}
+        description={`Katalog karya ilmiah prodi — ID: ${pub.id} • Pencatat: ${publisherType}`}
         badge={<StatusBadge status={pub.status} size="sm" />}
         actions={
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setStageModal(true)}
-              className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5"
-            >
-              <Plus size={14} /> Perbarui Tahapan
-            </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {isKaprodi && (
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">
+                <Eye size={13} /> Mode Pantau Kaprodi (Read-Only)
+              </span>
+            )}
+            {isPublisher && (
+              <>
+                <button
+                  onClick={() => setAssignRevModal(true)}
+                  className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"
+                >
+                  <UserPlus size={14} /> Tetapkan Reviewer Internal
+                </button>
+                <button
+                  onClick={() => {
+                    setNewTahap(pub.status === 'DRAF' ? 'DIAJUKAN' : pub.status);
+                    setStageModal(true);
+                  }}
+                  className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5"
+                >
+                  <Plus size={14} /> Perbarui Status Publikasi
+                </button>
+              </>
+            )}
+            {canVerifyStudentPub && (
+              <button
+                onClick={() => setVerifyModal(true)}
+                className="bg-emerald-600 text-white rounded-xl text-xs font-semibold px-3 py-1.5 flex items-center gap-1.5 hover:bg-emerald-700 transition-colors"
+              >
+                <ShieldCheck size={14} /> Verifikasi Publikasi Mahasiswa
+              </button>
+            )}
           </div>
         }
       />
 
-      {/* Info Karya Ilmiah */}
+      {/* Info Karya Ilmiah & Verifikasi Pembimbing */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="card md:col-span-2 space-y-4">
           <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
@@ -101,15 +214,15 @@ export default function Page() {
             <div>
               <span className="text-slate-400 block mb-0.5">Peringkat / Indeksasi:</span>
               <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-                {pub.peringkat}
+                {(pub.peringkat || 'NON_PERINGKAT').replace(/_/g, ' ')}
               </span>
             </div>
             <div>
               <span className="text-slate-400 block mb-0.5">Target Publikasi:</span>
-              <span className="font-medium text-slate-800">{pub.target}</span>
+              <span className="font-medium text-slate-800">{pub.nama_target}</span>
             </div>
             <div>
-              <span className="text-slate-400 block mb-0.5">Tahun Terbit:</span>
+              <span className="text-slate-400 block mb-0.5">Tahun Terbit / Catat:</span>
               <span className="font-medium text-slate-800">{pub.tahun}</span>
             </div>
             <div className="col-span-2">
@@ -130,20 +243,86 @@ export default function Page() {
           </div>
         </div>
 
-        {/* Verifikasi Mahasiswa */}
+        {/* Status Verifikasi Mahasiswa (FR-31) */}
         <div className="card space-y-3">
           <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-            Status Validasi
+            Verifikasi Rekap (FR-31)
           </h3>
           <div>
             <div className="text-xs text-slate-400 mb-1">Status Verifikasi:</div>
-            <StatusBadge status={pub.statusVerifikasi} size="md" />
+            <StatusBadge status={pub.status_verifikasi} size="md" />
           </div>
-          <div className="pt-2 border-t border-slate-100 text-xs">
-            <span className="text-slate-400 block mb-0.5">Diverifikasi oleh:</span>
-            <span className="font-medium text-slate-800">{pub.verifikator}</span>
+          <div className="pt-2 border-t border-slate-100 text-xs space-y-1">
+            <span className="text-slate-400 block">Dosen Pembimbing / Pendamping:</span>
+            <span className="font-medium text-slate-800 block">{verifikatorDisplay}</span>
+            {pub.catatan_verifikasi && (
+              <p className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 mt-1">
+                {pub.catatan_verifikasi}
+              </p>
+            )}
+            <p className="text-[11px] text-slate-400 pt-1">
+              Status tahapan diperbarui langsung oleh {publisherType === 'MAHASISWA' ? 'Mahasiswa' : 'Dosen'} pem-publish.
+            </p>
           </div>
         </div>
+      </div>
+
+      {/* Review Internal Sebelum Diajukan (FR-31) */}
+      <div className="card space-y-3">
+        <div>
+          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+            Review Internal Naskah (FR-31)
+          </h3>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Catatan telaah dari dosen reviewer internal (bukan penulis) sebelum naskah diajukan.
+          </p>
+        </div>
+        {!pub.reviews || pub.reviews.length === 0 ? (
+          <div className="text-xs text-slate-400 bg-slate-50 border border-slate-100 rounded-xl p-4">
+            Belum ada penugasan dosen reviewer internal pada publikasi ini.
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {pub.reviews.map((rev) => (
+              <div
+                key={rev.id}
+                className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+              >
+                <div className="space-y-1 text-xs">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-slate-800">
+                      {rev.reviewer_nama || rev.reviewer?.nama_lengkap || rev.reviewer_id}
+                    </span>
+                    <StatusBadge status={rev.status} size="sm" />
+                    {rev.rekomendasi && <StatusBadge status={rev.rekomendasi} size="sm" />}
+                  </div>
+                  {rev.tenggat_review && (
+                    <div className="text-[11px] text-slate-400">
+                      Tenggat Review: {formatDateShort(rev.tenggat_review)}
+                    </div>
+                  )}
+                  {(rev.catatan_review || rev.catatan) && (
+                    <p className="text-slate-600 bg-white p-2.5 rounded-lg border border-slate-100">
+                      {rev.catatan_review || rev.catatan}
+                    </p>
+                  )}
+                </div>
+                {canReviewInternal && rev.status === 'DITUGASKAN' && (
+                  <button
+                    onClick={() => {
+                      setCompleteRevModal(rev);
+                      setRekomendasi('LAYAK_DIAJUKAN');
+                      setCatatanReview('');
+                    }}
+                    className="btn-primary text-xs px-3 py-1.5 inline-flex items-center gap-1.5 shrink-0"
+                  >
+                    <ClipboardCheck size={13} /> Beri Catatan Review
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Daftar Penulis */}
@@ -152,101 +331,91 @@ export default function Page() {
           Susunan Penulis Karya
         </h3>
         <div className="divide-y divide-slate-100">
-          {penulis.map((p) => (
-            <div key={p.urutan} className="py-2.5 flex items-center justify-between text-xs">
+          {(pub.authors || []).map((p) => (
+            <div key={p.id || p.urutan} className="py-2.5 flex items-center justify-between text-xs">
               <div className="flex items-center gap-3">
                 <span className="font-mono font-bold text-slate-400 w-4 text-center">{p.urutan}</span>
                 <div>
-                  <div className="font-semibold text-slate-800">{p.nama}</div>
-                  <div className="text-[11px] text-slate-400">Tipe: {p.tipe}</div>
+                  <div className="font-semibold text-slate-800">{p.nama_penulis}</div>
+                  <div className="text-[11px] text-slate-400">Tipe: {p.tipe_penulis}</div>
                 </div>
               </div>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
-                {p.peran.replace('_', ' ')}
+                {p.peran.replace(/_/g, ' ')}
               </span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Riwayat Tahapan (Timeline) */}
+      {/* Riwayat Tahapan */}
       <div className="card">
         <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">
           Riwayat Tahapan Publikasi (FR-30)
         </h3>
         <div className="space-y-4 relative before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
-          {tahapan.map((t, i) => (
-            <div key={i} className="flex items-start gap-4 relative">
+          {(pub.stage_logs || []).map((t, i) => (
+            <div key={t.id || i} className="flex items-start gap-4 relative">
               <div className="w-7 h-7 rounded-full bg-blue-50 border-2 border-blue-500 text-blue-600 flex items-center justify-center shrink-0 z-10">
                 <CheckCircle2 size={14} />
               </div>
               <div className="flex-1 p-3 rounded-xl border border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-800 text-xs">{t.tahap}</span>
-                    <span className="text-[11px] text-slate-400">• {formatDateShort(t.tanggal)}</span>
+                    <span className="font-bold text-slate-800 text-xs">{t.tahap.replace(/_/g, ' ')}</span>
+                    <span className="text-[11px] text-slate-400">• {formatDateShort(t.tanggal_tahap)}</span>
                   </div>
-                  <div className="text-xs text-slate-500 mt-0.5">Bukti: {t.bukti}</div>
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    Bukti: {t.tautan_bukti || t.nama_berkas_bukti || '-'}
+                    {t.catatan ? ` — ${t.catatan}` : ''}
+                  </div>
                 </div>
-                <StatusBadge status={t.statusVerif} size="sm" />
+                <StatusBadge status={t.status_verifikasi} size="sm" />
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Modal Tambah Tahap */}
-      <Modal
+      <UpdateStageModal
         open={stageModal}
         onClose={() => setStageModal(false)}
-        title="Perbarui Tahapan Publikasi"
-        size="md"
-      >
-        <form onSubmit={handleAddStage} className="space-y-4">
-          <div>
-            <label className="text-xs font-semibold text-slate-700 block mb-1">Tahap Baru</label>
-            <select
-              value={newTahap}
-              onChange={(e) => setNewTahap(e.target.value)}
-              className="select-field"
-            >
-              <option value="DIAJUKAN">Diajukan (Submit)</option>
-              <option value="DALAM_REVIEW">Dalam Review</option>
-              <option value="REVISI">Revisi</option>
-              <option value="DITERIMA">Diterima (LoA Accepted)</option>
-              <option value="TERBIT">Terbit (Published)</option>
-              <option value="DITOLAK">Ditolak</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-slate-700 block mb-1">
-              Unggah Bukti / Tautan DOI
-            </label>
-            <input
-              type="text"
-              value={newBukti}
-              onChange={(e) => setNewBukti(e.target.value)}
-              placeholder="Contoh: LoA_JTIIK_2025.pdf atau DOI url"
-              className="input-field text-xs"
-              required
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={() => setStageModal(false)}
-              className="btn-secondary text-xs px-4 py-2"
-            >
-              Batal
-            </button>
-            <button type="submit" className="btn-primary text-xs px-4 py-2">
-              Simpan Tahap
-            </button>
-          </div>
-        </form>
-      </Modal>
+        newTahap={newTahap}
+        setNewTahap={setNewTahap}
+        newBukti={newBukti}
+        setNewBukti={setNewBukti}
+        newCatatan={newCatatan}
+        setNewCatatan={setNewCatatan}
+        onSubmit={handleUpdateStage}
+      />
+      <AssignReviewerModal
+        open={assignRevModal}
+        onClose={() => setAssignRevModal(false)}
+        eligibleReviewers={eligibleReviewers}
+        selectedReviewerId={selectedReviewerId}
+        setSelectedReviewerId={setSelectedReviewerId}
+        tenggatReview={tenggatReview}
+        setTenggatReview={setTenggatReview}
+        onSubmit={handleAssignReviewer}
+      />
+      <CompleteReviewModal
+        review={completeRevModal}
+        onClose={() => setCompleteRevModal(null)}
+        rekomendasi={rekomendasi}
+        setRekomendasi={setRekomendasi}
+        catatanReview={catatanReview}
+        setCatatanReview={setCatatanReview}
+        onSubmit={handleCompleteReview}
+      />
+      <VerifyStudentPubModal
+        open={verifyModal}
+        onClose={() => setVerifyModal(false)}
+        verifyDecision={verifyDecision}
+        setVerifyDecision={setVerifyDecision}
+        verifyCatatan={verifyCatatan}
+        setVerifyCatatan={setVerifyCatatan}
+        onSubmit={handleVerifySubmit}
+      />
     </div>
   );
 }

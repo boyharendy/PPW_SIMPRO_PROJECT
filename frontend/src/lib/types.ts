@@ -168,11 +168,13 @@ export interface PublicationReview {
   id: string;
   publication_id: string;
   reviewer_id: string;
+  reviewer_nama?: string;
   ditetapkan_oleh: string;
-  status: 'DITUGASKAN' | 'SELESAI' | 'DIBATALKAN';
+  status: 'DITUGASKAN' | 'SELESAI' | 'SELESAI_REVIEW' | 'DIBATALKAN';
   tenggat_review?: string;
   rekomendasi?: 'LAYAK_DIAJUKAN' | 'PERLU_PERBAIKAN';
   catatan_review?: string;
+  catatan?: string;
   ditugaskan_at: string;
   selesai_at?: string;
   reviewer?: Profile;
@@ -186,11 +188,13 @@ export interface Publication {
   peringkat: PublicationRank;
   status: PublicationStatus;
   status_verifikasi: VerificationStatus;
+  tipe_pencatat?: 'DOSEN' | 'MAHASISWA';
   doi?: string;
   url?: string;
   tahun: number;
   dicatat_oleh: string;
   verifikator_id?: string;
+  verifikator_nama?: string;
   diverifikasi_at?: string;
   catatan_verifikasi?: string;
   created_at: string;

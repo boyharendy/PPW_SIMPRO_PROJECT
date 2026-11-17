@@ -21,9 +21,11 @@ type PublicationRepository interface {
 	UpdateStatus(id string, status model.PublicationStatus) error
 	AddStageLog(log *model.PublicationStageLog) error
 	AddReview(review *model.PublicationReview) error
+	GetReviews(reviewerID string) ([]*model.PublicationReview, error)
 	UpdateAuthors(id string, authors []*model.PublicationAuthor) error
 	GetVerificationQueue(verifierID string) ([]*model.Publication, error)
 	AssignVerifier(id string, verifierID string) error
+	VerifyPublicationRecord(id string, verifierID string, statusVerifikasi string, catatan string) error
 	VerifyStage(stageID string, verifierID string, status string, catatan string) error
 	CompleteReview(reviewID string, rekomendasi string, catatan string) error
 	GetRecap() (*model.PublicationRecap, error)
@@ -119,7 +121,7 @@ func (r *supabasePublicationRepository) Create(pub *model.Publication) (*model.P
 		pub.ID = uuid.New().String()
 	}
 	if pub.Status == "" {
-		pub.Status = model.PubStatusDraft
+		pub.Status = model.PubStatusDraf
 	}
 	if pub.NamaJurnalKonferensi == "" && pub.NamaTarget != "" {
 		pub.NamaJurnalKonferensi = pub.NamaTarget
@@ -133,6 +135,13 @@ func (r *supabasePublicationRepository) Create(pub *model.Publication) (*model.P
 	if pub.Peringkat == "" {
 		pub.Peringkat = "NON_PERINGKAT"
 	}
+	if pub.StatusVerifikasi == "" {
+		if strings.EqualFold(pub.TipePencatat, "MAHASISWA") || pub.VerifikatorID != "" {
+			pub.StatusVerifikasi = "MENUNGGU"
+		} else {
+			pub.StatusVerifikasi = "TIDAK_PERLU"
+		}
+	}
 
 	payload := map[string]interface{}{
 		"id":                     pub.ID,
@@ -145,11 +154,11 @@ func (r *supabasePublicationRepository) Create(pub *model.Publication) (*model.P
 		"doi":                    pub.DOI,
 		"url_publikasi":          pub.URLPublikasi,
 		"file_naskah_url":        pub.FileNaskahURL,
+		"status_verifikasi":      pub.StatusVerifikasi,
 		"created_by":             pub.CreatedBy,
 	}
 	if pub.VerifikatorID != "" {
 		payload["verifikator_id"] = pub.VerifikatorID
-		payload["status_verifikasi"] = "MENUNGGU"
 	}
 
 	var inserted []*model.Publication
@@ -229,7 +238,7 @@ func (r *supabasePublicationRepository) UpdateStatus(id string, status model.Pub
 	payload := map[string]interface{}{
 		"status": string(status),
 	}
-	if status == model.PubStatusTerverifikasi || status == model.PubStatusTerbit {
+	if status == model.PubStatusTerverifikasi {
 		now := time.Now()
 		payload["status_verifikasi"] = "TERVERIFIKASI"
 		payload["diverifikasi_at"] = now
@@ -269,20 +278,50 @@ func (r *supabasePublicationRepository) AddReview(review *model.PublicationRevie
 	if review.ID == "" {
 		review.ID = uuid.New().String()
 	}
+	if review.Status == "" {
+		if strings.TrimSpace(review.Catatan) == "" {
+			review.Status = "DITUGASKAN"
+		} else {
+			review.Status = "SELESAI_REVIEW"
+		}
+	}
 	payload := map[string]interface{}{
 		"id":             review.ID,
 		"publication_id": review.PublicationID,
 		"reviewer_id":    review.ReviewerID,
 		"catatan":        review.Catatan,
 		"rekomendasi":    review.Rekomendasi,
+		"status":         review.Status,
 	}
-	if review.Status != "" {
-		payload["status"] = review.Status
+	if review.DitetapkanOleh != "" {
+		payload["ditetapkan_oleh"] = review.DitetapkanOleh
 	}
 	if review.TenggatReview != "" {
 		payload["tenggat_review"] = review.TenggatReview
 	}
-	return r.client.Insert("publication_reviews", payload, nil)
+	if err := r.client.Insert("publication_reviews", payload, nil); err != nil {
+		return err
+	}
+	if pub, err := r.FindByID(review.PublicationID); err == nil {
+		if pub.Status == model.PubStatusDraf || pub.Status == model.PubStatusDraft {
+			_ = r.UpdateStatus(review.PublicationID, model.PubStatusReviewInternal)
+		}
+	}
+	return nil
+}
+
+func (r *supabasePublicationRepository) GetReviews(reviewerID string) ([]*model.PublicationReview, error) {
+	params := map[string]string{
+		"order": "reviewed_at.desc",
+	}
+	if reviewerID != "" {
+		params["reviewer_id"] = fmt.Sprintf("eq.%s", reviewerID)
+	}
+	var list []*model.PublicationReview
+	if err := r.client.Select("publication_reviews", params, &list); err != nil {
+		return nil, fmt.Errorf("gagal query review publikasi: %w", err)
+	}
+	return list, nil
 }
 
 func (r *supabasePublicationRepository) UpdateAuthors(id string, authors []*model.PublicationAuthor) error {
@@ -303,8 +342,8 @@ func (r *supabasePublicationRepository) UpdateAuthors(id string, authors []*mode
 
 func (r *supabasePublicationRepository) GetVerificationQueue(verifierID string) ([]*model.Publication, error) {
 	params := map[string]string{
-		"status": fmt.Sprintf("eq.%s", model.PubStatusMenungguVerifikasi),
-		"order":  "created_at.desc",
+		"or":    fmt.Sprintf("(status_verifikasi.eq.MENUNGGU,status.eq.%s)", model.PubStatusMenungguVerifikasi),
+		"order": "created_at.desc",
 	}
 	if verifierID != "" {
 		params["verifikator_id"] = fmt.Sprintf("eq.%s", verifierID)
@@ -323,6 +362,30 @@ func (r *supabasePublicationRepository) AssignVerifier(id string, verifierID str
 	}, map[string]interface{}{
 		"verifikator_id": verifierID,
 	}, nil)
+}
+
+func (r *supabasePublicationRepository) VerifyPublicationRecord(id string, verifierID string, statusVerifikasi string, catatan string) error {
+	pub, err := r.FindByID(id)
+	if err != nil {
+		return err
+	}
+	now := time.Now()
+	payload := map[string]interface{}{
+		"status_verifikasi":  statusVerifikasi,
+		"verifikator_id":     verifierID,
+		"catatan_verifikasi": catatan,
+		"diverifikasi_at":    now.Format(time.RFC3339),
+	}
+	if pub.Status == model.PubStatusMenungguVerifikasi {
+		payload["status"] = string(model.PubStatusDiajukan)
+	}
+	if statusVerifikasi == "TERVERIFIKASI" {
+		payload["is_forwarded_to_kinerja"] = true
+		payload["forwarded_to_kinerja_at"] = now.Format(time.RFC3339)
+	}
+	return r.client.Update("publications", map[string]string{
+		"id": fmt.Sprintf("eq.%s", id),
+	}, payload, nil)
 }
 
 func (r *supabasePublicationRepository) VerifyStage(stageID string, verifierID string, status string, catatan string) error {
@@ -351,7 +414,7 @@ func (r *supabasePublicationRepository) CompleteReview(reviewID string, rekomend
 
 func (r *supabasePublicationRepository) GetRecap() (*model.PublicationRecap, error) {
 	var list []*model.Publication
-	_ = r.client.Select("publications", map[string]string{"select": "id,status,tipe,peringkat,tahun_terbit,is_forwarded_to_kinerja"}, &list)
+	_ = r.client.Select("publications", map[string]string{"select": "id,status,status_verifikasi,tipe,peringkat,tahun_terbit,is_forwarded_to_kinerja"}, &list)
 
 	var allAuthors []*model.PublicationAuthor
 	_ = r.client.Select("publication_authors", map[string]string{"select": "publication_id,tipe_penulis"}, &allAuthors)
@@ -363,18 +426,21 @@ func (r *supabasePublicationRepository) GetRecap() (*model.PublicationRecap, err
 	}
 
 	recap := &model.PublicationRecap{
-		TotalPublikasi: len(list),
-		PerTipe:        make(map[string]int),
-		PerStatus:      make(map[string]int),
-		PerPeringkat:   make(map[string]int),
-		PerTahun:       make(map[int]int),
+		PerTipe:      make(map[string]int),
+		PerStatus:    make(map[string]int),
+		PerPeringkat: make(map[string]int),
+		PerTahun:     make(map[int]int),
 	}
 
 	for _, p := range list {
-		if p.Status == model.PubStatusTerverifikasi || p.Status == model.PubStatusTerbit || p.Status == model.PubStatusDiterima {
+		if p.StatusVerifikasi == "MENUNGGU" || p.StatusVerifikasi == "DITOLAK" {
+			continue
+		}
+		recap.TotalPublikasi++
+		if p.StatusVerifikasi == "TERVERIFIKASI" || p.Status == model.PubStatusTerverifikasi || p.Status == model.PubStatusTerbit || p.Status == model.PubStatusDiterima {
 			recap.Terverifikasi++
 		}
-		if p.IsForwardedToKinerja || p.Status == model.PubStatusTerverifikasi || p.Status == model.PubStatusTerbit {
+		if p.IsForwardedToKinerja || p.StatusVerifikasi == "TERVERIFIKASI" || p.Status == model.PubStatusTerverifikasi || p.Status == model.PubStatusTerbit {
 			recap.DiteruskanKeKinerja++
 		}
 		if pubHasStudent[p.ID] {
@@ -452,6 +518,9 @@ func (r *memoryPublicationRepository) FindByID(id string) (*model.Publication, e
 	}
 	res := *p
 	res.Reviews = r.reviews[id]
+	if len(r.authors[id]) > 0 {
+		res.Authors = r.authors[id]
+	}
 	if len(r.stageLogs[id]) > 0 {
 		res.StageLogs = r.stageLogs[id]
 	}
@@ -465,7 +534,7 @@ func (r *memoryPublicationRepository) Create(pub *model.Publication) (*model.Pub
 		pub.ID = uuid.New().String()
 	}
 	if pub.Status == "" {
-		pub.Status = model.PubStatusDraft
+		pub.Status = model.PubStatusDraf
 	}
 	if pub.NamaJurnalKonferensi == "" && pub.NamaTarget != "" {
 		pub.NamaJurnalKonferensi = pub.NamaTarget
@@ -473,12 +542,28 @@ func (r *memoryPublicationRepository) Create(pub *model.Publication) (*model.Pub
 	if pub.TahunTerbit == 0 && pub.Tahun > 0 {
 		pub.TahunTerbit = pub.Tahun
 	}
+	if pub.Tipe == "" && pub.Jenis != "" {
+		pub.Tipe = model.PublicationType(pub.Jenis)
+	}
 	if pub.Peringkat == "" {
 		pub.Peringkat = "NON_PERINGKAT"
+	}
+	if pub.StatusVerifikasi == "" {
+		if strings.EqualFold(pub.TipePencatat, "MAHASISWA") || pub.VerifikatorID != "" {
+			pub.StatusVerifikasi = "MENUNGGU"
+		} else {
+			pub.StatusVerifikasi = "TIDAK_PERLU"
+		}
 	}
 	pub.CreatedAt = time.Now()
 	pub.UpdatedAt = time.Now()
 	r.publications[pub.ID] = pub
+	if len(pub.Authors) > 0 {
+		r.authors[pub.ID] = pub.Authors
+	}
+	if len(pub.Reviews) > 0 {
+		r.reviews[pub.ID] = pub.Reviews
+	}
 	if len(pub.StageLogs) > 0 {
 		r.stageLogs[pub.ID] = pub.StageLogs
 	}
@@ -527,14 +612,17 @@ func (r *memoryPublicationRepository) UpdateStatus(id string, status model.Publi
 		return errors.New("publikasi tidak ditemukan")
 	}
 	p.Status = status
-	if status == model.PubStatusTerverifikasi || status == model.PubStatusTerbit {
-		now := time.Now()
+	now := time.Now()
+	if status == model.PubStatusTerverifikasi {
 		p.StatusVerifikasi = "TERVERIFIKASI"
 		p.DiverifikasiAt = &now
 		p.IsForwardedToKinerja = true
 		p.ForwardedToKinerjaAt = &now
+	} else if status == model.PubStatusTerbit && p.StatusVerifikasi != "MENUNGGU" && p.StatusVerifikasi != "DITOLAK" {
+		p.IsForwardedToKinerja = true
+		p.ForwardedToKinerjaAt = &now
 	}
-	p.UpdatedAt = time.Now()
+	p.UpdatedAt = now
 	return nil
 }
 
@@ -562,9 +650,36 @@ func (r *memoryPublicationRepository) AddReview(review *model.PublicationReview)
 	if review.ID == "" {
 		review.ID = uuid.New().String()
 	}
+	if review.Status == "" {
+		if strings.TrimSpace(review.Catatan) == "" {
+			review.Status = "DITUGASKAN"
+		} else {
+			review.Status = "SELESAI_REVIEW"
+		}
+	}
 	review.CreatedAt = time.Now()
 	r.reviews[review.PublicationID] = append(r.reviews[review.PublicationID], review)
+	if pub, ok := r.publications[review.PublicationID]; ok {
+		if pub.Status == model.PubStatusDraf || pub.Status == model.PubStatusDraft {
+			pub.Status = model.PubStatusReviewInternal
+		}
+		pub.UpdatedAt = time.Now()
+	}
 	return nil
+}
+
+func (r *memoryPublicationRepository) GetReviews(reviewerID string) ([]*model.PublicationReview, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var result []*model.PublicationReview
+	for _, revs := range r.reviews {
+		for _, rev := range revs {
+			if reviewerID == "" || rev.ReviewerID == reviewerID {
+				result = append(result, rev)
+			}
+		}
+	}
+	return result, nil
 }
 
 func (r *memoryPublicationRepository) UpdateAuthors(id string, authors []*model.PublicationAuthor) error {
@@ -603,6 +718,29 @@ func (r *memoryPublicationRepository) AssignVerifier(id string, verifierID strin
 	}
 	pub.VerifikatorID = verifierID
 	pub.UpdatedAt = time.Now()
+	return nil
+}
+
+func (r *memoryPublicationRepository) VerifyPublicationRecord(id string, verifierID string, statusVerifikasi string, catatan string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	pub, ok := r.publications[id]
+	if !ok {
+		return errors.New("publikasi tidak ditemukan")
+	}
+	now := time.Now()
+	pub.StatusVerifikasi = statusVerifikasi
+	pub.VerifikatorID = verifierID
+	pub.CatatanVerifikasi = catatan
+	pub.DiverifikasiAt = &now
+	if pub.Status == model.PubStatusMenungguVerifikasi {
+		pub.Status = model.PubStatusDiajukan
+	}
+	if statusVerifikasi == "TERVERIFIKASI" {
+		pub.IsForwardedToKinerja = true
+		pub.ForwardedToKinerjaAt = &now
+	}
+	pub.UpdatedAt = now
 	return nil
 }
 
@@ -653,18 +791,21 @@ func (r *memoryPublicationRepository) GetRecap() (*model.PublicationRecap, error
 	defer r.mu.RUnlock()
 
 	recap := &model.PublicationRecap{
-		TotalPublikasi: len(r.publications),
-		PerTipe:        make(map[string]int),
-		PerStatus:      make(map[string]int),
-		PerPeringkat:   make(map[string]int),
-		PerTahun:       make(map[int]int),
+		PerTipe:      make(map[string]int),
+		PerStatus:    make(map[string]int),
+		PerPeringkat: make(map[string]int),
+		PerTahun:     make(map[int]int),
 	}
 
 	for _, p := range r.publications {
-		if p.Status == model.PubStatusTerverifikasi || p.Status == model.PubStatusTerbit || p.Status == model.PubStatusDiterima {
+		if p.StatusVerifikasi == "MENUNGGU" || p.StatusVerifikasi == "DITOLAK" {
+			continue
+		}
+		recap.TotalPublikasi++
+		if p.StatusVerifikasi == "TERVERIFIKASI" || p.Status == model.PubStatusTerverifikasi || p.Status == model.PubStatusTerbit || p.Status == model.PubStatusDiterima {
 			recap.Terverifikasi++
 		}
-		if p.IsForwardedToKinerja || p.Status == model.PubStatusTerverifikasi || p.Status == model.PubStatusTerbit {
+		if p.IsForwardedToKinerja || p.StatusVerifikasi == "TERVERIFIKASI" || p.Status == model.PubStatusTerverifikasi || p.Status == model.PubStatusTerbit {
 			recap.DiteruskanKeKinerja++
 		}
 		hasStudent := false
