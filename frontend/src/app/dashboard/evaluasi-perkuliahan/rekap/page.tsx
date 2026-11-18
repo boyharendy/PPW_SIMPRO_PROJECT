@@ -130,7 +130,7 @@ export default function Page() {
     <div className="space-y-6">
       <PageHeader
         title="Rekap CPMK & Evaluasi"
-        description="Rekapitulasi pencapaian CPMK dan catatan tindak lanjut perbaikan mutu mata kuliah (FR-45, FR-46)."
+        description="Rekapitulasi pencapaian CPMK dan catatan tindak lanjut perbaikan mutu mata kuliah."
         actions={<ExportMenu filename="rekap-cpmk-evaluasi-prodi" />}
       />
 

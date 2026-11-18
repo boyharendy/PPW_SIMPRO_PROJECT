@@ -118,7 +118,7 @@ export default function Page() {
     <div className="space-y-6">
       <PageHeader
         title="Antrean Aduan Masuk"
-        description="Kelola penerimaan, telaah awal, dan disposisi tiket aduan prodi (FR-48, FR-49)."
+        description="Kelola penerimaan, telaah awal, dan disposisi tiket aduan prodi."
         actions={
           <Link
             href="/dashboard/kelola/aduan/sensitif"

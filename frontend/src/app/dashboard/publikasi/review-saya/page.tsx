@@ -137,7 +137,7 @@ export default function Page() {
     <div className="space-y-6">
       <PageHeader
         title="Review Internal Publikasi"
-        description="Daftar penugasan penelaahan internal manuskrip publikasi dosen (FR-31)."
+        description="Daftar penugasan penelaahan internal manuskrip publikasi dosen."
       />
 
       <div className="card">

@@ -237,7 +237,7 @@ export default function Page() {
               <Award size={16} className="text-blue-600" /> Penugasan Dosen Verifikator Publikasi Mahasiswa
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Dosen yang berwenang memvalidasi LoA dan DOI publikasi yang diunggah oleh mahasiswa (FR-32).
+              Dosen yang berwenang memvalidasi LoA dan DOI publikasi yang diunggah oleh mahasiswa.
             </p>
           </div>
           <button

@@ -148,7 +148,7 @@ export default function Page() {
 
       <PageHeader
         title={`Penyusunan Versi Kerja RKA ${tahun || '2025'}`}
-        description="Penyusunan dan pengeditan draft pagu RKA sebelum diajukan (FR-40)."
+        description="Penyusunan dan pengeditan draft pagu RKA sebelum diajukan."
         actions={
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-500">

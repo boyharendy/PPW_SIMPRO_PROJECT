@@ -191,7 +191,7 @@ export default function Page() {
     <div className="space-y-6">
       <PageHeader
         title="Verifikasi Publikasi Mahasiswa"
-        description="Validasi keabsahan bukti publikasi karya mahasiswa oleh Dosen Verifikator (FR-32)."
+        description="Validasi keabsahan bukti publikasi karya mahasiswa oleh Dosen Verifikator."
       />
 
       <div className="card">

@@ -204,7 +204,7 @@ export default function Page() {
       {/* Riwayat Tahapan (Timeline) */}
       <div className="card">
         <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">
-          Riwayat Tahapan Publikasi (FR-30)
+          Riwayat Tahapan Publikasi
         </h3>
         <div className="space-y-4 relative before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
           {tahapan.map((t, i) => (

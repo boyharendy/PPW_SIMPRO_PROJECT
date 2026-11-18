@@ -63,7 +63,7 @@ export default function Page() {
 
       <PageHeader
         title={`Riwayat Versi RKA — Versi ${version.nomor} (${version.tahun})`}
-        description="Arsip dan perbandingan perubahan antar versi rencana kerja anggaran (FR-40)."
+        description="Arsip dan perbandingan perubahan antar versi rencana kerja anggaran."
         badge={<StatusBadge status={version.status} size="sm" />}
         actions={
           version.status === 'DIAJUKAN' ? (

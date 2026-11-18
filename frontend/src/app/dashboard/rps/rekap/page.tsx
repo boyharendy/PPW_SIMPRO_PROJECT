@@ -128,7 +128,7 @@ export default function Page() {
     <div className="space-y-6">
       <PageHeader
         title="Rekapitulasi Status RPS"
-        description="Monitoring kepatuhan pengumpulan dan persentase kelayakan RPS seluruh mata kuliah (FR-25)."
+        description="Monitoring kepatuhan pengumpulan dan persentase kelayakan RPS seluruh mata kuliah."
         actions={<ExportMenu filename="rekap-kepatuhan-rps-prodi" />}
       />
 

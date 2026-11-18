@@ -126,7 +126,7 @@ export default function Page() {
     <div className="space-y-6">
       <PageHeader
         title="Pengajuan & Review RPS"
-        description="Daftar Rencana Pembelajaran Semester per mata kuliah dan status telaah mutunya (FR-21)."
+        description="Daftar Rencana Pembelajaran Semester per mata kuliah dan status telaah mutunya."
         actions={
           <Link href="/dashboard/rps/ajukan" className="btn-primary text-sm flex items-center gap-1.5">
             <Plus size={16} /> Ajukan RPS Baru

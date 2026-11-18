@@ -80,9 +80,6 @@ export default function Page() {
                 <option value="DENGAN_LOGIN">DENGAN LOGIN (Permit Kriptografis Anonim 15 Menit)</option>
                 <option value="TANPA_LOGIN_CAPTCHA">TANPA LOGIN (Verifikasi Captcha Publik)</option>
               </select>
-              <p className="text-[11px] text-slate-400 mt-1">
-                Sesuai Keputusan Desain PRD D5.
-              </p>
             </div>
           </div>
         </div>

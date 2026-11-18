@@ -59,7 +59,7 @@ export default function Page() {
     <div className="space-y-6">
       <PageHeader
         title="Kirim Aduan Anonim"
-        description="Layanan penyampaian aspirasi dan aduan civitas akademika secara aman dan terlindungi (FR-47)."
+        description="Layanan penyampaian aspirasi dan aduan civitas akademika secara aman dan terlindungi."
       />
 
       {/* Jaminan Privasi & Keamanan Anonimitas (PRD FR-47) */}

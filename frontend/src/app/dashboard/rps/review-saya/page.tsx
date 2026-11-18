@@ -122,7 +122,7 @@ export default function Page() {
     <div className="space-y-6">
       <PageHeader
         title="Tugas Review RPS Saya"
-        description="Daftar dokumen RPS yang ditugaskan kepada Anda untuk ditelaah berbasis 5 pilar mutu (FR-23)."
+        description="Daftar dokumen RPS yang ditugaskan kepada Anda untuk ditelaah berbasis 5 pilar mutu."
       />
 
       <div className="card">

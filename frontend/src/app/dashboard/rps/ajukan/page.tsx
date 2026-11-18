@@ -67,7 +67,7 @@ export default function Page() {
 
       <PageHeader
         title="Formulir Pengajuan RPS"
-        description="Pengajuan berkas rancangan RPS baru atau revisi semester berjalan (FR-22)."
+        description="Pengajuan berkas rancangan RPS baru atau revisi semester berjalan."
       />
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -139,7 +139,7 @@ export default function Page() {
           <div className="flex items-start justify-between">
             <div>
               <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-                3. Tindak Lanjut Evaluasi Perkuliahan Sebelumnya (FR-45)
+                3. Tindak Lanjut Evaluasi Perkuliahan Sebelumnya
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
                 Rencana perbaikan dari evaluasi semester lalu wajib ditandai status penerapan dan catatannya.

@@ -314,7 +314,7 @@ export default function Page() {
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
           <h2 className="text-lg font-semibold text-slate-800">Dosen Verifikator</h2>
           <p className="text-xs text-slate-500">
-            Publikasi dicatat oleh mahasiswa / melibatkan mahasiswa — pilih dosen verifikator untuk validasi bukti publikasi sebelum masuk ke rekap program studi (FR-31).
+            Publikasi dicatat oleh mahasiswa / melibatkan mahasiswa — pilih dosen verifikator untuk validasi bukti publikasi sebelum masuk ke rekap program studi.
           </p>
           <select
             value={verifikator}

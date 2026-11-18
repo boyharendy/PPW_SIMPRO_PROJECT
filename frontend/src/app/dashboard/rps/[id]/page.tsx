@@ -114,7 +114,7 @@ export default function Page() {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-              Hasil Telaah Reviewer — Instrumen 5 Pilar Mutu (FR-23)
+              Hasil Telaah Reviewer — Instrumen 5 Pilar Mutu
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
               Reviewer: <strong>{rps.reviewer}</strong> • Rekomendasi:{' '}

@@ -159,7 +159,7 @@ export default function Page() {
           {/* 3. Kesesuaian RPS & Rencana Perbaikan (PRD FR-45) */}
           <div className="card space-y-4">
             <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-              3. Keselarasan RPS & Rencana Perbaikan Siklus Depan (FR-45)
+              3. Keselarasan RPS & Rencana Perbaikan Siklus Depan
             </h3>
 
             <div>
@@ -234,7 +234,7 @@ export default function Page() {
             <div className="flex items-center gap-2">
               <MessageSquare size={16} className="text-blue-600" />
               <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-                Umpan Balik Mahasiswa (FR-44)
+                Umpan Balik Mahasiswa
               </h3>
             </div>
             <p className="text-xs text-slate-500 leading-relaxed">

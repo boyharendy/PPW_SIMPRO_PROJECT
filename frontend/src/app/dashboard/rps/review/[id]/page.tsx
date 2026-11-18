@@ -90,7 +90,7 @@ export default function Page() {
 
       <PageHeader
         title="Formulir Review RPS 5 Pilar"
-        description="Penelaahan instrumen RPS berbasis 5 pilar mutu oleh Dosen Reviewer (FR-23, FR-24)."
+        description="Penelaahan instrumen RPS berbasis 5 pilar mutu oleh Dosen Reviewer."
       />
 
       <form onSubmit={handleSubmit} className="space-y-6">

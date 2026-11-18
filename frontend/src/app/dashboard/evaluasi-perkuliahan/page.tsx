@@ -127,7 +127,7 @@ export default function Page() {
     <div className="space-y-6">
       <PageHeader
         title="Evaluasi Perkuliahan"
-        description="Monitoring kepatuhan dan status evaluasi proses perkuliahan semester berjalan (FR-43)."
+        description="Monitoring kepatuhan dan status evaluasi proses perkuliahan semester berjalan."
         actions={
           <Link
             href="/dashboard/evaluasi-perkuliahan/rekap"

@@ -136,7 +136,7 @@ export default function Page() {
     <div className="space-y-6">
       <PageHeader
         title="Aduan Sensitif & Kekerasan"
-        description="Kanal khusus penanganan aduan sensitif dan kekerasan seksual/perundungan dengan hak akses terbatas (FR-50)."
+        description="Kanal khusus penanganan aduan sensitif dan kekerasan seksual/perundungan dengan hak akses terbatas."
       />
 
       {/* Warning Box PGL-K Protocol */}
@@ -187,7 +187,7 @@ export default function Page() {
 
             <div className="pt-2 border-t border-slate-100 space-y-2">
               <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                Penerusan ke Satgas PPKPT Perguruan Tinggi (FR-50)
+                Penerusan ke Satgas PPKPT Perguruan Tinggi
               </label>
               <p className="text-xs text-slate-500">
                 Penerusan dokumen fisik/berkas rahasia dilakukan di luar sistem. Catat nomor referensi registrasi dari Satgas PPKPT di bawah ini:

@@ -199,7 +199,7 @@ export default function PublicLacakAduanPage() {
               <div className="card space-y-4 bg-emerald-50/50 border-emerald-200">
                 <div className="border-b border-emerald-200/60 pb-2">
                   <h3 className="text-sm font-bold text-emerald-900">
-                    Penilaian Kepuasan Pelapor (Opsional - FR-51)
+                    Penilaian Kepuasan Pelapor (Opsional)
                   </h3>
                   <p className="text-xs text-emerald-700">
                     Aduan Anda telah ditandai selesai. Berikan penilaian terhadap respons petugas untuk evaluasi mutu layanan prodi.

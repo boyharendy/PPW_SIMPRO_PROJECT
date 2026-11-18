@@ -98,7 +98,7 @@ export default function Page() {
     <div className="space-y-6">
       <PageHeader
         title="Tindak Lanjut Aduan Saya"
-        description="Daftar disposisi tiket aduan yang ditugaskan kepada Anda (FR-51)."
+        description="Daftar disposisi tiket aduan yang ditugaskan kepada Anda."
       />
 
       <div className="card">

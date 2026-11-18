@@ -90,7 +90,7 @@ export default function Page() {
     <div className="space-y-6">
       <PageHeader
         title="Rekap Statistik Aduan"
-        description="Statistik, tren kategori, dan riwayat resolusi layanan aduan program studi (FR-52)."
+        description="Statistik, tren kategori, dan riwayat resolusi layanan aduan program studi."
         actions={<ExportMenu filename="rekap-statistik-aduan" />}
       />
 
