@@ -113,15 +113,27 @@ export const tripService = {
   // Keputusan persetujuan dinas oleh Kaprodi
   approveTrip: async (
     id: string,
-    data: { status?: string; nomor_surat_tugas?: string; catatan?: string }
+    data: { status?: BusinessTrip['status']; nomor_surat_tugas?: string; catatan?: string; disetujui_oleh?: string }
   ): Promise<ApiResponse<BusinessTrip>> => {
-    const nextStatus = data.status || 'DISETUJUI';
-    storageSync.update(STORAGE_KEYS.TRIPS, id, {
-      status: nextStatus as any,
-      nomor_surat_tugas: data.nomor_surat_tugas,
+    const nextStatus: BusinessTrip['status'] = data.status || 'DISETUJUI';
+    const nowIso = new Date().toISOString();
+    const patch: Partial<BusinessTrip> = {
+      status: nextStatus,
       catatan_keputusan: data.catatan,
-      disetujui_at: nextStatus === 'DISETUJUI' ? new Date().toISOString() : undefined,
-    }, mockBusinessTrips);
+      updated_at: nowIso,
+    };
+
+    if (data.disetujui_oleh) {
+      patch.disetujui_oleh = data.disetujui_oleh;
+    }
+    if (nextStatus === 'DISETUJUI') {
+      patch.disetujui_at = nowIso;
+    }
+    if (data.nomor_surat_tugas?.trim()) {
+      patch.nomor_surat_tugas = data.nomor_surat_tugas.trim();
+    }
+
+    storageSync.update(STORAGE_KEYS.TRIPS, id, patch, mockBusinessTrips);
 
     try {
       return await apiRequest<BusinessTrip>(API_ENDPOINTS.TRIPS.APPROVE(id), {
