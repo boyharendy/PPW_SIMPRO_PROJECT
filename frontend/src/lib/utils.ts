@@ -66,10 +66,10 @@ export function generateTicketCode(): string {
   return `ADU-${segment(4)}-${segment(4)}-${segment(4)}`;
 }
 
-// Hitung persentase serapan anggaran
+// Hitung persentase serapan anggaran aktual (tanpa clamping ke 100% agar over-pagu terlihat jelas)
 export function calculateAbsorptionPercentage(realization: number, budget: number): number {
-  if (budget <= 0) return 0;
-  return Math.min(100, Math.round((realization / budget) * 100));
+  if (budget <= 0) return realization > 0 ? 100 : 0;
+  return Math.round((realization / budget) * 100);
 }
 
 // Status colors map sesuai standar DESIGN.md (Light Mode Blue & White)
@@ -171,13 +171,18 @@ export function getStatusLabel(status: string): string {
     // Modul 10 - RKA
     DITUTUP: 'Ditutup',
     DIGANTIKAN: 'Digantikan',
-    BELUM_DILAKSANAKAN: 'Belum Dilaksanakan',
-    BERJALAN: 'Sedang Berjalan',
-    TERLAKSANA: 'Terlaksana',
+    BELUM_DILAKSANAKAN: 'Belum Terlaksana',
+    BERJALAN: 'Berjalan',
+    TERLAKSANA: 'Selesai',
     BELANJA_BARANG: 'Belanja Barang',
     BELANJA_JASA: 'Belanja Jasa',
     HONOR: 'Honorarium',
     PERJALANAN_DINAS: 'Perjalanan Dinas',
+    DANA_RUTIN_PRODI: 'Dana Rutin Prodi',
+    RKAT: 'RKAT',
+    DANA_UNIVERSITAS: 'Dana Universitas',
+    DANA_FAKULTAS: 'Dana Fakultas',
+    PNBP: 'PNBP',
 
     // Modul 11 - Review RPS
     DIREVIEW: 'Sedang Direview',

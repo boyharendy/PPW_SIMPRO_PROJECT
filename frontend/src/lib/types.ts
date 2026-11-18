@@ -272,11 +272,19 @@ export interface BusinessTrip {
 }
 
 // ----- Modul 10: RKA Prodi -----
-export type RkaDocumentStatus = 'DRAF' | 'AKTIF' | 'DITUTUP';
+export type RkaDocumentStatus = 'DRAF' | 'AKTIF' | 'DITUTUP' | 'ARSIP';
 export type RkaVersionStatus = 'DRAF' | 'DIAJUKAN' | 'PERLU_REVISI' | 'DISETUJUI' | 'DIGANTIKAN' | 'DIBATALKAN';
 export type RkaActivityExecutionStatus = 'BELUM_DILAKSANAKAN' | 'BERJALAN' | 'TERLAKSANA' | 'DIBATALKAN';
 export type RkaBudgetCategory = 'BELANJA_BARANG' | 'BELANJA_JASA' | 'HONOR' | 'PERJALANAN_DINAS' | 'LAINNYA';
-export type RkaBudgetSource = 'DANA_UNIVERSITAS' | 'DANA_FAKULTAS' | 'PNBP' | 'HIBAH' | 'LAINNYA';
+export type RkaBudgetSource =
+  | 'DANA_RUTIN_PRODI'
+  | 'RKAT'
+  | 'HIBAH'
+  | 'DANA_UNIVERSITAS'
+  | 'DANA_FAKULTAS'
+  | 'PNBP'
+  | 'LAINNYA';
+export type RkaQuarter = 'TW1' | 'TW2' | 'TW3' | 'TW4';
 
 export interface RkaBudgetItem {
   id: string;
@@ -303,7 +311,9 @@ export interface RkaActivity {
   target_indikator: string;
   jadwal_mulai: string;
   jadwal_selesai: string;
+  jadwal_triwulan?: RkaQuarter[];
   penanggung_jawab_id: string;
+  penanggung_jawab_nama?: string;
   status_pelaksanaan: RkaActivityExecutionStatus;
   tanggal_realisasi_mulai?: string;
   tanggal_realisasi_selesai?: string;
@@ -315,6 +325,12 @@ export interface RkaActivity {
   total_realisasi?: number;
 }
 
+export interface RkaVersionSnapshot {
+  judul: string;
+  total_anggaran: number;
+  activities: RkaActivity[];
+}
+
 export interface RkaVersion {
   id: string;
   rka_id: string;
@@ -324,6 +340,7 @@ export interface RkaVersion {
   draft_payload?: {
     activities: Partial<RkaActivity>[];
   };
+  snapshot?: RkaVersionSnapshot;
   alasan_revisi?: string;
   row_version: number;
   dibuat_oleh: string;
@@ -336,6 +353,16 @@ export interface RkaVersion {
   created_at: string;
 }
 
+export interface RkaAuditEntry {
+  id: string;
+  waktu: string;
+  aktor: string;
+  peran: string;
+  aksi: string;
+  versi?: number;
+  ringkasan: string;
+}
+
 export interface RkaDocument {
   id: string;
   tahun_anggaran: number;
@@ -345,12 +372,15 @@ export interface RkaDocument {
   versi_kerja_id?: string;
   total_anggaran: number;
   dibuat_oleh: string;
+  disetujui_oleh?: string;
+  disetujui_at?: string;
   ditutup_oleh?: string;
   ditutup_at?: string;
   created_at: string;
   updated_at: string;
   activities?: RkaActivity[];
   versions?: RkaVersion[];
+  audit_logs?: RkaAuditEntry[];
   total_realisasi?: number;
   persentase_serapan?: number;
 }
@@ -363,6 +393,11 @@ export interface RkaRealization {
   uraian: string;
   sumber_pencatatan: 'MANUAL' | 'PERJALANAN_DINAS';
   business_trip_id?: string;
+  nama_berkas_bukti?: string;
+  mime_type_bukti?: string;
+  ukuran_berkas_bukti?: number;
+  data_url_bukti?: string;
+  status_pelaksanaan_saat_catat?: RkaActivityExecutionStatus;
   status: 'AKTIF' | 'DIBATALKAN';
   dicatat_oleh: string;
   created_at: string;

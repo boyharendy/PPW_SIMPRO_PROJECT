@@ -1,13 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { tripService } from '@/lib/api';
-import { mockBusinessTrips, mockRkaDocuments } from '@/lib/mock-data';
+import { rkaService, tripService } from '@/lib/api';
+import { mockBusinessTrips, mockRkaDocuments, mockRkaRealizations } from '@/lib/mock-data';
+import { enrichRkaDocument } from '@/lib/rka-utils';
 import { STORAGE_KEYS, storageSync } from '@/lib/storage-sync';
-import type { BusinessTrip, RkaDocument } from '@/lib/types';
+import type { BusinessTrip, RkaDocument, RkaRealization } from '@/lib/types';
 
 /**
- * Hook sinkronisasi data perjalanan dinas & dokumen RKA dari tripService + storageSync.
+ * Hook sinkronisasi data perjalanan dinas & dokumen RKA dari tripService + rkaService + storageSync.
  */
 export function useBusinessTrips() {
   const [trips, setTrips] = useState<BusinessTrip[]>(mockBusinessTrips);
@@ -15,18 +16,29 @@ export function useBusinessTrips() {
   const [isLoading, setIsLoading] = useState(true);
 
   const syncLocal = useCallback(() => {
-    setTrips(storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips));
-    setRkaDocs(storageSync.get<RkaDocument[]>(STORAGE_KEYS.RKA_DOCUMENTS, mockRkaDocuments));
+    const localTrips = storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips);
+    const localDocs = storageSync.get<RkaDocument[]>(STORAGE_KEYS.RKA_DOCUMENTS, mockRkaDocuments);
+    const localReals = storageSync.get<RkaRealization[]>(
+      STORAGE_KEYS.RKA_REALIZATIONS,
+      mockRkaRealizations
+    );
+    setTrips(localTrips);
+    setRkaDocs(localDocs.map((d) => enrichRkaDocument(d, localReals, localTrips)));
   }, []);
 
   const reload = useCallback(async () => {
     try {
-      const res = await tripService.getTrips();
-      if (res.data && Array.isArray(res.data)) {
-        setTrips(res.data);
+      const [tripRes, rkaRes] = await Promise.all([
+        tripService.getTrips(),
+        rkaService.getRkaList(),
+      ]);
+      if (tripRes.data && Array.isArray(tripRes.data)) {
+        setTrips(tripRes.data);
+      }
+      if (rkaRes.data && Array.isArray(rkaRes.data)) {
+        setRkaDocs(rkaRes.data);
       }
     } finally {
-      setRkaDocs(storageSync.get<RkaDocument[]>(STORAGE_KEYS.RKA_DOCUMENTS, mockRkaDocuments));
       setIsLoading(false);
     }
   }, []);

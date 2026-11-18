@@ -791,10 +791,17 @@ func (r *memoryRkaRepository) DecideVersion(rkaIDOrYear string, nomorVersi int, 
 		return nil
 	}
 
-	// Terapkan versi (simulasi app.apply_rka_version)
+	// Terapkan versi (simulasi app.apply_rka_version) dan arsipkan snapshot versi sebelumnya (read-only)
 	for _, v := range doc.Versions {
 		if v.Status == "DISETUJUI" && v.NomorVersi != nomorVersi {
 			v.Status = "DIGANTIKAN"
+			if v.DraftPayload == nil {
+				v.DraftPayload = map[string]interface{}{
+					"budget_items": doc.BudgetItems,
+					"activities":   doc.Activities,
+					"pagu_total":   doc.PaguTotal,
+				}
+			}
 		}
 	}
 	targetVer.Status = "DISETUJUI"
@@ -861,12 +868,19 @@ func computeRkaSerapan(doc *model.RkaDocument) *model.RkaSerapan {
 	paguTriwulan := make(map[int]float64)
 	realTriwulan := make(map[int]float64)
 
+	paguKategori := make(map[string]float64)
+	realKategori := make(map[string]float64)
+
 	for _, item := range doc.BudgetItems {
 		var pct float64
 		if item.AnggaranAlokasi > 0 {
 			pct = (item.AnggaranTerpakai / item.AnggaranAlokasi) * 100
 		}
 		serapanPerPos[item.KodeMataAnggaran] = pct
+		if item.Kategori != "" {
+			paguKategori[item.Kategori] += item.AnggaranAlokasi
+			realKategori[item.Kategori] += item.AnggaranTerpakai
+		}
 		if item.NamaKegiatan != "" {
 			serapanPerKegiatan[item.NamaKegiatan] = pct
 		}
@@ -878,6 +892,12 @@ func computeRkaSerapan(doc *model.RkaDocument) *model.RkaSerapan {
 		realTriwulan[tw] += item.AnggaranTerpakai
 	}
 
+	for kat, p := range paguKategori {
+		if p > 0 {
+			serapanPerPos[kat] = (realKategori[kat] / p) * 100
+		}
+	}
+
 	for tw := 1; tw <= 4; tw++ {
 		key := fmt.Sprintf("TW%d", tw)
 		if paguTriwulan[tw] > 0 {
@@ -885,10 +905,18 @@ func computeRkaSerapan(doc *model.RkaDocument) *model.RkaSerapan {
 		}
 	}
 
-	today := time.Now().Format("2006-01-02")
+	now := time.Now()
+	today := now.Format("2006-01-02")
+	currentQuarter := (int(now.Month())-1)/3 + 1
 	overdueCount := 0
 	for _, act := range doc.Activities {
-		if act.StatusPelaksanaan != "TERLAKSANA" && act.JadwalSelesai != "" && act.JadwalSelesai < today {
+		if act.StatusPelaksanaan == "TERLAKSANA" {
+			continue
+		}
+		isPastDate := act.JadwalSelesai != "" && act.JadwalSelesai < today
+		isPastQuarter := (act.StatusPelaksanaan == "BELUM_DILAKSANAKAN" || act.StatusPelaksanaan == "BELUM_TERLAKSANA") &&
+			act.Triwulan > 0 && act.Triwulan < currentQuarter
+		if isPastDate || isPastQuarter {
 			overdueCount++
 		}
 	}
