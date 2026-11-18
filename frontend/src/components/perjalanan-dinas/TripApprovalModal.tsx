@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   AlertTriangle,
@@ -49,6 +49,7 @@ export default function TripApprovalModal({
   const [catatan, setCatatan] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const errorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!trip || !open) return;
@@ -57,6 +58,12 @@ export default function TripApprovalModal({
     setErrorMsg(null);
     setIsSubmitting(false);
   }, [trip, open]);
+
+  useEffect(() => {
+    if (errorMsg) {
+      errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [errorMsg]);
 
   const participants = useMemo(
     () => (trip ? getTripParticipantsDisplay(trip) : []),
@@ -121,6 +128,56 @@ export default function TripApprovalModal({
     }
   };
 
+  const footerContent = canApprove ? (
+    <div className="flex flex-wrap items-center justify-between gap-2.5">
+      <button
+        type="button"
+        disabled={isSubmitting}
+        onClick={onClose}
+        className="btn-secondary text-xs px-3.5 py-2"
+      >
+        Tutup
+      </button>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={isSubmitting}
+          onClick={() => handleDecision('DITOLAK')}
+          className="rounded-full border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
+        >
+          <XCircle size={14} /> Tolak
+        </button>
+        <button
+          type="button"
+          disabled={isSubmitting}
+          onClick={() => handleDecision('PERLU_REVISI')}
+          className="rounded-full border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
+        >
+          <RotateCcw size={14} /> Minta Revisi
+        </button>
+        <button
+          type="button"
+          disabled={isSubmitting}
+          onClick={() => handleDecision('DISETUJUI')}
+          className="btn-primary text-xs px-4 py-2 inline-flex items-center gap-1.5 disabled:opacity-50"
+        >
+          <CheckCircle2 size={14} /> Setujui Usulan
+        </button>
+      </div>
+    </div>
+  ) : (
+    <div className="flex justify-end">
+      <button
+        type="button"
+        onClick={onClose}
+        className="btn-secondary text-xs px-4 py-2"
+      >
+        Tutup
+      </button>
+    </div>
+  );
+
   return (
     <Modal
       open={open}
@@ -130,11 +187,15 @@ export default function TripApprovalModal({
           ? `Persetujuan Perjalanan Dinas: ${trip.tujuan}`
           : `Detail Usulan Perjalanan Dinas: ${trip.tujuan}`
       }
+      footer={footerContent}
       size="lg"
     >
       <div className="space-y-4 text-xs">
         {errorMsg && (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-rose-800 flex items-start gap-2">
+          <div
+            ref={errorRef}
+            className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-rose-800 flex items-start gap-2"
+          >
             <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
             <span>{errorMsg}</span>
           </div>
@@ -323,47 +384,9 @@ export default function TripApprovalModal({
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                disabled={isSubmitting}
-                onClick={onClose}
-                className="btn-secondary text-xs px-3.5 py-2"
-              >
-                Tutup
-              </button>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  disabled={isSubmitting}
-                  onClick={() => handleDecision('DITOLAK')}
-                  className="rounded-full border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
-                >
-                  <XCircle size={14} /> Tolak
-                </button>
-                <button
-                  type="button"
-                  disabled={isSubmitting}
-                  onClick={() => handleDecision('PERLU_REVISI')}
-                  className="rounded-full border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
-                >
-                  <RotateCcw size={14} /> Minta Revisi
-                </button>
-                <button
-                  type="button"
-                  disabled={isSubmitting}
-                  onClick={() => handleDecision('DISETUJUI')}
-                  className="btn-primary text-xs px-4 py-2 inline-flex items-center gap-1.5 disabled:opacity-50"
-                >
-                  <CheckCircle2 size={14} /> Setujui Usulan
-                </button>
-              </div>
-            </div>
           </div>
         ) : (
-          <div className="border-t border-slate-200 pt-4 space-y-3">
+          <div className="border-t border-slate-200 pt-4">
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1.5">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">
                 Catatan &amp; Status Keputusan
@@ -382,16 +405,6 @@ export default function TripApprovalModal({
               <div className="text-xs text-slate-700">
                 <strong>Catatan Keputusan:</strong> {trip.catatan_keputusan || 'Belum ada catatan keputusan.'}
               </div>
-            </div>
-
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={onClose}
-                className="btn-secondary text-xs px-4 py-2"
-              >
-                Tutup
-              </button>
             </div>
           </div>
         )}
