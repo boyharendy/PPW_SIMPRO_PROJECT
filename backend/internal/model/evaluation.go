@@ -26,6 +26,8 @@ type CourseImprovementPlan struct {
 	EvaluationID      string    `json:"evaluation_id"`
 	CourseID          string    `json:"course_id,omitempty"`
 	Uraian            string    `json:"uraian"`
+	Rekomendasi       string    `json:"rekomendasi,omitempty"`
+	TindakLanjut      string    `json:"tindak_lanjut,omitempty"`
 	TargetKomponenRPS string    `json:"target_komponen_rps,omitempty"`
 	Status            string    `json:"status"` // BELUM_DITERAPKAN | SEBAGIAN_DITERAPKAN | SUDAH_DITERAPKAN
 	StatusPenerapan   string    `json:"status_penerapan,omitempty"`
@@ -38,6 +40,7 @@ type CourseFeedbackSummary struct {
 	CourseClassID     string             `json:"course_class_id"`
 	JumlahResponden   int                `json:"jumlah_responden"`
 	RataRataNilai     float64            `json:"rata_rata_nilai"`
+	SkorRataRata      float64            `json:"skor_rata_rata,omitempty"`
 	RingkasanKomentar string             `json:"ringkasan_komentar,omitempty"`
 	SkorPerAspek      map[string]float64 `json:"skor_per_aspek,omitempty"`
 }
@@ -75,13 +78,15 @@ type CourseEvaluation struct {
 }
 
 type EvaluationRecap struct {
-	TotalKelas          int                       `json:"total_kelas"`
-	TotalEvaluasi       int                       `json:"total_evaluasi"`
-	SudahMengisi        int                       `json:"sudah_mengisi"`
-	BelumMengisi        int                       `json:"belum_mengisi"`
-	RataRataKepuasan    float64                   `json:"rata_rata_kepuasan"`
-	RataRataKelulusan   float64                   `json:"rata_rata_kelulusan"`
-	RataRataCPMK        float64                   `json:"rata_rata_cpmk"`
-	PersentaseSubmitted float64                   `json:"persentase_submitted"`
-	RingkasanPerMK      []CourseEvaluationSummary `json:"ringkasan_per_mk,omitempty"`
+	TotalKelas             int                       `json:"total_kelas"`
+	TotalEvaluasi          int                       `json:"total_evaluasi"`
+	SudahMengisi           int                       `json:"sudah_mengisi"`
+	BelumMengisi           int                       `json:"belum_mengisi"`
+	RataRataKepuasan       float64                   `json:"rata_rata_kepuasan"`
+	RataRataKepuasanMhs    float64                   `json:"rata_rata_kepuasan_mhs,omitempty"`
+	RataRataKelulusan      float64                   `json:"rata_rata_kelulusan"`
+	RataRataCPMK           float64                   `json:"rata_rata_cpmk"`
+	PersentaseCpmkTercapai float64                   `json:"persentase_cpmk_tercapai,omitempty"`
+	PersentaseSubmitted    float64                   `json:"persentase_submitted"`
+	RingkasanPerMK         []CourseEvaluationSummary `json:"ringkasan_per_mk,omitempty"`
 }

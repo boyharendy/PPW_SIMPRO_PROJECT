@@ -61,15 +61,15 @@ func TestExportServices(t *testing.T) {
 
 	// 4. Test RKA Serapan CSV
 	rkaSerapan := &model.RkaSerapan{
-		TahunAnggaran:   2025,
-		TotalPagu:       250000000,
-		TotalSerapan:    187500000,
-		PersentaseTotal: 75.0,
-		SerapanPerTriwulan: []*model.TriwulanSerapan{
-			{Triwulan: "TW 1", TargetPagu: 60000000, Realisasi: 50000000, Persentase: 83.33},
+		TahunAnggaran:     "2025",
+		PaguTotal:         250000000,
+		TotalTerpakai:     187500000,
+		PersentaseSerapan: 75.0,
+		SerapanPerTriwulan: map[string]float64{
+			"TW 1": 50000000,
 		},
-		SerapanPerPos: []*model.PosSerapan{
-			{NamaPos: "Belanja ATK", Pagu: 10000000, Realisasi: 8000000, Sisa: 2000000, Persentase: 80.0},
+		SerapanPerPos: map[string]float64{
+			"Belanja ATK": 8000000,
 		},
 	}
 	rkaCSV := export.ExportRkaSerapanCSV(rkaSerapan)

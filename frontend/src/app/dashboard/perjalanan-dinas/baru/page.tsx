@@ -1,20 +1,20 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import CurrencyInput from '@/components/ui/CurrencyInput';
+import { tripService } from '@/lib/api';
+import { useUser } from '@/lib/context';
+import { mockProfiles } from '@/lib/mock-data';
+import { getAllRkaBudgetItems } from '@/lib/trip-utils';
+import { useBusinessTrips } from '@/lib/use-business-trips';
+import type { BusinessTripCost, BusinessTripParticipant, TripCostComponent, TripFundingSource } from '@/lib/types';
 import { formatRupiah } from '@/lib/utils';
-import { AlertTriangle, Save, Send } from 'lucide-react';
+import { AlertCircle, AlertTriangle, ArrowLeft, CheckCircle2, Save, Send } from 'lucide-react';
 
-const DOSEN_LIST = [
-  'Dr. Budi Santoso, M.Kom.',
-  'Siti Aminah, S.Kom., M.T.',
-  'Rudi Hermawan, S.T., M.Cs.',
-  'Dewi Lestari, S.Kom., M.Eng.',
-];
-
-const SUMBER_DANA = [
+const SUMBER_DANA: Array<{ value: TripFundingSource; label: string }> = [
   { value: 'RKA_PRODI', label: 'RKA Prodi' },
   { value: 'FAKULTAS', label: 'Fakultas' },
   { value: 'HIBAH', label: 'Hibah' },
@@ -22,106 +22,409 @@ const SUMBER_DANA = [
   { value: 'LAINNYA', label: 'Lainnya' },
 ];
 
-const POS_RKA = [
-  { value: 'PERJALANAN_DINAS_SEMINAR', label: 'Perjalanan Dinas – Seminar/Konferensi' },
-  { value: 'PERJALANAN_DINAS_WORKSHOP', label: 'Perjalanan Dinas – Workshop/Pelatihan' },
-  { value: 'PERJALANAN_DINAS_BENCHMARKING', label: 'Perjalanan Dinas – Benchmarking' },
+const COST_LABELS: Array<{ key: TripCostComponent; label: string }> = [
+  { key: 'TRANSPORTASI', label: 'Transportasi' },
+  { key: 'AKOMODASI', label: 'Akomodasi' },
+  { key: 'UANG_HARIAN', label: 'Uang Harian' },
+  { key: 'LAINNYA', label: 'Lain-lain' },
 ];
 
-const SISA_ANGGARAN = 15_000_000;
-
-export default function Page() {
+function TripFormContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get('edit');
 
-  const [pelaksana, setPelaksana] = useState('');
+  const { user, currentRole } = useUser();
+  const { trips, rkaDocs } = useBusinessTrips();
+
+  const dosenProfiles = useMemo(
+    () => mockProfiles.filter((p) => p.tipe_pengguna === 'DOSEN' && p.is_active),
+    []
+  );
+  const rkaBudgetItems = useMemo(() => getAllRkaBudgetItems(rkaDocs), [rkaDocs]);
+
+  const editingTrip = useMemo(
+    () => (editId ? trips.find((t) => t.id === editId) : undefined),
+    [editId, trips]
+  );
+
+  const [pelaksanaId, setPelaksanaId] = useState('');
+  const [anggotaIds, setAnggotaIds] = useState<string[]>([]);
   const [tujuan, setTujuan] = useState('');
   const [maksud, setMaksud] = useState('');
   const [tglBerangkat, setTglBerangkat] = useState('');
   const [tglKembali, setTglKembali] = useState('');
-  const [sumberDana, setSumberDana] = useState('');
-  const [posRka, setPosRka] = useState('');
-
-  const [biaya, setBiaya] = useState({
-    transportasi: 0,
-    akomodasi: 0,
-    uangHarian: 0,
-    lainnya: 0,
+  const [sumberDana, setSumberDana] = useState<TripFundingSource | ''>('');
+  const [posRkaId, setPosRkaId] = useState('');
+  const [biaya, setBiaya] = useState<Record<TripCostComponent, number>>({
+    TRANSPORTASI: 0,
+    AKOMODASI: 0,
+    UANG_HARIAN: 0,
+    LAINNYA: 0,
+  });
+  const [keteranganBiaya, setKeteranganBiaya] = useState<Record<TripCostComponent, string>>({
+    TRANSPORTASI: '',
+    AKOMODASI: '',
+    UANG_HARIAN: '',
+    LAINNYA: '',
   });
 
+  const [initializedEditId, setInitializedEditId] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Default pelaksana untuk mode Dosen saat membuat pengajuan baru
+  useEffect(() => {
+    if (editId) return;
+    if (!pelaksanaId && currentRole === 'DOSEN') {
+      const matched = dosenProfiles.find((p) => p.id === user.id);
+      if (matched) setPelaksanaId(matched.id);
+    }
+  }, [editId, currentRole, user.id, dosenProfiles, pelaksanaId]);
+
+  // Isi form saat mode edit Draf / Perlu Revisi
+  useEffect(() => {
+    if (!editingTrip || initializedEditId === editingTrip.id) return;
+
+    const lead = editingTrip.participants?.find((p) => p.peran === 'KETUA_ROMBONGAN');
+    setPelaksanaId(lead?.user_id || editingTrip.diajukan_oleh || '');
+    setAnggotaIds(
+      (editingTrip.participants || [])
+        .filter((p) => p.peran === 'ANGGOTA')
+        .map((p) => p.user_id)
+    );
+    setTujuan(editingTrip.tujuan || '');
+    setMaksud(editingTrip.maksud_kegiatan || '');
+    setTglBerangkat(editingTrip.tanggal_berangkat || '');
+    setTglKembali(editingTrip.tanggal_kembali || '');
+    setSumberDana(editingTrip.sumber_dana || '');
+    setPosRkaId(editingTrip.rka_budget_item_id || '');
+
+    const nextBiaya: Record<TripCostComponent, number> = {
+      TRANSPORTASI: 0,
+      AKOMODASI: 0,
+      UANG_HARIAN: 0,
+      LAINNYA: 0,
+    };
+    const nextKet: Record<TripCostComponent, string> = {
+      TRANSPORTASI: '',
+      AKOMODASI: '',
+      UANG_HARIAN: '',
+      LAINNYA: '',
+    };
+    for (const c of editingTrip.costs || []) {
+      nextBiaya[c.komponen] = c.estimasi_biaya || 0;
+      nextKet[c.komponen] = c.keterangan || '';
+    }
+    setBiaya(nextBiaya);
+    setKeteranganBiaya(nextKet);
+    setInitializedEditId(editingTrip.id);
+  }, [editingTrip, initializedEditId]);
+
   const totalBiaya = useMemo(
-    () => biaya.transportasi + biaya.akomodasi + biaya.uangHarian + biaya.lainnya,
-    [biaya],
+    () =>
+      biaya.TRANSPORTASI +
+      biaya.AKOMODASI +
+      biaya.UANG_HARIAN +
+      biaya.LAINNYA,
+    [biaya]
   );
 
   const showPosRka = sumberDana === 'RKA_PRODI';
-  const overBudget = showPosRka && totalBiaya > SISA_ANGGARAN;
+  const selectedBudgetItem = useMemo(
+    () => rkaBudgetItems.find((b) => b.id === posRkaId),
+    [rkaBudgetItems, posRkaId]
+  );
+  const sisaAnggaran = selectedBudgetItem?.sisa_anggaran ?? 0;
+  const overBudget =
+    showPosRka && Boolean(selectedBudgetItem) && totalBiaya > sisaAnggaran;
 
-  const today = new Date();
-  const departDate = tglBerangkat ? new Date(tglBerangkat) : null;
-  const tooSoon = departDate
-    ? (departDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24) < 3
-    : false;
+  const tooSoon = useMemo(() => {
+    if (!tglBerangkat) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const depart = new Date(tglBerangkat);
+    depart.setHours(0, 0, 0, 0);
+    return (depart.getTime() - today.getTime()) / (1000 * 60 * 60 * 24) < 3;
+  }, [tglBerangkat]);
 
-  const updateBiaya = (key: keyof typeof biaya) => (val: number) => {
-    setBiaya((prev) => ({ ...prev, [key]: val }));
+  const toggleAnggota = (id: string) => {
+    setAnggotaIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
   };
 
-  const inputCls = 'w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500';
+  const handleSave = async (targetStatus: 'DRAF' | 'DIAJUKAN') => {
+    setErrorMsg(null);
+
+    if (!tujuan.trim() || !maksud.trim()) {
+      setErrorMsg('Tujuan dan maksud kegiatan wajib diisi.');
+      return;
+    }
+
+    if (targetStatus === 'DIAJUKAN') {
+      if (!pelaksanaId) {
+        setErrorMsg('Pelaksana utama perjalanan dinas wajib dipilih.');
+        return;
+      }
+      if (!tglBerangkat || !tglKembali) {
+        setErrorMsg('Tanggal berangkat dan tanggal kembali wajib diisi.');
+        return;
+      }
+      if (new Date(tglKembali) < new Date(tglBerangkat)) {
+        setErrorMsg('Tanggal kembali tidak boleh lebih awal dari tanggal berangkat.');
+        return;
+      }
+      if (!sumberDana) {
+        setErrorMsg('Sumber dana wajib dipilih sebelum mengajukan ke Kaprodi.');
+        return;
+      }
+      if (sumberDana === 'RKA_PRODI' && !posRkaId) {
+        setErrorMsg('Pos RKA wajib dipilih jika sumber dana berasal dari RKA Prodi.');
+        return;
+      }
+      if (totalBiaya <= 0) {
+        setErrorMsg('Sesuai NF-07, rincian estimasi biaya wajib diisi (total > Rp 0).');
+        return;
+      }
+    }
+
+    const tripId = editingTrip?.id || `trip-${Date.now()}`;
+    const leadId = pelaksanaId || user.id || 'u-dosen1';
+    const leadProfile = mockProfiles.find((p) => p.id === leadId);
+
+    const participants: BusinessTripParticipant[] = [
+      {
+        id: `tp-${Date.now()}-lead`,
+        trip_id: tripId,
+        user_id: leadId,
+        peran: 'KETUA_ROMBONGAN',
+        user: leadProfile,
+      },
+      ...anggotaIds
+        .filter((aid) => aid !== leadId)
+        .map((aid, idx) => ({
+          id: `tp-${Date.now()}-${idx}`,
+          trip_id: tripId,
+          user_id: aid,
+          peran: 'ANGGOTA' as const,
+          user: mockProfiles.find((p) => p.id === aid),
+        })),
+    ];
+
+    const costs: BusinessTripCost[] = COST_LABELS.map((item, idx) => ({
+      id: `tc-${Date.now()}-${idx}`,
+      trip_id: tripId,
+      komponen: item.key,
+      keterangan: keteranganBiaya[item.key]?.trim() || undefined,
+      estimasi_biaya: biaya[item.key] || 0,
+    }));
+
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        diajukan_oleh: leadId,
+        pengaju: leadProfile,
+        tujuan: tujuan.trim(),
+        maksud_kegiatan: maksud.trim(),
+        tanggal_berangkat: tglBerangkat,
+        tanggal_kembali: tglKembali,
+        sumber_dana: (sumberDana || 'RKA_PRODI') as TripFundingSource,
+        rka_budget_item_id: sumberDana === 'RKA_PRODI' ? posRkaId : undefined,
+        status: targetStatus,
+        participants,
+        costs,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (editingTrip) {
+        await tripService.updateTrip(editingTrip.id, payload);
+      } else {
+        await tripService.createTrip({ id: tripId, ...payload });
+      }
+
+      router.push('/dashboard/perjalanan-dinas');
+    } catch {
+      setErrorMsg('Gagal menyimpan rencana perjalanan dinas.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const inputCls =
+    'w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500';
 
   return (
     <div className="space-y-6 max-w-3xl">
+      <div>
+        <Link
+          href="/dashboard/perjalanan-dinas"
+          className="text-xs text-slate-500 hover:text-slate-800 inline-flex items-center gap-1 font-medium"
+        >
+          <ArrowLeft size={14} /> Kembali ke Daftar Perjalanan Dinas
+        </Link>
+      </div>
+
       <PageHeader
-        title="Pengajuan Perjalanan Dinas"
-        description="Isi formulir untuk mengajukan perjalanan dinas baru"
+        title={editingTrip ? 'Perbarui Pengajuan Perjalanan Dinas' : 'Pengajuan Perjalanan Dinas'}
+        description={
+          currentRole === 'ADMIN_PRODI'
+            ? 'Buat atau lengkapi pengajuan perjalanan dinas dosen untuk diajukan ke Kaprodi.'
+            : 'Isi formulir rencana perjalanan dinas dan rincian estimasi biaya (FR-33).'
+        }
       />
 
-      {/* Form Card */}
+      {editingTrip?.status === 'PERLU_REVISI' && editingTrip.catatan_keputusan && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900 flex items-start gap-2.5">
+          <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <strong className="block">Catatan Revisi dari Kaprodi:</strong>
+            <p className="mt-0.5">{editingTrip.catatan_keputusan}</p>
+          </div>
+        </div>
+      )}
+
+      {errorMsg && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs text-rose-800 flex items-start gap-2">
+          <AlertCircle size={16} className="text-rose-600 shrink-0 mt-0.5" />
+          <span>{errorMsg}</span>
+        </div>
+      )}
+
+      {/* Informasi Perjalanan */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-5">
         <h2 className="text-lg font-semibold text-slate-800">Informasi Perjalanan</h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5 sm:col-span-2">
-            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Pelaksana</label>
-            <select value={pelaksana} onChange={(e) => setPelaksana(e.target.value)} className={inputCls}>
-              <option value="">Pilih pelaksana</option>
-              {DOSEN_LIST.map((d) => <option key={d} value={d}>{d}</option>)}
+            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+              Pelaksana Utama (Ketua Rombongan)
+            </label>
+            <select
+              value={pelaksanaId}
+              onChange={(e) => setPelaksanaId(e.target.value)}
+              className={inputCls}
+            >
+              <option value="">Pilih pelaksana utama</option>
+              {dosenProfiles.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.nama_lengkap}
+                </option>
+              ))}
             </select>
           </div>
 
           <div className="space-y-1.5 sm:col-span-2">
-            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Tujuan</label>
-            <input value={tujuan} onChange={(e) => setTujuan(e.target.value)} placeholder="Kota / Instansi tujuan" className={inputCls} />
+            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+              Anggota Rombongan (Opsional)
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {dosenProfiles
+                .filter((d) => d.id !== pelaksanaId)
+                .map((d) => {
+                  const selected = anggotaIds.includes(d.id);
+                  return (
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => toggleAnggota(d.id)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors inline-flex items-center gap-1.5 ${
+                        selected
+                          ? 'bg-blue-50 text-blue-700 border-blue-300 font-semibold'
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {selected && <CheckCircle2 size={12} />}
+                      {d.nama_lengkap}
+                    </button>
+                  );
+                })}
+            </div>
           </div>
 
           <div className="space-y-1.5 sm:col-span-2">
-            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Maksud Kegiatan</label>
-            <textarea value={maksud} onChange={(e) => setMaksud(e.target.value)} rows={3} placeholder="Jelaskan maksud perjalanan dinas…" className={inputCls + ' resize-none'} />
+            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+              Tujuan
+            </label>
+            <input
+              value={tujuan}
+              onChange={(e) => setTujuan(e.target.value)}
+              placeholder="Kota / Instansi tujuan"
+              className={inputCls}
+            />
+          </div>
+
+          <div className="space-y-1.5 sm:col-span-2">
+            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+              Maksud Kegiatan
+            </label>
+            <textarea
+              value={maksud}
+              onChange={(e) => setMaksud(e.target.value)}
+              rows={3}
+              placeholder="Jelaskan maksud perjalanan dinas…"
+              className={inputCls + ' resize-none'}
+            />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Tanggal Berangkat</label>
-            <input type="date" value={tglBerangkat} onChange={(e) => setTglBerangkat(e.target.value)} className={inputCls} />
+            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+              Tanggal Berangkat
+            </label>
+            <input
+              type="date"
+              value={tglBerangkat}
+              onChange={(e) => setTglBerangkat(e.target.value)}
+              className={inputCls}
+            />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Tanggal Kembali</label>
-            <input type="date" value={tglKembali} onChange={(e) => setTglKembali(e.target.value)} className={inputCls} />
+            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+              Tanggal Kembali
+            </label>
+            <input
+              type="date"
+              value={tglKembali}
+              onChange={(e) => setTglKembali(e.target.value)}
+              className={inputCls}
+            />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Sumber Dana</label>
-            <select value={sumberDana} onChange={(e) => setSumberDana(e.target.value)} className={inputCls}>
+            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+              Sumber Dana
+            </label>
+            <select
+              value={sumberDana}
+              onChange={(e) => setSumberDana(e.target.value as TripFundingSource | '')}
+              className={inputCls}
+            >
               <option value="">Pilih sumber dana</option>
-              {SUMBER_DANA.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+              {SUMBER_DANA.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
             </select>
           </div>
 
           {showPosRka && (
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Pos RKA</label>
-              <select value={posRka} onChange={(e) => setPosRka(e.target.value)} className={inputCls}>
+              <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                Pos RKA
+              </label>
+              <select
+                value={posRkaId}
+                onChange={(e) => setPosRkaId(e.target.value)}
+                className={inputCls}
+              >
                 <option value="">Pilih pos RKA</option>
-                {POS_RKA.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+                {rkaBudgetItems.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.kode_pos} — {p.nama_pos}
+                  </option>
+                ))}
               </select>
             </div>
           )}
@@ -130,40 +433,64 @@ export default function Page() {
 
       {/* Estimasi Biaya */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
-        <h2 className="text-lg font-semibold text-slate-800">Estimasi Biaya</h2>
-
-        {[
-          { label: 'Transportasi', key: 'transportasi' as const },
-          { label: 'Akomodasi', key: 'akomodasi' as const },
-          { label: 'Uang Harian', key: 'uangHarian' as const },
-          { label: 'Lain-lain', key: 'lainnya' as const },
-        ].map((item) => (
-          <div key={item.key} className="flex items-center gap-4">
-            <span className="text-sm text-slate-700 w-32 shrink-0">{item.label}</span>
-            <CurrencyInput value={biaya[item.key]} onChange={updateBiaya(item.key)} />
-          </div>
-        ))}
-
-        <div className="flex items-center gap-4 pt-3 border-t border-slate-100">
-          <span className="text-sm font-semibold text-slate-800 w-32 shrink-0">Total</span>
-          <span className="text-lg font-bold text-slate-900">{formatRupiah(totalBiaya)}</span>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <h2 className="text-lg font-semibold text-slate-800">Estimasi Biaya per Komponen</h2>
+          <span className="text-xs text-slate-400">Wajib diisi ≥ 0 (NF-07)</span>
         </div>
 
-        {showPosRka && (
+        <div className="space-y-3">
+          {COST_LABELS.map((item) => (
+            <div
+              key={item.key}
+              className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center"
+            >
+              <span className="text-sm font-medium text-slate-700 sm:col-span-3">
+                {item.label}
+              </span>
+              <div className="sm:col-span-5">
+                <CurrencyInput
+                  value={biaya[item.key]}
+                  onChange={(val) => setBiaya((prev) => ({ ...prev, [item.key]: val }))}
+                />
+              </div>
+              <div className="sm:col-span-4">
+                <input
+                  type="text"
+                  value={keteranganBiaya[item.key]}
+                  onChange={(e) =>
+                    setKeteranganBiaya((prev) => ({ ...prev, [item.key]: e.target.value }))
+                  }
+                  placeholder="Keterangan (opsional)"
+                  className="input-field text-xs py-2"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+          <span className="text-sm font-semibold text-slate-800">Total Estimasi</span>
+          <span className="text-lg font-bold text-blue-700">{formatRupiah(totalBiaya)}</span>
+        </div>
+
+        {showPosRka && selectedBudgetItem && (
           <p className="text-xs text-slate-500">
-            Sisa anggaran pos RKA: <span className="font-semibold">{formatRupiah(SISA_ANGGARAN)}</span>
+            Sisa anggaran pos RKA ({selectedBudgetItem.kode_pos}):{' '}
+            <span className={`font-semibold ${overBudget ? 'text-rose-600' : 'text-emerald-700'}`}>
+              {formatRupiah(sisaAnggaran)}
+            </span>
           </p>
         )}
       </div>
 
-      {/* Warnings */}
+      {/* Peringatan Kebijakan */}
       {(overBudget || tooSoon) && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
           {overBudget && (
             <div className="flex items-start gap-2">
               <AlertTriangle size={16} className="text-amber-600 mt-0.5 shrink-0" />
               <p className="text-sm text-amber-800">
-                Total estimasi biaya <span className="font-semibold">melebihi sisa anggaran</span> pos RKA ({formatRupiah(SISA_ANGGARAN)}).
+                Total estimasi biaya <span className="font-semibold">melebihi sisa anggaran</span> pos RKA ({formatRupiah(sisaAnggaran)}).
               </p>
             </div>
           )}
@@ -179,20 +506,46 @@ export default function Page() {
       )}
 
       {/* Actions */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <button
+          type="button"
+          disabled={isSubmitting}
           onClick={() => router.back()}
-          className="bg-white text-slate-700 border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold hover:bg-slate-50 transition-colors"
+          className="btn-secondary text-sm px-4 py-2"
         >
           Batal
         </button>
-        <button className="bg-white text-slate-700 border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-2 hover:bg-slate-50 transition-colors">
+        <button
+          type="button"
+          disabled={isSubmitting}
+          onClick={() => handleSave('DRAF')}
+          className="btn-secondary text-sm px-4 py-2 inline-flex items-center gap-2"
+        >
           <Save size={14} /> Simpan Draf
         </button>
-        <button className="bg-blue-600 text-white rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-2 hover:bg-blue-700 transition-colors">
-          <Send size={14} /> Ajukan
+        <button
+          type="button"
+          disabled={isSubmitting}
+          onClick={() => handleSave('DIAJUKAN')}
+          className="btn-primary text-sm px-5 py-2 inline-flex items-center gap-2"
+        >
+          <Send size={14} /> Ajukan ke Kaprodi
         </button>
       </div>
     </div>
+  );
+}
+
+export default function PengajuanPerjalananDinasPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-48 items-center justify-center text-sm text-slate-500">
+          Memuat formulir perjalanan dinas...
+        </div>
+      }
+    >
+      <TripFormContent />
+    </Suspense>
   );
 }

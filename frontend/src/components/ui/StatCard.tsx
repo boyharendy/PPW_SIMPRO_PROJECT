@@ -60,8 +60,10 @@ export function StatCard({
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
       {/* Top Row: Clean Title + Badge / Icon */}
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider truncate">{title}</p>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider leading-snug break-words">
+          {title}
+        </p>
 
         {computedBadge ? (
           <span
@@ -89,7 +91,7 @@ export function StatCard({
         </h3>
 
         {descText && (
-          <p className="text-xs text-slate-500 font-medium truncate">
+          <p className="text-xs text-slate-500 font-medium">
             {descText}
           </p>
         )}

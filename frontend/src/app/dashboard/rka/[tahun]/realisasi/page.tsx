@@ -147,7 +147,7 @@ export default function Page() {
       header: 'Nominal Realisasi',
       className: 'text-right',
       render: (r) => (
-        <span className="font-mono font-bold text-slate-900 text-xs">
+        <span className="text-xs text-slate-700 font-normal">
           {formatRupiah(r.nominal)}
         </span>
       ),
@@ -167,7 +167,7 @@ export default function Page() {
 
       <PageHeader
         title={`Realisasi Anggaran RKA ${tahun || '2025'}`}
-        description="Pencatatan bukti pencairan dan realisasi belanja per mata anggaran (FR-41)."
+        description="Pencatatan bukti pencairan dan realisasi belanja per mata anggaran."
         actions={
           <button
             onClick={() => setModalOpen(true)}

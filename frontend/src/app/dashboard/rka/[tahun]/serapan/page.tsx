@@ -77,13 +77,13 @@ export default function Page() {
     {
       key: 'pagu',
       header: 'Alokasi Pagu',
-      render: (r) => <span className="font-mono text-xs text-slate-600">{formatRupiah(r.pagu)}</span>,
+      render: (r) => <span className="text-xs text-slate-600">{formatRupiah(r.pagu)}</span>,
     },
     {
       key: 'realisasi',
       header: 'Realisasi Berjalan',
       render: (r) => (
-        <span className="font-mono font-bold text-xs text-slate-900">
+        <span className="text-xs text-slate-700 font-normal">
           {formatRupiah(r.realisasi)}
         </span>
       ),
@@ -154,7 +154,7 @@ export default function Page() {
 
       <PageHeader
         title={`Monitoring Serapan Anggaran RKA ${tahun || '2025'}`}
-        description="Analisis persentase serapan belanja dan proyeksi sisa pagu tahun berjalan (FR-42)."
+        description="Analisis persentase serapan belanja dan proyeksi sisa pagu tahun berjalan."
         actions={<ExportMenu filename={`serapan-rka-${tahun || '2025'}`} />}
       />
 

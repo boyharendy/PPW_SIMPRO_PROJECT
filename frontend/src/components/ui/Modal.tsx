@@ -7,10 +7,11 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: ReactNode;
+  footer?: ReactNode;
   size?: 'sm' | 'md' | 'lg';
 }
 
-export default function Modal({ open, isOpen, onClose, title, children, size = 'md' }: ModalProps) {
+export default function Modal({ open, isOpen, onClose, title, children, footer, size = 'md' }: ModalProps) {
   const isModalOpen = open ?? isOpen ?? false;
   if (!isModalOpen) return null;
 
@@ -26,8 +27,8 @@ export default function Modal({ open, isOpen, onClose, title, children, size = '
         className="absolute inset-0 bg-slate-900/40 transition-opacity" 
         onClick={onClose} 
       />
-      <div className={`relative w-full ${sizeClass} bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden`}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-white">
+      <div className={`relative w-full ${sizeClass} max-h-[calc(100dvh-2rem)] sm:max-h-[90vh] bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden flex flex-col`}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-white shrink-0">
           <h2 className="text-xl font-bold text-slate-800 tracking-tight">{title}</h2>
           <button
             onClick={onClose}
@@ -37,9 +38,14 @@ export default function Modal({ open, isOpen, onClose, title, children, size = '
             <X size={18} />
           </button>
         </div>
-        <div className="px-6 py-5 max-h-[75vh] overflow-y-auto custom-scrollbar">
+        <div className="flex-1 min-h-0 px-6 py-5 overflow-y-auto custom-scrollbar">
           {children}
         </div>
+        {footer && (
+          <div className="px-6 py-4 border-t border-slate-100 bg-white shrink-0">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );

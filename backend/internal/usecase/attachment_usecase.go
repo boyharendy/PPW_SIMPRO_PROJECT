@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"image"
 	"image/jpeg"
 	"image/png"
 	"io"

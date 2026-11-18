@@ -668,15 +668,16 @@ func (r *memorySurveyRepository) ArchiveTemplate(id string) error {
 func (r *memorySurveyRepository) UpdateInvitationStatus(id string, status string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	inv, ok := r.invitations[id]
-	if !ok {
-		return errors.New("undangan survei tidak ditemukan")
+	for _, inv := range r.invitations {
+		if inv.ID == id || inv.Token == id {
+			inv.Status = status
+			if status == "DIISI" {
+				inv.IsCompleted = true
+			}
+			return nil
+		}
 	}
-	inv.Status = status
-	if status == "DIISI" {
-		inv.IsCompleted = true
-	}
-	return nil
+	return errors.New("undangan survei tidak ditemukan")
 }
 
 func (r *memorySurveyRepository) FindPlacements(program, academicPeriodID string) ([]*model.StudentPlacement, error) {
@@ -739,7 +740,7 @@ func (r *memorySurveyRepository) FindPlacements(program, academicPeriodID string
 func (r *memorySurveyRepository) VoidResponse(id string, voidedBy, alasan string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	for _, resp := range r.responses {
+	for _, resp := range r.submissions {
 		if resp.ID == id || resp.InvitationToken == id {
 			now := time.Now()
 			resp.IsVoid = true

@@ -44,6 +44,8 @@ func setupTestRouter() *deliveryHttp.RouterParams {
 	rkaUsecase := usecase.NewRkaUsecase(rkaRepo)
 	rpsUsecase := usecase.NewRpsUsecase(rpsRepo)
 	evalUsecase := usecase.NewEvaluationUsecase(evalRepo)
+	adminRepo := repository.NewMemoryAdminRepository()
+	adminUsecase := usecase.NewAdminUsecase(adminRepo, nil)
 
 	return &deliveryHttp.RouterParams{
 		Config:             cfg,
@@ -59,6 +61,7 @@ func setupTestRouter() *deliveryHttp.RouterParams {
 		RpsHandler:         handler.NewRpsHandler(rpsUsecase),
 		EvaluationHandler:  handler.NewEvaluationHandler(evalUsecase),
 		DashboardHandler:   handler.NewDashboardHandler(surveyRepo, pubRepo, tripRepo, rkaRepo, rpsRepo, evalRepo, complaintRepo),
+		AdminHandler:       handler.NewAdminHandler(adminUsecase),
 	}
 }
 
@@ -349,5 +352,141 @@ func TestRouter_RBAC_StudentRestricted(t *testing.T) {
 	r.ServeHTTP(w, req)
 	if w.Code == http.StatusForbidden {
 		t.Errorf("Mahasiswa should NOT get 403 on /complaints/permit, got %d", w.Code)
+	}
+}
+
+func TestRouter_Publication_RBAC_And_StatusUpdate(t *testing.T) {
+	params := setupTestRouter()
+	r := deliveryHttp.SetupRouter(*params)
+
+	// 1. Login as Kaprodi (active role KAPRODI)
+	loginBody, _ := json.Marshal(map[string]string{
+		"email":    "kaprodi@universitas.ac.id",
+		"password": "password123",
+	})
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewBuffer(loginBody))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	var loginResp struct {
+		Data struct {
+			Tokens struct {
+				AccessToken string `json:"access_token"`
+			} `json:"tokens"`
+		} `json:"data"`
+	}
+	_ = json.Unmarshal(w.Body.Bytes(), &loginResp)
+	kaprodiToken := loginResp.Data.Tokens.AccessToken
+
+	// Kaprodi can monitor publications, reviews, and recap
+	for _, url := range []string{"/api/v1/publications", "/api/v1/publications/reviews", "/api/v1/publications/recap"} {
+		req, _ = http.NewRequest(http.MethodGet, url, nil)
+		req.Header.Set("Authorization", "Bearer "+kaprodiToken)
+		w = httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Errorf("expected 200 for Kaprodi GET %s, got %d", url, w.Code)
+		}
+	}
+
+	// Kaprodi cannot mutate status, verify, assign verifier, or create publication
+	kaprodiForbidden := []struct {
+		method string
+		url    string
+	}{
+		{http.MethodPost, "/api/v1/publications"},
+		{http.MethodPatch, "/api/v1/publications/pub-1/status"},
+		{http.MethodPost, "/api/v1/publications/pub-1/stages"},
+		{http.MethodPost, "/api/v1/publications/pub-1/verify"},
+		{http.MethodPut, "/api/v1/publications/pub-1/verifier"},
+		{http.MethodPost, "/api/v1/publications/pub-1/reviews"},
+	}
+	for _, ep := range kaprodiForbidden {
+		req, _ = http.NewRequest(ep.method, ep.url, nil)
+		req.Header.Set("Authorization", "Bearer "+kaprodiToken)
+		w = httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusForbidden {
+			t.Errorf("expected 403 Forbidden for Kaprodi on %s %s, got %d", ep.method, ep.url, w.Code)
+		}
+	}
+
+	// 2. Register Mahasiswa and publish + update status + assign internal reviewer
+	regBody, _ := json.Marshal(map[string]interface{}{
+		"nama_lengkap": "Sari Mahasiswa",
+		"email":        "sari@mahasiswa.ac.id",
+		"password":     "password123",
+	})
+	req, _ = http.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewBuffer(regBody))
+	req.Header.Set("Content-Type", "application/json")
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	var regResp struct {
+		Data struct {
+			Tokens struct {
+				AccessToken string `json:"access_token"`
+			} `json:"tokens"`
+		} `json:"data"`
+	}
+	_ = json.Unmarshal(w.Body.Bytes(), &regResp)
+	mhsToken := regResp.Data.Tokens.AccessToken
+
+	createBody, _ := json.Marshal(map[string]interface{}{
+		"judul":        "Implementasi Audit Sistem",
+		"tipe":         "JURNAL",
+		"tipe_pencatat": "MAHASISWA",
+		"tahun_terbit": 2025,
+	})
+	req, _ = http.NewRequest(http.MethodPost, "/api/v1/publications", bytes.NewBuffer(createBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+mhsToken)
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201 for mahasiswa create publication, got %d: %s", w.Code, w.Body.String())
+	}
+	var pubResp struct {
+		Data struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	_ = json.Unmarshal(w.Body.Bytes(), &pubResp)
+
+	// Mahasiswa assigns internal reviewer -> moves to REVIEW_INTERNAL
+	revBody, _ := json.Marshal(map[string]string{
+		"reviewer_id":   "dosen-rev-1",
+		"reviewer_nama": "Dr. Reviewer",
+	})
+	req, _ = http.NewRequest(http.MethodPost, "/api/v1/publications/"+pubResp.Data.ID+"/reviews", bytes.NewBuffer(revBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+mhsToken)
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201 for assigning internal reviewer, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// Mahasiswa updates publication status directly to DIAJUKAN
+	statusBody, _ := json.Marshal(map[string]string{
+		"status":  "DIAJUKAN",
+		"catatan": "Sudah submit ke jurnal",
+		"bukti":   "Bukti_Submit.pdf",
+	})
+	req, _ = http.NewRequest(http.MethodPatch, "/api/v1/publications/"+pubResp.Data.ID+"/status", bytes.NewBuffer(statusBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+mhsToken)
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 for mahasiswa updating status, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// Mahasiswa cannot verify their own publication
+	req, _ = http.NewRequest(http.MethodPost, "/api/v1/publications/"+pubResp.Data.ID+"/verify", nil)
+	req.Header.Set("Authorization", "Bearer "+mhsToken)
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusForbidden {
+		t.Errorf("expected 403 Forbidden when mahasiswa verifies publication, got %d", w.Code)
 	}
 }

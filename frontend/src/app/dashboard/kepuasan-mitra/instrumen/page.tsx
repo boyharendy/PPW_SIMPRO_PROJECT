@@ -1,111 +1,109 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, SlidersHorizontal, Copy, Send, FileEdit, Eye } from 'lucide-react';
+import { Plus, Copy, FileEdit, Trash2 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import Modal from '@/components/ui/Modal';
-
-interface InstrumentTemplate {
-  id: string;
-  program: 'KP' | 'PSI' | 'PDLK';
-  nama: string;
-  skalaMaks: number;
-  dibuatAt: string;
-  jumlahAspek: number;
-  jumlahResponden: number;
-  status: 'AKTIF' | 'DRAF' | 'ARSIP';
-}
-
-const INITIAL_TEMPLATES: InstrumentTemplate[] = [
-  {
-    id: 'tmpl-kp-2025',
-    program: 'KP',
-    nama: 'Instrumen Kepuasan Mitra Kerja Praktik 2025/2026',
-    skalaMaks: 5,
-    dibuatAt: '2025-06-01',
-    jumlahAspek: 4,
-    jumlahResponden: 18,
-    status: 'AKTIF',
-  },
-  {
-    id: 'tmpl-psi-2025',
-    program: 'PSI',
-    nama: 'Instrumen Evaluasi Mitra Proyek Sistem Informasi (PSI)',
-    skalaMaks: 5,
-    dibuatAt: '2025-06-05',
-    jumlahAspek: 4,
-    jumlahResponden: 12,
-    status: 'AKTIF',
-  },
-  {
-    id: 'tmpl-pdlk-2025',
-    program: 'PDLK',
-    nama: 'Instrumen Pembimbing Mitra Pembelajaran di Luar Kampus',
-    skalaMaks: 5,
-    dibuatAt: '2025-06-10',
-    jumlahAspek: 3,
-    jumlahResponden: 6,
-    status: 'AKTIF',
-  },
-  {
-    id: 'tmpl-kp-draft',
-    program: 'KP',
-    nama: 'Draft Instrumen KP Skema Magang MBKM 2026',
-    skalaMaks: 5,
-    dibuatAt: '2025-08-01',
-    jumlahAspek: 5,
-    jumlahResponden: 0,
-    status: 'DRAF',
-  },
-];
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
+import { mockSurveyTemplates } from '@/lib/mock-data';
+import type { PartnerSurveyTemplate } from '@/lib/types';
 
 export default function Page() {
-  const [templates, setTemplates] = useState<InstrumentTemplate[]>(INITIAL_TEMPLATES);
+  const [templates, setTemplates] = useState<PartnerSurveyTemplate[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<PartnerSurveyTemplate | null>(null);
   const [newProgram, setNewProgram] = useState<'KP' | 'PSI' | 'PDLK'>('KP');
   const [newNama, setNewNama] = useState('');
+
+  const refreshTemplates = () => {
+    const loaded = storageSync.get<PartnerSurveyTemplate[]>(STORAGE_KEYS.SURVEYS, mockSurveyTemplates);
+    setTemplates(loaded);
+  };
+
+  useEffect(() => {
+    refreshTemplates();
+
+    const handleStorageChange = () => refreshTemplates();
+    window.addEventListener('simpro_storage_change', handleStorageChange);
+    window.addEventListener('focus', handleStorageChange);
+    return () => {
+      window.removeEventListener('simpro_storage_change', handleStorageChange);
+      window.removeEventListener('focus', handleStorageChange);
+    };
+  }, []);
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newNama.trim()) return;
 
-    const newTmpl: InstrumentTemplate = {
-      id: `tmpl-${Date.now()}`,
+    const tmplId = `tmpl-${Date.now()}`;
+    const newTmpl: PartnerSurveyTemplate = {
+      id: tmplId,
       program: newProgram,
       nama: newNama.trim(),
-      skalaMaks: 5,
-      dibuatAt: new Date().toISOString().split('T')[0],
-      jumlahAspek: 3,
-      jumlahResponden: 0,
+      skala_maks: 5,
       status: 'DRAF',
+      dibuat_oleh: 'u-koordinator',
+      created_at: new Date().toISOString().split('T')[0],
+      updated_at: new Date().toISOString().split('T')[0],
+      total_responden: 0,
+      aspek: [
+        { id: `asp-${tmplId}-1`, template_id: tmplId, nama_aspek: 'Integritas & Etika Profesional', deskripsi: 'Disiplin, kejujuran, dan sopan santun mahasiswa di tempat kerja', bobot: 25, urutan: 1, is_active: true },
+        { id: `asp-${tmplId}-2`, template_id: tmplId, nama_aspek: 'Kompetensi Teknis Sistem Informasi', deskripsi: 'Keahlian teknis dalam analisis, basis data, dan pemrograman', bobot: 35, urutan: 2, is_active: true },
+        { id: `asp-${tmplId}-3`, template_id: tmplId, nama_aspek: 'Komunikasi & Kerja Sama Tim', deskripsi: 'Interaksi kerja serta penyampaian laporan kemajuan', bobot: 20, urutan: 3, is_active: true },
+        { id: `asp-${tmplId}-4`, template_id: tmplId, nama_aspek: 'Koordinasi Pelaksanaan dengan Prodi', deskripsi: 'Kelancaran pelaporan berkala dan kesesuaian capaian', bobot: 20, urutan: 4, is_active: true },
+      ],
     };
 
-    setTemplates([newTmpl, ...templates]);
+    const updated = [newTmpl, ...templates];
+    storageSync.set(STORAGE_KEYS.SURVEYS, updated);
+    setTemplates(updated);
     setNewNama('');
     setModalOpen(false);
   };
 
-  const handleDuplicate = (template: InstrumentTemplate) => {
-    const duplicated: InstrumentTemplate = {
+  const handleDuplicate = (template: PartnerSurveyTemplate) => {
+    const tmplId = `tmpl-${Date.now()}`;
+    const duplicated: PartnerSurveyTemplate = {
       ...template,
-      id: `tmpl-${Date.now()}`,
+      id: tmplId,
       nama: `${template.nama} (Salinan)`,
-      jumlahResponden: 0,
       status: 'DRAF',
-      dibuatAt: new Date().toISOString().split('T')[0],
+      total_responden: 0,
+      created_at: new Date().toISOString().split('T')[0],
+      updated_at: new Date().toISOString().split('T')[0],
+      aspek: (template.aspek || []).map((a, i) => ({
+        ...a,
+        id: `asp-${tmplId}-${i + 1}`,
+        template_id: tmplId,
+      })),
     };
-    setTemplates([duplicated, ...templates]);
+
+    const updated = [duplicated, ...templates];
+    storageSync.set(STORAGE_KEYS.SURVEYS, updated);
+    setTemplates(updated);
   };
 
-  const columns: DataTableColumn<InstrumentTemplate>[] = [
+  const handleDeleteConfirm = () => {
+    if (!deleteTarget) return;
+    const updated = storageSync.remove<PartnerSurveyTemplate>(
+      STORAGE_KEYS.SURVEYS,
+      deleteTarget.id,
+      templates
+    );
+    setTemplates(updated);
+    setDeleteTarget(null);
+  };
+
+  const columns: DataTableColumn<PartnerSurveyTemplate>[] = [
     {
       key: 'program',
       header: 'Program',
       render: (r) => (
-        <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 border border-blue-100">
+        <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
           {r.program}
         </span>
       ),
@@ -116,21 +114,29 @@ export default function Page() {
       render: (r) => (
         <div>
           <div className="font-semibold text-slate-800 text-sm">{r.nama}</div>
-          <div className="text-xs text-slate-400 mt-0.5">
-            Skala 1–{r.skalaMaks} • Dibuat: {r.dibuatAt}
+          <div className="text-xs text-slate-500 mt-0.5">
+            Skala 1–{r.skala_maks} • Dibuat: {r.created_at ? r.created_at.split('T')[0] : '-'}
           </div>
         </div>
       ),
     },
     {
-      key: 'jumlahAspek',
+      key: 'aspek',
       header: 'Aspek Penilaian',
-      render: (r) => <span className="text-sm font-medium text-slate-700">{r.jumlahAspek} Aspek</span>,
+      render: (r) => (
+        <span className="text-sm font-medium text-slate-800">
+          {r.aspek?.filter((a) => a.is_active !== false).length || 0} Aspek
+        </span>
+      ),
     },
     {
-      key: 'jumlahResponden',
+      key: 'total_responden',
       header: 'Responden',
-      render: (r) => <span className="text-sm text-slate-600">{r.jumlahResponden} Mitra</span>,
+      render: (r) => (
+        <span className="text-sm font-medium text-slate-600">
+          {r.total_responden || 0} Mitra
+        </span>
+      ),
     },
     {
       key: 'status',
@@ -140,29 +146,30 @@ export default function Page() {
     {
       key: 'aksi',
       header: 'Aksi',
-      className: 'text-right',
+      className: 'text-right min-w-[280px] whitespace-nowrap',
       render: (r) => (
-        <div className="flex items-center justify-end gap-1.5">
-          <Link
-            href="/dashboard/kepuasan-mitra/pengiriman"
-            className="btn-secondary text-xs px-2 py-1 inline-flex items-center gap-1"
-            title="Kirim ke Mitra"
-          >
-            <Send size={12} /> Kirim
-          </Link>
+        <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
           <button
             onClick={() => handleDuplicate(r)}
-            className="btn-secondary text-xs px-2 py-1 inline-flex items-center gap-1"
-            title="Duplikasi Template"
+            className="h-8 px-3 text-xs font-medium rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all shadow-2xs"
+            title="Duplikasi Template Kuesioner"
           >
-            <Copy size={12} /> Duplikasi
+            <Copy size={13} /> Duplikasi
           </button>
           <Link
             href={`/dashboard/kepuasan-mitra/instrumen/${r.id}`}
-            className="btn-secondary text-xs px-2.5 py-1 inline-flex items-center gap-1.5"
+            className="h-8 px-3 text-xs font-medium rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all shadow-2xs"
+            title="Kelola butir aspek dan bobot kuesioner"
           >
-            <Eye size={13} /> Detail
+            <FileEdit size={13} /> Kelola Aspek
           </Link>
+          <button
+            onClick={() => setDeleteTarget(r)}
+            className="h-8 px-3 text-xs font-medium rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-rose-600 hover:border-rose-200 inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-all shadow-2xs"
+            title="Hapus Kuesioner"
+          >
+            <Trash2 size={13} /> Hapus
+          </button>
         </div>
       ),
     },
@@ -172,7 +179,7 @@ export default function Page() {
     <div className="space-y-6">
       <PageHeader
         title="Instrumen Kuesioner"
-        description="Kelola kuesioner evaluasi mitra lapangan untuk program KP, PSI, dan PDLK (FR-26)."
+        description="Kelola template kuesioner evaluasi mitra lapangan untuk program KP, PSI, dan PDLK."
         actions={
           <button
             onClick={() => setModalOpen(true)}
@@ -229,7 +236,7 @@ export default function Page() {
           </div>
 
           <div className="p-3 bg-blue-50/60 border border-blue-100 rounded-xl text-xs text-blue-700 leading-relaxed">
-            Template baru akan dibuat dengan status <strong>DRAF</strong> dan memuat 4 aspek penilaian standar (Integritas, Kompetensi Teknis, Komunikasi, dan Koordinasi) yang dapat Anda kustomisasi selanjutnya.
+            Template baru akan dibuat dengan status <strong>DRAF</strong> dan memuat 4 aspek penilaian standar (Integritas, Kompetensi Teknis, Komunikasi, dan Koordinasi) yang dapat Anda ubah atau sesuaikan setelah dibuat.
           </div>
 
           <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
@@ -248,6 +255,44 @@ export default function Page() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Modal Konfirmasi Hapus Kuesioner */}
+      <Modal
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        title="Hapus Template Kuesioner"
+        size="sm"
+      >
+        {deleteTarget && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Apakah Anda yakin ingin menghapus instrumen kuesioner{' '}
+              <strong className="text-slate-800">{deleteTarget.nama}</strong> ({deleteTarget.program})?
+            </p>
+            {deleteTarget.total_responden && deleteTarget.total_responden > 0 ? (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 leading-relaxed">
+                <strong>Perhatian:</strong> Kuesioner ini memiliki catatan <strong>{deleteTarget.total_responden} responden</strong>. Menghapusnya akan membersihkan kuesioner dari daftar instrumen aktif.
+              </div>
+            ) : null}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="btn-secondary text-xs px-3.5 py-1.5"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                className="bg-rose-600 hover:bg-rose-700 text-white text-xs px-3.5 py-1.5 rounded-lg font-semibold inline-flex items-center gap-1.5 transition-colors"
+              >
+                <Trash2 size={13} /> Ya, Hapus Instrumen
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

@@ -16,14 +16,18 @@ Panduan ini mendefinisikan standar visual dan komponen UI untuk proyek SIMPRO (S
   - Danger: `text-rose-600` / `bg-rose-50`
   - Info: `text-blue-600` / `bg-blue-50`
 
-## 2. Typography System
+## 2. Typography System (LearnUI Design Standards)
 
-Menggunakan font modern Sans-Serif (Inter/Roboto default dari Tailwind).
-- **H1 (Page Title)**: `text-2xl font-bold text-slate-800`
-- **H2 (Section/Card Title)**: `text-lg font-semibold text-slate-800`
-- **H3 (Modal/Small Title)**: `text-base font-semibold text-slate-800`
-- **Body**: `text-sm text-slate-700`
-- **Caption/Label**: `text-xs font-medium text-slate-500 uppercase tracking-wider`
+Menggunakan kombinasi font Sans-Serif modern & populer untuk website informatif (**Plus Jakarta Sans** dan **Inter** dengan fallback sistem standar).
+
+- **Font Family**: `'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`
+- **H1 (Page Title)**: `text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight` (24px - 28px)
+- **H2 (Section/Card Title)**: `text-lg font-bold text-slate-800` (18px - 20px)
+- **H3 (Modal/Small Title)**: `text-base font-semibold text-slate-800` (16px)
+- **Body / Paragraf Utama**: `16px` (`text-base`, `line-height: 1.6`, standar ideal 16-20px untuk konsistensi dan kenyamanan membaca pengguna).
+- **Input Controls (`.input-field`, `.select-field`, `.textarea-field`)**: Minimal `16px` (`line-height: 1.5`, mencegah auto-zoom pada perangkat mobile/tablet dan memastikan keterbacaan formulir).
+- **Secondary / Subtitle / Deskripsi**: `13.5px` (`text-[13.5px]` atau `text-slate-500`, tepat 2 ukuran lebih kecil dari font body 16px untuk menandakan informasi pendukung/metadata).
+- **Caption / Label Mini**: `11px - 12px font-medium text-slate-400 uppercase tracking-wider`
 
 ## 3. Component Specs & Layout Rules
 

@@ -72,26 +72,24 @@ export default function Page() {
     <div className="space-y-6">
       <PageHeader
         title="Rekapitulasi Publikasi"
-        description="Rekap capaian publikasi tahunan dan pemetaan target luaran akreditasi (FR-33)."
+        description="Rekapitulasi capaian publikasi tahunan dan pemetaan target luaran akreditasi program studi."
         actions={<ExportMenu filename="rekap-publikasi-prodi" />}
       />
 
-      {/* 4 StatCards */}
+      {/* 4 StatCards - Komposisi Seragam & Selaras */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Publikasi 2025"
           value="31 Karya"
-          subtitle="Tercatat & terverifikasi"
+          subtitle="+29% YoY • Tercatat & terverifikasi"
           badgeTone="blue"
-          badgeText="+29% YoY"
           icon={<BookOpen size={16} />}
         />
         <StatCard
           title="Terindeks Scopus & SINTA"
           value="25 Karya"
-          subtitle="80.6% bereputasi"
+          subtitle="80.6% bereputasi • Akreditasi Unggul"
           badgeTone="emerald"
-          badgeText="Akreditasi Unggul"
           icon={<Award size={16} />}
         />
         <StatCard

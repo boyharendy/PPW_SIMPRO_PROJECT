@@ -244,3 +244,40 @@ func (c *SupabaseClient) Count(table string, queryParams map[string]string) (int
 	return 0, nil
 }
 
+// RPC calls a Supabase Postgres stored function via PostgREST /rpc/<fnName>
+func (c *SupabaseClient) RPC(fnName string, params interface{}, dest interface{}) error {
+	payload, err := json.Marshal(params)
+	if err != nil {
+		return fmt.Errorf("gagal marshal params RPC: %w", err)
+	}
+
+	endpoint := fmt.Sprintf("rpc/%s", fnName)
+	req, err := c.newRequest(http.MethodPost, endpoint, bytes.NewBuffer(payload))
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("gagal request RPC Supabase: %w", err)
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("gagal membaca respon RPC: %w", err)
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("supabase RPC error (status %d): %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	if dest != nil && len(bodyBytes) > 0 {
+		if err := json.Unmarshal(bodyBytes, dest); err != nil {
+			return fmt.Errorf("gagal unmarshal respon RPC: %w", err)
+		}
+	}
+
+	return nil
+}
+

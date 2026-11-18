@@ -1,21 +1,40 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @layer base {
   :root {
-    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-sans: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   }
 
   html {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-size: 16px;
   }
 
   body {
     background: #F6F7FB;
     color: #1E293B;
     min-height: 100vh;
+    font-family: var(--font-sans);
+    font-size: 16px; /* Ukuran font body standar 16px (16-20px) per UX guideline */
+    line-height: 1.6;
+  }
+
+  /* Standar font input: Minimal 16px untuk menghindari masalah zoom mobile & meningkatkan kenyamanan */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="date"],
+  select,
+  textarea {
+    font-size: 16px;
+    font-family: inherit;
   }
 }
 
@@ -67,7 +86,7 @@
   .btn-primary {
     background: linear-gradient(135deg, #4F46E5 0%, #2563EB 100%);
     color: #FFFFFF;
-    padding: 9px 18px;
+    padding: 8px 18px;
     border-radius: 9999px;
     font-weight: 600;
     font-size: 14px;
@@ -76,7 +95,9 @@
     transition: all 0.2s ease;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
+    white-space: nowrap;
     box-shadow: 0 4px 12px -2px rgba(79, 70, 229, 0.25);
   }
   .btn-primary:hover {
@@ -97,7 +118,9 @@
     transition: all 0.15s ease;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
+    white-space: nowrap;
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
   }
   .btn-secondary:hover {
@@ -118,7 +141,9 @@
     transition: background-color 0.15s ease;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
+    white-space: nowrap;
     box-shadow: 0 2px 8px -2px rgba(239, 68, 68, 0.25);
   }
   .btn-danger:hover {
@@ -137,22 +162,42 @@
     transition: background-color 0.15s ease;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
+    white-space: nowrap;
     box-shadow: 0 2px 8px -2px rgba(16, 185, 129, 0.25);
   }
   .btn-success:hover {
     background: #059669;
   }
 
-  /* Input styles */
+  /* Compact button variant for table actions & rows */
+  .btn-action-pill {
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+    cursor: pointer;
+    box-sizing: border-box;
+  }
+
+  /* Input styles - Standar minimal 16px per mobile UX guidelines */
   .input-field {
     width: 100%;
-    padding: 9px 14px;
+    padding: 10px 14px;
     background: #F8FAFC;
     border: 1px solid #E2E8F0;
     border-radius: 12px;
     color: #1E293B;
-    font-size: 15px;
+    font-size: 16px;
+    line-height: 1.5;
     transition: all 0.15s ease;
     outline: none;
   }
@@ -163,24 +208,26 @@
   }
   .input-field::placeholder {
     color: #94A3B8;
+    font-size: 15px;
   }
 
-  /* Select styles */
+  /* Select styles - Standar minimal 16px */
   .select-field {
     width: 100%;
-    padding: 8px 14px;
+    padding: 10px 14px;
     background: #F8FAFC;
     border: 1px solid #E2E8F0;
     border-radius: 9999px;
     color: #1E293B;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 500;
+    line-height: 1.5;
     transition: all 0.15s ease;
     outline: none;
     appearance: none;
     cursor: pointer;
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-    background-position: right 0.65rem center;
+    background-position: right 0.75rem center;
     background-repeat: no-repeat;
     background-size: 1.35em 1.35em;
     padding-right: 2.5rem;
@@ -191,24 +238,68 @@
     box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
   }
 
-  /* Textarea styles */
+  /* Compact select for tables, rows, and toolbars */
+  .select-compact {
+    height: 32px;
+    padding: 0 1.75rem 0 10px;
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    color: #1E293B;
+    font-size: 12.5px;
+    font-weight: 500;
+    line-height: 1.4;
+    transition: all 0.15s ease;
+    outline: none;
+    appearance: none;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.1em 1.1em;
+  }
+  .select-compact:focus {
+    background: #FFFFFF;
+    border-color: #3B82F6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+  }
+
+  /* Textarea styles - Standar minimal 16px */
   .textarea-field {
     width: 100%;
-    padding: 10px 14px;
+    padding: 11px 14px;
     background: #F8FAFC;
     border: 1px solid #E2E8F0;
     border-radius: 14px;
     color: #1E293B;
-    font-size: 15px;
+    font-size: 16px;
+    line-height: 1.5;
     transition: all 0.15s ease;
     outline: none;
     resize: vertical;
-    min-height: 80px;
+    min-height: 85px;
   }
   .textarea-field:focus {
     background: #FFFFFF;
     border-color: #4F46E5;
     box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  }
+
+  /* Standar Tipografi LearnUI: Body 16px & Secondary 13.5px */
+  .text-body {
+    font-size: 16px;
+    line-height: 1.6;
+    color: #1E293B;
+  }
+  .text-secondary {
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: #64748B;
+  }
+  .text-caption {
+    font-size: 12px;
+    line-height: 1.4;
+    color: #94A3B8;
   }
 
   /* Label */
@@ -275,8 +366,9 @@
   /* Line clamp */
   .line-clamp-2 {
     display: -webkit-box;
-    -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
     overflow: hidden;
   }
 
