@@ -76,33 +76,33 @@ export default function Page() {
         actions={<ExportMenu filename="rekap-publikasi-prodi" />}
       />
 
-      {/* 4 StatCards - Komposisi Seragam & Selaras */}
+      {/* 4 StatCards - Komposisi Seragam & Selaras Simetris */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Publikasi 2025"
           value="31 Karya"
-          subtitle="+29% YoY • Tercatat & terverifikasi"
+          subtitle="+29% YoY • Tercatat & Terverifikasi"
           badgeTone="blue"
           icon={<BookOpen size={16} />}
         />
         <StatCard
           title="Terindeks Scopus & SINTA"
           value="25 Karya"
-          subtitle="80.6% bereputasi • Akreditasi Unggul"
+          subtitle="80.6% Bereputasi • Akreditasi Unggul"
           badgeTone="emerald"
           icon={<Award size={16} />}
         />
         <StatCard
           title="Melibatkan Mahasiswa"
           value="14 Karya"
-          subtitle="Kolaborasi Dosen-Mahasiswa"
+          subtitle="Kolaborasi Riset Dosen-Mahasiswa"
           badgeTone="indigo"
           icon={<Users size={16} />}
         />
         <StatCard
           title="HKI & Paten"
           value="4 Terdaftar"
-          subtitle="Perlindungan kekayaan intelektual"
+          subtitle="Perlindungan Kekayaan Intelektual"
           badgeTone="slate"
           icon={<FileCheck size={16} />}
         />

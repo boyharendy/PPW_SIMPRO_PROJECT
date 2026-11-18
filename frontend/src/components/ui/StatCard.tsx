@@ -58,10 +58,10 @@ export function StatCard({
     (trend ? `${trend.value >= 0 ? '+' : ''}${trend.value}%` : undefined);
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
+    <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between h-full">
       {/* Top Row: Clean Title + Badge / Icon */}
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider leading-snug break-words">
+      <div className="flex items-center justify-between gap-3 min-h-[32px]">
+        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider leading-snug">
           {title}
         </p>
 
@@ -84,14 +84,14 @@ export function StatCard({
         ) : null}
       </div>
 
-      {/* Bottom Row: Balanced Value + Subtitle */}
-      <div className="mt-3 flex items-baseline justify-between gap-2 flex-wrap">
-        <h3 className="text-2xl font-bold text-slate-900 tracking-tight">
+      {/* Bottom Area: Consistent Symmetrical Vertical Hierarchy */}
+      <div className="mt-4">
+        <h3 className="text-2xl font-bold text-slate-900 tracking-tight leading-none">
           {value}
         </h3>
 
         {descText && (
-          <p className="text-xs text-slate-500 font-medium">
+          <p className="text-xs text-slate-500 font-medium mt-2 leading-relaxed">
             {descText}
           </p>
         )}
