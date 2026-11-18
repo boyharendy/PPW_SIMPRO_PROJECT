@@ -1,9 +1,9 @@
 import { apiRequest } from '../client';
 import { API_ENDPOINTS } from '../endpoints';
 import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
-import { mockBusinessTrips } from '@/lib/mock-data';
+import { mockBusinessTrips, mockRkaRealizations } from '@/lib/mock-data';
 import type { ApiResponse, TripRecap } from '@/lib/types/api';
-import type { BusinessTrip } from '@/lib/types';
+import type { BusinessTrip, BusinessTripCost, RkaRealization } from '@/lib/types';
 
 export const tripService = {
   // Ambil daftar perjalanan dinas
@@ -36,19 +36,20 @@ export const tripService = {
 
   // Buat permohonan dinas baru (persisten)
   createTrip: async (data: Partial<BusinessTrip>): Promise<ApiResponse<BusinessTrip>> => {
+    const nowIso = new Date().toISOString();
     const newTrip: BusinessTrip = {
       id: data.id || `trip-${Date.now()}`,
-      nomor_surat_tugas: data.nomor_surat_tugas || `ST/SIMPRO/${new Date().getFullYear()}/${Date.now().toString().slice(-4)}`,
-      diajukan_oleh: data.diajukan_oleh || 'u-dosen',
+      nomor_surat_tugas: data.nomor_surat_tugas,
+      diajukan_oleh: data.diajukan_oleh || 'u-dosen1',
       tujuan: data.tujuan || 'Kota Tujuan',
       maksud_kegiatan: data.maksud_kegiatan || 'Maksud Kegiatan Dinas',
-      tanggal_berangkat: data.tanggal_berangkat || new Date().toISOString().split('T')[0],
-      tanggal_kembali: data.tanggal_kembali || new Date().toISOString().split('T')[0],
+      tanggal_berangkat: data.tanggal_berangkat || nowIso.split('T')[0],
+      tanggal_kembali: data.tanggal_kembali || nowIso.split('T')[0],
       sumber_dana: data.sumber_dana || 'RKA_PRODI',
-      rka_budget_item_id: data.rka_budget_item_id || 'pos-1',
-      status: 'DIAJUKAN',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      rka_budget_item_id: data.rka_budget_item_id,
+      status: data.status || 'DIAJUKAN',
+      created_at: nowIso,
+      updated_at: nowIso,
       participants: data.participants || [],
       costs: data.costs || [],
       ...data,
@@ -162,7 +163,7 @@ export const tripService = {
     }
   },
 
-  // Laporkan hasil riil dan bukti pengeluaran
+  // Laporkan hasil riil dan bukti pengeluaran (FR-34)
   submitReport: async (
     id: string,
     data: {
@@ -171,11 +172,24 @@ export const tripService = {
       file_url?: string;
       biaya_realisasi?: number;
       realisasi_biaya?: number;
+      costs?: BusinessTripCost[];
       catatan?: string;
     }
   ): Promise<ApiResponse<BusinessTrip>> => {
+    const nowIso = new Date().toISOString();
     const summary = data.ringkasan_hasil || data.ringkasan || '';
-    storageSync.update(STORAGE_KEYS.TRIPS, id, { status: 'DILAPORKAN', laporan_hasil: summary }, mockBusinessTrips);
+    const patch: Partial<BusinessTrip> = {
+      status: 'DILAPORKAN',
+      laporan_hasil: summary,
+      laporan_dikirim_at: nowIso,
+      is_belum_lengkap: false,
+      updated_at: nowIso,
+    };
+    if (data.costs) {
+      patch.costs = data.costs;
+    }
+
+    storageSync.update(STORAGE_KEYS.TRIPS, id, patch, mockBusinessTrips);
     try {
       return await apiRequest<BusinessTrip>(API_ENDPOINTS.TRIPS.REPORT(id), {
         method: 'POST',
@@ -186,6 +200,71 @@ export const tripService = {
       const updated = list.find((t) => t.id === id) || mockBusinessTrips[0];
       return { success: true, message: 'Laporan disimpan', data: updated };
     }
+  },
+
+  // Konfirmasi kelengkapan bukti & laporan perjalanan oleh Admin Prodi (FR-34, FR-37)
+  confirmCompleteness: async (
+    id: string,
+    data: { lengkap: boolean; catatan?: string; dikonfirmasi_oleh?: string }
+  ): Promise<ApiResponse<BusinessTrip>> => {
+    const nowIso = new Date().toISOString();
+    const list = storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips);
+    const current = list.find((t) => t.id === id);
+
+    const patch: Partial<BusinessTrip> = data.lengkap
+      ? {
+          status: 'SELESAI',
+          dikonfirmasi_oleh: data.dikonfirmasi_oleh || 'u-admin',
+          dikonfirmasi_at: nowIso,
+          catatan_kelengkapan: data.catatan || 'Seluruh bukti dan laporan telah diverifikasi lengkap.',
+          is_belum_lengkap: false,
+          updated_at: nowIso,
+        }
+      : {
+          status: 'DILAPORKAN',
+          dikonfirmasi_oleh: data.dikonfirmasi_oleh || 'u-admin',
+          catatan_kelengkapan: data.catatan,
+          is_belum_lengkap: true,
+          updated_at: nowIso,
+        };
+
+    storageSync.update(STORAGE_KEYS.TRIPS, id, patch, mockBusinessTrips);
+
+    // Catat realisasi RKA otomatis jika sumber dana RKA_PRODI dan dinyatakan lengkap (FR-37)
+    if (data.lengkap && current && current.sumber_dana === 'RKA_PRODI' && current.rka_budget_item_id) {
+      const existingReals = storageSync.get<RkaRealization[]>(
+        STORAGE_KEYS.RKA_REALIZATIONS,
+        mockRkaRealizations
+      );
+      const alreadyRecorded = existingReals.some((r) => r.business_trip_id === current.id);
+      if (!alreadyRecorded) {
+        const totalRealisasi = (current.costs || []).reduce(
+          (sum, c) => sum + (c.realisasi_biaya ?? c.estimasi_biaya ?? 0),
+          0
+        );
+        const newRealization: RkaRealization = {
+          id: `real-${Date.now()}`,
+          rka_budget_item_id: current.rka_budget_item_id,
+          tanggal_realisasi: nowIso.split('T')[0],
+          nominal_realisasi: totalRealisasi,
+          uraian: `Realisasi Perjalanan Dinas ke ${current.tujuan}`,
+          sumber_pencatatan: 'PERJALANAN_DINAS',
+          business_trip_id: current.id,
+          status: 'AKTIF',
+          dicatat_oleh: data.dikonfirmasi_oleh || 'u-admin',
+          created_at: nowIso,
+        };
+        storageSync.prepend(STORAGE_KEYS.RKA_REALIZATIONS, newRealization, mockRkaRealizations);
+      }
+    }
+
+    const updatedList = storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips);
+    const updated = updatedList.find((t) => t.id === id) || mockBusinessTrips[0];
+    return {
+      success: true,
+      message: data.lengkap ? 'Kelengkapan berkas dikonfirmasi selesai' : 'Ditandai belum lengkap',
+      data: updated,
+    };
   },
 
   // Rekapitulasi perjalanan dinas & serapan anggaran
