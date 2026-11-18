@@ -72,14 +72,14 @@ func TestPublicationUsecase(t *testing.T) {
 		t.Errorf("expected MENUNGGU_VERIFIKASI, got %s", found.Status)
 	}
 
-	// 4b. Uji publikasi dosen sebagai penulis utama: tidak butuh verifikator, langsung DIAJUKAN
+	// 4b. Uji publikasi murni dosen: tidak butuh verifikator, langsung DIAJUKAN
 	dosenPub := &model.Publication{
 		Judul:       "Penelitian Dosen Tanpa Perlu Verifikator Mahasiswa",
 		Tipe:        model.PubJurnal,
 		TahunTerbit: 2025,
 		Authors: []*model.PublicationAuthor{
 			{NamaPenulis: "Prof. Dosen Utama", UserID: "dosen-prof", TipePenulis: "DOSEN", Peran: "PENULIS_UTAMA", Urutan: 1, PersentaseKontribusi: 70.0},
-			{NamaPenulis: "Mahasiswa Anggota", UserID: "mhs-anggota", TipePenulis: "MAHASISWA", Peran: "ANGGOTA", Urutan: 2, PersentaseKontribusi: 30.0},
+			{NamaPenulis: "Dr. Dosen Kedua", UserID: "dosen-dua", TipePenulis: "DOSEN", Peran: "ANGGOTA", Urutan: 2, PersentaseKontribusi: 30.0},
 		},
 	}
 	createdDosenPub, err := uc.CreatePublication("dosen-prof", dosenPub)

@@ -36,9 +36,10 @@ export const publicationService = {
 
   // Buat usulan publikasi baru (persisten)
   createPublication: async (data: Partial<Publication>): Promise<ApiResponse<Publication>> => {
-    const isMhsLead = data.authors && data.authors.length > 0
-      ? (data.authors[0].tipe_penulis === 'MAHASISWA' || data.authors.some(a => (a.urutan === 1 || a.peran === 'PENULIS_PERTAMA') && a.tipe_penulis === 'MAHASISWA'))
+    const hasMhs = data.authors && data.authors.length > 0
+      ? data.authors.some(a => a.tipe_penulis === 'MAHASISWA')
       : false;
+    const needsVerif = Boolean(hasMhs || data.verifikator_id || data.verifikator);
 
     const newPub: Publication = {
       id: data.id || `pub-${Date.now()}`,
@@ -47,7 +48,7 @@ export const publicationService = {
       nama_target: data.nama_target || 'Target Publikasi',
       peringkat: data.peringkat || 'SINTA_2',
       status: data.status || 'DIAJUKAN',
-      status_verifikasi: data.status_verifikasi || (isMhsLead ? 'MENUNGGU' : 'TIDAK_PERLU'),
+      status_verifikasi: data.status_verifikasi || (needsVerif ? 'MENUNGGU' : 'TIDAK_PERLU'),
       dicatat_oleh: data.dicatat_oleh || 'u-dosen',
       tahun: data.tahun || new Date().getFullYear(),
       created_at: new Date().toISOString(),
@@ -104,11 +105,12 @@ export const publicationService = {
   submitPublication: async (id: string): Promise<ApiResponse<Publication>> => {
     const list = storageSync.get<Publication[]>(STORAGE_KEYS.PUBLICATIONS, mockPublications);
     const existing = list.find((p) => p.id === id);
-    const isMhsLead = existing?.authors && existing.authors.length > 0
-      ? (existing.authors[0].tipe_penulis === 'MAHASISWA' || existing.authors.some(a => (a.urutan === 1 || a.peran === 'PENULIS_PERTAMA') && a.tipe_penulis === 'MAHASISWA'))
+    const hasMhs = existing?.authors && existing.authors.length > 0
+      ? existing.authors.some(a => a.tipe_penulis === 'MAHASISWA')
       : false;
+    const needsVerif = Boolean(hasMhs || existing?.verifikator_id || existing?.verifikator);
 
-    const statusVerif = isMhsLead ? 'MENUNGGU' : 'TIDAK_PERLU';
+    const statusVerif = needsVerif ? 'MENUNGGU' : 'TIDAK_PERLU';
     storageSync.update(STORAGE_KEYS.PUBLICATIONS, id, { status: 'DIAJUKAN', status_verifikasi: statusVerif }, mockPublications);
     try {
       return await apiRequest<Publication>(API_ENDPOINTS.PUBLICATIONS.SUBMIT(id), {

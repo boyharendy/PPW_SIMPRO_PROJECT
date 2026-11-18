@@ -74,8 +74,8 @@ test('Publication submission & verification queue synchronization flow', async (
   assert.equal(updatedVerifs[0].id, 'ver-test-001');
   assert.equal(updatedVerifs[0].status, 'MENUNGGU');
 
-  // 2. Submit a lecturer as primary author publication (with student as member) -> TIDAK_PERLU verifikator, does NOT enter queue
-  const lecturerLeadPubId = 'PUB-TEST-DOSEN-LEAD';
+  // 2. Submit a lecturer pure publication (no student) -> TIDAK_PERLU verifikator, does NOT enter queue
+  const lecturerLeadPubId = 'PUB-TEST-DOSEN-PURE';
   const lecturerLeadPub = {
     id: lecturerLeadPubId,
     judul: 'Studi Komparasi Cloud Computing untuk Smart Campus',

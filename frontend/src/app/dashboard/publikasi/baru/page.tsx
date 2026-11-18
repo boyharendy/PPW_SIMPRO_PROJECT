@@ -62,9 +62,10 @@ export default function Page() {
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Hanya mahasiswa sebagai penulis utama yang membutuhkan verifikator
-  const penulisUtama = penulisList.find((p) => p.peran === 'penulis_pertama') || penulisList[0];
-  const isMahasiswaPenulisUtama = penulisUtama?.tipe === 'mahasiswa';
+  // Jika pengguna yang mengunggah memiliki peran Mahasiswa ATAU ada penulis bertipe mahasiswa, butuh verifikator
+  const isMahasiswaUploader = user.activeRole === 'MAHASISWA';
+  const hasMahasiswaPenulis = penulisList.some((p) => p.tipe === 'mahasiswa');
+  const needsVerifikator = isMahasiswaUploader || hasMahasiswaPenulis;
 
   const handleAddPenulis = () => {
     setPenulisList((prev) => [
@@ -95,8 +96,8 @@ export default function Page() {
       return;
     }
 
-    if (isMahasiswaPenulisUtama && status === 'DIAJUKAN' && !verifikator) {
-      setErrorMsg('Publikasi dengan mahasiswa sebagai penulis utama wajib memilih Dosen Verifikator.');
+    if (needsVerifikator && status === 'DIAJUKAN' && !verifikator) {
+      setErrorMsg('Publikasi yang dicatat oleh atau melibatkan mahasiswa wajib memilih Dosen Verifikator.');
       return;
     }
 
@@ -115,22 +116,22 @@ export default function Page() {
       tahun: parseInt(tahun, 10) || 2025,
       status,
       target: namaTarget.trim() || undefined,
-      status_verifikasi: isMahasiswaPenulisUtama ? (status === 'DIAJUKAN' ? 'MENUNGGU' : 'DRAF') : 'TIDAK_PERLU',
-      verifikator: isMahasiswaPenulisUtama ? verifikatorLabel : undefined,
+      status_verifikasi: needsVerifikator ? (status === 'DIAJUKAN' ? 'MENUNGGU' : 'DRAF') : 'TIDAK_PERLU',
+      verifikator: needsVerifikator ? verifikatorLabel : undefined,
     };
 
     // Prepend to publications in storageSync
     storageSync.prepend(STORAGE_KEYS.PUBLICATIONS, newPub, defaultPubs);
 
-    // If submitted with Mahasiswa as primary author, insert into verification queue
-    if (isMahasiswaPenulisUtama && status === 'DIAJUKAN') {
+    // If submitted with Mahasiswa author or uploader, insert into verification queue
+    if (needsVerifikator && status === 'DIAJUKAN') {
       const cleanFileName = judul.trim().replace(/[^a-zA-Z0-9]/g, '_').slice(0, 20);
       const newVerif: VerificationItem = {
         id: `ver-${Date.now()}`,
         publication_id: newPub.id,
         judul: newPub.judul,
         jenis: newPub.jenis,
-        mahasiswa: studentAuthor.nama.trim() || user.nama_lengkap || 'Mahasiswa',
+        mahasiswa: studentAuthor?.nama.trim() || user.nama_lengkap || 'Mahasiswa',
         nim: '1201220055',
         tahap: 'DIAJUKAN',
         bukti: `Bukti_Submit_${cleanFileName}.pdf`,
@@ -308,17 +309,12 @@ export default function Page() {
         </div>
       </div>
 
-      {/* Verifikator (conditional: hanya khusus jika mahasiswa sebagai penulis utama) */}
-      {isMahasiswaPenulisUtama && (
+      {/* Verifikator (conditional: jika upload oleh role mahasiswa atau melibatkan mahasiswa) */}
+      {needsVerifikator && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-800">Dosen Verifikator</h2>
-            <span className="text-xs bg-emerald-50 text-emerald-700 font-semibold px-2.5 py-0.5 rounded-full border border-emerald-200">
-              Wajib untuk Penulis Utama Mahasiswa
-            </span>
-          </div>
+          <h2 className="text-lg font-semibold text-slate-800">Dosen Verifikator</h2>
           <p className="text-xs text-slate-500">
-            Mahasiswa sebagai penulis utama — pilih dosen verifikator untuk validasi bukti publikasi sebelum masuk ke rekap program studi.
+            Publikasi dicatat oleh mahasiswa / melibatkan mahasiswa — pilih dosen verifikator untuk validasi bukti publikasi sebelum masuk ke rekap program studi (FR-31).
           </p>
           <select
             value={verifikator}

@@ -53,21 +53,16 @@ func (u *publicationUsecase) GetPublicationByID(id string) (*model.Publication, 
 	return u.repo.FindByID(id)
 }
 
-func isMahasiswaPenulisUtama(authors []*model.PublicationAuthor) bool {
-	if len(authors) == 0 {
-		return false
+func hasMahasiswaAuthorOrUploader(authors []*model.PublicationAuthor, verifierID string) bool {
+	if verifierID != "" {
+		return true
 	}
 	for _, a := range authors {
-		isUtama := a.Urutan == 1 ||
-			strings.EqualFold(a.Peran, "PENULIS_UTAMA") ||
-			strings.EqualFold(a.Peran, "PENULIS_PERTAMA") ||
-			strings.EqualFold(a.Peran, "penulis_pertama") ||
-			strings.EqualFold(a.Peran, "penulis_utama")
-		if isUtama {
-			return strings.EqualFold(a.TipePenulis, "MAHASISWA")
+		if strings.EqualFold(a.TipePenulis, "MAHASISWA") {
+			return true
 		}
 	}
-	return strings.EqualFold(authors[0].TipePenulis, "MAHASISWA")
+	return false
 }
 
 func (u *publicationUsecase) CreatePublication(userID string, pub *model.Publication) (*model.Publication, error) {
@@ -76,10 +71,10 @@ func (u *publicationUsecase) CreatePublication(userID string, pub *model.Publica
 	}
 	pub.CreatedBy = userID
 
-	// Khusus mahasiswa sebagai penulis utama yang membutuhkan verifikator
-	if isMahasiswaPenulisUtama(pub.Authors) {
+	needsVerif := hasMahasiswaAuthorOrUploader(pub.Authors, pub.VerifikatorID)
+	if needsVerif {
 		if (pub.Status == model.PubStatusDiajukan || pub.Status == model.PubStatusMenungguVerifikasi) && pub.VerifikatorID == "" {
-			return nil, errors.New("publikasi dengan mahasiswa sebagai penulis utama wajib memiliki dosen verifikator")
+			return nil, errors.New("publikasi yang dicatat oleh atau melibatkan mahasiswa wajib memiliki dosen verifikator")
 		}
 		if pub.Status == model.PubStatusDiajukan {
 			pub.Status = model.PubStatusMenungguVerifikasi
@@ -88,7 +83,7 @@ func (u *publicationUsecase) CreatePublication(userID string, pub *model.Publica
 			pub.StatusVerifikasi = "MENUNGGU"
 		}
 	} else {
-		// Jika penulis utama dosen atau non-mahasiswa, verifikator tidak dibutuhkan
+		// Jika murni dosen, verifikator tidak dibutuhkan
 		pub.StatusVerifikasi = "TIDAK_PERLU"
 		if pub.Status == model.PubStatusMenungguVerifikasi {
 			pub.Status = model.PubStatusDiajukan
@@ -132,15 +127,15 @@ func (u *publicationUsecase) SubmitPublication(id string) error {
 		return errors.New("hanya publikasi berstatus DRAF atau DITOLAK yang dapat diajukan")
 	}
 
-	// Khusus mahasiswa sebagai penulis utama yang membutuhkan verifikator
-	if isMahasiswaPenulisUtama(existing.Authors) {
+	// Publikasi yang dicatat mahasiswa atau melibatkan mahasiswa membutuhkan verifikator
+	if hasMahasiswaAuthorOrUploader(existing.Authors, existing.VerifikatorID) {
 		if existing.VerifikatorID == "" {
-			return errors.New("publikasi dengan mahasiswa sebagai penulis utama wajib memiliki dosen verifikator")
+			return errors.New("publikasi yang dicatat oleh atau melibatkan mahasiswa wajib memiliki dosen verifikator")
 		}
 		return u.repo.UpdateStatus(id, model.PubStatusMenungguVerifikasi)
 	}
 
-	// Jika penulis utama adalah dosen atau non-mahasiswa, langsung berstatus DIAJUKAN tanpa antrean verifikasi mahasiswa
+	// Jika murni dosen, langsung berstatus DIAJUKAN tanpa antrean verifikasi mahasiswa
 	return u.repo.UpdateStatus(id, model.PubStatusDiajukan)
 }
 
