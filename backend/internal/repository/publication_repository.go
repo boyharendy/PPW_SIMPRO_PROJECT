@@ -229,7 +229,13 @@ func (r *supabasePublicationRepository) UpdateStatus(id string, status model.Pub
 	payload := map[string]interface{}{
 		"status": string(status),
 	}
-	if status == model.PubStatusTerverifikasi || status == model.PubStatusTerbit {
+	if status == model.PubStatusMenungguVerifikasi {
+		payload["status_verifikasi"] = "MENUNGGU"
+	} else if status == model.PubStatusDiajukan {
+		payload["status_verifikasi"] = "TIDAK_PERLU"
+	} else if status == model.PubStatusDitolak {
+		payload["status_verifikasi"] = "DITOLAK"
+	} else if status == model.PubStatusTerverifikasi || status == model.PubStatusTerbit {
 		now := time.Now()
 		payload["status_verifikasi"] = "TERVERIFIKASI"
 		payload["diverifikasi_at"] = now
@@ -527,7 +533,13 @@ func (r *memoryPublicationRepository) UpdateStatus(id string, status model.Publi
 		return errors.New("publikasi tidak ditemukan")
 	}
 	p.Status = status
-	if status == model.PubStatusTerverifikasi || status == model.PubStatusTerbit {
+	if status == model.PubStatusMenungguVerifikasi {
+		p.StatusVerifikasi = "MENUNGGU"
+	} else if status == model.PubStatusDiajukan {
+		p.StatusVerifikasi = "TIDAK_PERLU"
+	} else if status == model.PubStatusDitolak {
+		p.StatusVerifikasi = "DITOLAK"
+	} else if status == model.PubStatusTerverifikasi || status == model.PubStatusTerbit {
 		now := time.Now()
 		p.StatusVerifikasi = "TERVERIFIKASI"
 		p.DiverifikasiAt = &now

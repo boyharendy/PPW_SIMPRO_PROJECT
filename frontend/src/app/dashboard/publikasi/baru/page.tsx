@@ -62,7 +62,9 @@ export default function Page() {
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const hasMahasiswa = penulisList.some((p) => p.tipe === 'mahasiswa');
+  // Hanya mahasiswa sebagai penulis utama yang membutuhkan verifikator
+  const penulisUtama = penulisList.find((p) => p.peran === 'penulis_pertama') || penulisList[0];
+  const isMahasiswaPenulisUtama = penulisUtama?.tipe === 'mahasiswa';
 
   const handleAddPenulis = () => {
     setPenulisList((prev) => [
@@ -93,8 +95,8 @@ export default function Page() {
       return;
     }
 
-    if (hasMahasiswa && status === 'DIAJUKAN' && !verifikator) {
-      setErrorMsg('Publikasi yang melibatkan mahasiswa wajib memilih Dosen Verifikator.');
+    if (isMahasiswaPenulisUtama && status === 'DIAJUKAN' && !verifikator) {
+      setErrorMsg('Publikasi dengan mahasiswa sebagai penulis utama wajib memilih Dosen Verifikator.');
       return;
     }
 
@@ -113,15 +115,15 @@ export default function Page() {
       tahun: parseInt(tahun, 10) || 2025,
       status,
       target: namaTarget.trim() || undefined,
-      status_verifikasi: hasMahasiswa ? (status === 'DIAJUKAN' ? 'MENUNGGU' : 'DRAF') : 'TIDAK_PERLU',
-      verifikator: hasMahasiswa ? verifikatorLabel : undefined,
+      status_verifikasi: isMahasiswaPenulisUtama ? (status === 'DIAJUKAN' ? 'MENUNGGU' : 'DRAF') : 'TIDAK_PERLU',
+      verifikator: isMahasiswaPenulisUtama ? verifikatorLabel : undefined,
     };
 
     // Prepend to publications in storageSync
     storageSync.prepend(STORAGE_KEYS.PUBLICATIONS, newPub, defaultPubs);
 
-    // If submitted with Mahasiswa author, insert into verification queue
-    if (hasMahasiswa && status === 'DIAJUKAN') {
+    // If submitted with Mahasiswa as primary author, insert into verification queue
+    if (isMahasiswaPenulisUtama && status === 'DIAJUKAN') {
       const cleanFileName = judul.trim().replace(/[^a-zA-Z0-9]/g, '_').slice(0, 20);
       const newVerif: VerificationItem = {
         id: `ver-${Date.now()}`,
@@ -306,11 +308,18 @@ export default function Page() {
         </div>
       </div>
 
-      {/* Verifikator (conditional) */}
-      {hasMahasiswa && (
+      {/* Verifikator (conditional: hanya khusus jika mahasiswa sebagai penulis utama) */}
+      {isMahasiswaPenulisUtama && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
-          <h2 className="text-lg font-semibold text-slate-800">Dosen Verifikator</h2>
-          <p className="text-xs text-slate-500">Publikasi melibatkan mahasiswa — pilih dosen verifikator.</p>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-800">Dosen Verifikator</h2>
+            <span className="text-xs bg-emerald-50 text-emerald-700 font-semibold px-2.5 py-0.5 rounded-full border border-emerald-200">
+              Wajib untuk Penulis Utama Mahasiswa
+            </span>
+          </div>
+          <p className="text-xs text-slate-500">
+            Mahasiswa sebagai penulis utama — pilih dosen verifikator untuk validasi bukti publikasi sebelum masuk ke rekap program studi.
+          </p>
           <select
             value={verifikator}
             onChange={(e) => setVerifikator(e.target.value)}

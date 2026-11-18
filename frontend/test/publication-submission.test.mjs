@@ -34,10 +34,10 @@ test('Publication submission & verification queue synchronization flow', async (
     },
   ];
 
-  // 1. Submit a student publication with verifikator
-  const newPubId = 'PUB-TEST-001';
-  const newPub = {
-    id: newPubId,
+  // 1. Submit a student as primary author publication -> Requires verifikator and sets MENUNGGU
+  const studentLeadPubId = 'PUB-TEST-MHS-LEAD';
+  const studentLeadPub = {
+    id: studentLeadPubId,
     judul: 'Implementasi Algoritma AI untuk Deteksi Malware',
     jenis: 'JURNAL',
     penulisUtama: 'Ahmad Mahasiswa',
@@ -49,17 +49,17 @@ test('Publication submission & verification queue synchronization flow', async (
     verifikator: 'Budi Hartono, M.Kom.',
   };
 
-  const updatedPubs = storageSync.prepend(STORAGE_KEYS.PUBLICATIONS, newPub, initialPubs);
+  const updatedPubs = storageSync.prepend(STORAGE_KEYS.PUBLICATIONS, studentLeadPub, initialPubs);
   assert.equal(updatedPubs.length, 2);
-  assert.equal(updatedPubs[0].id, newPubId);
+  assert.equal(updatedPubs[0].id, studentLeadPubId);
   assert.equal(updatedPubs[0].status_verifikasi, 'MENUNGGU');
 
-  // 2. Add to verification queue
+  // Add to verification queue
   const newVerif = {
     id: 'ver-test-001',
-    publication_id: newPubId,
-    judul: newPub.judul,
-    jenis: newPub.jenis,
+    publication_id: studentLeadPubId,
+    judul: studentLeadPub.judul,
+    jenis: studentLeadPub.jenis,
     mahasiswa: 'Ahmad Mahasiswa',
     nim: '1201220055',
     tahap: 'DIAJUKAN',
@@ -74,7 +74,29 @@ test('Publication submission & verification queue synchronization flow', async (
   assert.equal(updatedVerifs[0].id, 'ver-test-001');
   assert.equal(updatedVerifs[0].status, 'MENUNGGU');
 
-  // 3. Lecturer verifies and approves the submission
+  // 2. Submit a lecturer as primary author publication (with student as member) -> TIDAK_PERLU verifikator, does NOT enter queue
+  const lecturerLeadPubId = 'PUB-TEST-DOSEN-LEAD';
+  const lecturerLeadPub = {
+    id: lecturerLeadPubId,
+    judul: 'Studi Komparasi Cloud Computing untuk Smart Campus',
+    jenis: 'PROSIDING',
+    penulisUtama: 'Dr. Rina Fitriani, M.Kom.',
+    peringkat: 'Scopus Q2',
+    tahun: 2025,
+    status: 'DIAJUKAN',
+    target: 'IEEE Conference 2025',
+    status_verifikasi: 'TIDAK_PERLU',
+  };
+
+  const withDosenPubs = storageSync.prepend(STORAGE_KEYS.PUBLICATIONS, lecturerLeadPub, updatedPubs);
+  assert.equal(withDosenPubs[0].id, lecturerLeadPubId);
+  assert.equal(withDosenPubs[0].status_verifikasi, 'TIDAK_PERLU');
+  assert.equal(withDosenPubs[0].verifikator, undefined);
+
+  // Verification queue length remains 2 (dosen lead publication did NOT get added to queue)
+  assert.equal(updatedVerifs.length, 2);
+
+  // 3. Lecturer verifies and approves the student submission
   const afterApprovedVerifs = storageSync.update(
     STORAGE_KEYS.PUBLICATION_VERIFICATIONS,
     'ver-test-001',
@@ -88,10 +110,10 @@ test('Publication submission & verification queue synchronization flow', async (
   // 4. Publication record status_verifikasi updates to TERVERIFIKASI
   const afterApprovedPubs = storageSync.update(
     STORAGE_KEYS.PUBLICATIONS,
-    newPubId,
+    studentLeadPubId,
     { status_verifikasi: 'TERVERIFIKASI' },
-    updatedPubs
+    withDosenPubs
   );
-  const targetPub = afterApprovedPubs.find((p) => p.id === newPubId);
+  const targetPub = afterApprovedPubs.find((p) => p.id === studentLeadPubId);
   assert.equal(targetPub?.status_verifikasi, 'TERVERIFIKASI');
 });

@@ -37,15 +37,21 @@ func TestPublicationUsecase(t *testing.T) {
 	}
 
 	validAuthors := []*model.PublicationAuthor{
-		{NamaPenulis: "Dosen A", UserID: "dosen-a", PersentaseKontribusi: 60.0, Urutan: 1},
-		{NamaPenulis: "Mahasiswa B", UserID: "mhs-b", PersentaseKontribusi: 40.0, Urutan: 2}, // Total 100%
+		{NamaPenulis: "Mahasiswa B", UserID: "mhs-b", TipePenulis: "MAHASISWA", Peran: "PENULIS_UTAMA", PersentaseKontribusi: 60.0, Urutan: 1},
+		{NamaPenulis: "Dosen A", UserID: "dosen-a", TipePenulis: "DOSEN", Peran: "PEMBIMBING", PersentaseKontribusi: 40.0, Urutan: 2}, // Total 100%
 	}
 	err = uc.UpdateAuthors(created.ID, validAuthors)
 	if err != nil {
 		t.Fatalf("UpdateAuthors failed for 100%% total: %v", err)
 	}
 
-	// 3. Assign Verifier (Verifier cannot be an author)
+	// 3. Mahasiswa sebagai penulis utama wajib memiliki verifikator saat diajukan
+	err = uc.SubmitPublication(created.ID)
+	if err == nil {
+		t.Errorf("expected error when submitting student lead publication without verifier")
+	}
+
+	// Verifier cannot be an author
 	err = uc.AssignVerifier(created.ID, "dosen-a")
 	if err == nil {
 		t.Errorf("expected error when assigning author as verifier")
@@ -56,7 +62,7 @@ func TestPublicationUsecase(t *testing.T) {
 		t.Fatalf("AssignVerifier failed for independent verifier: %v", err)
 	}
 
-	// 4. Submit for verification
+	// 4. Submit for verification (Mahasiswa sebagai penulis utama masuk MENUNGGU_VERIFIKASI)
 	err = uc.SubmitPublication(created.ID)
 	if err != nil {
 		t.Fatalf("SubmitPublication failed: %v", err)
@@ -64,6 +70,28 @@ func TestPublicationUsecase(t *testing.T) {
 	found, _ := uc.GetPublicationByID(created.ID)
 	if found.Status != model.PubStatusMenungguVerifikasi {
 		t.Errorf("expected MENUNGGU_VERIFIKASI, got %s", found.Status)
+	}
+
+	// 4b. Uji publikasi dosen sebagai penulis utama: tidak butuh verifikator, langsung DIAJUKAN
+	dosenPub := &model.Publication{
+		Judul:       "Penelitian Dosen Tanpa Perlu Verifikator Mahasiswa",
+		Tipe:        model.PubJurnal,
+		TahunTerbit: 2025,
+		Authors: []*model.PublicationAuthor{
+			{NamaPenulis: "Prof. Dosen Utama", UserID: "dosen-prof", TipePenulis: "DOSEN", Peran: "PENULIS_UTAMA", Urutan: 1, PersentaseKontribusi: 70.0},
+			{NamaPenulis: "Mahasiswa Anggota", UserID: "mhs-anggota", TipePenulis: "MAHASISWA", Peran: "ANGGOTA", Urutan: 2, PersentaseKontribusi: 30.0},
+		},
+	}
+	createdDosenPub, err := uc.CreatePublication("dosen-prof", dosenPub)
+	if err != nil {
+		t.Fatalf("CreatePublication for lecturer failed: %v", err)
+	}
+	if err := uc.SubmitPublication(createdDosenPub.ID); err != nil {
+		t.Fatalf("SubmitPublication for lecturer should succeed without verifier: %v", err)
+	}
+	foundDosenPub, _ := uc.GetPublicationByID(createdDosenPub.ID)
+	if foundDosenPub.Status != model.PubStatusDiajukan {
+		t.Errorf("expected DIAJUKAN for lecturer lead publication, got %s", foundDosenPub.Status)
 	}
 
 	// 5. Verification Queue

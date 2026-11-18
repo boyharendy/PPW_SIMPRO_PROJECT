@@ -36,6 +36,10 @@ export const publicationService = {
 
   // Buat usulan publikasi baru (persisten)
   createPublication: async (data: Partial<Publication>): Promise<ApiResponse<Publication>> => {
+    const isMhsLead = data.authors && data.authors.length > 0
+      ? (data.authors[0].tipe_penulis === 'MAHASISWA' || data.authors.some(a => (a.urutan === 1 || a.peran === 'PENULIS_PERTAMA') && a.tipe_penulis === 'MAHASISWA'))
+      : false;
+
     const newPub: Publication = {
       id: data.id || `pub-${Date.now()}`,
       judul: data.judul || 'Judul Publikasi Baru',
@@ -43,7 +47,7 @@ export const publicationService = {
       nama_target: data.nama_target || 'Target Publikasi',
       peringkat: data.peringkat || 'SINTA_2',
       status: data.status || 'DIAJUKAN',
-      status_verifikasi: data.status_verifikasi || 'MENUNGGU',
+      status_verifikasi: data.status_verifikasi || (isMhsLead ? 'MENUNGGU' : 'TIDAK_PERLU'),
       dicatat_oleh: data.dicatat_oleh || 'u-dosen',
       tahun: data.tahun || new Date().getFullYear(),
       created_at: new Date().toISOString(),
@@ -98,14 +102,21 @@ export const publicationService = {
 
   // Ajukan usulan publikasi untuk verifikasi
   submitPublication: async (id: string): Promise<ApiResponse<Publication>> => {
-    storageSync.update(STORAGE_KEYS.PUBLICATIONS, id, { status: 'DIAJUKAN', status_verifikasi: 'MENUNGGU' }, mockPublications);
+    const list = storageSync.get<Publication[]>(STORAGE_KEYS.PUBLICATIONS, mockPublications);
+    const existing = list.find((p) => p.id === id);
+    const isMhsLead = existing?.authors && existing.authors.length > 0
+      ? (existing.authors[0].tipe_penulis === 'MAHASISWA' || existing.authors.some(a => (a.urutan === 1 || a.peran === 'PENULIS_PERTAMA') && a.tipe_penulis === 'MAHASISWA'))
+      : false;
+
+    const statusVerif = isMhsLead ? 'MENUNGGU' : 'TIDAK_PERLU';
+    storageSync.update(STORAGE_KEYS.PUBLICATIONS, id, { status: 'DIAJUKAN', status_verifikasi: statusVerif }, mockPublications);
     try {
       return await apiRequest<Publication>(API_ENDPOINTS.PUBLICATIONS.SUBMIT(id), {
         method: 'POST',
       });
     } catch {
-      const list = storageSync.get<Publication[]>(STORAGE_KEYS.PUBLICATIONS, mockPublications);
-      const updated = list.find((p) => p.id === id) || mockPublications[0];
+      const updatedList = storageSync.get<Publication[]>(STORAGE_KEYS.PUBLICATIONS, mockPublications);
+      const updated = updatedList.find((p) => p.id === id) || mockPublications[0];
       return { success: true, message: 'Diajukan', data: updated };
     }
   },
