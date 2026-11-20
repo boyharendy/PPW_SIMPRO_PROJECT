@@ -26,8 +26,8 @@ func TestMemoryPublicationRepository(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
-	if created.Status != model.PubStatusDraft {
-		t.Errorf("expected DRAFT status, got %s", created.Status)
+	if created.Status != model.PubStatusDraf {
+		t.Errorf("expected DRAF status, got %s", created.Status)
 	}
 
 	// 2. FindAll
@@ -37,31 +37,52 @@ func TestMemoryPublicationRepository(t *testing.T) {
 	}
 
 	// 3. Update Status
-	err = repo.UpdateStatus(created.ID, model.PubStatusTerverifikasi)
+	err = repo.UpdateStatus(created.ID, model.PubStatusDiterima)
 	if err != nil {
 		t.Fatalf("UpdateStatus failed: %v", err)
 	}
 
-	// 4. Add Review
+	// 4. Add Review (FR-31)
 	err = repo.AddReview(&model.PublicationReview{
 		PublicationID: created.ID,
-		ReviewerID:    "gkm-01",
+		ReviewerID:    "dosen-rev-01",
 		Catatan:       "Format penulisan dan sitasi sangat rapi",
-		Rekomendasi:   "DITERIMA",
+		Rekomendasi:   "LAYAK_DIAJUKAN",
 	})
 	if err != nil {
 		t.Fatalf("AddReview failed: %v", err)
 	}
 
-	// 5. FindByID
+	// 5. Verify publication record
+	err = repo.VerifyPublicationRecord(created.ID, "dosen-verif-01", "TERVERIFIKASI", "Bukti valid")
+	if err != nil {
+		t.Fatalf("VerifyPublicationRecord failed: %v", err)
+	}
+
+	// 6. FindByID (status remains DITERIMA while status_verifikasi is TERVERIFIKASI)
 	found, err := repo.FindByID(created.ID)
-	if err != nil || found.Status != model.PubStatusTerverifikasi || len(found.Reviews) != 1 {
+	if err != nil || found.Status != model.PubStatusDiterima || found.StatusVerifikasi != "TERVERIFIKASI" || len(found.Reviews) != 1 {
 		t.Fatalf("FindByID check failed: %v", err)
 	}
 
-	// 6. Recap
+	// 7. Unverified student pub must be excluded from Recap
+	unverifiedPub, err := repo.Create(&model.Publication{
+		Judul:        "Draft Mahasiswa Belum Verifikasi",
+		Tipe:         model.PubJurnal,
+		TipePencatat: "MAHASISWA",
+		TahunTerbit:  2025,
+		CreatedBy:    "mhs-1",
+	})
+	if err != nil {
+		t.Fatalf("Create student pub failed: %v", err)
+	}
+	if unverifiedPub.StatusVerifikasi != "MENUNGGU" {
+		t.Errorf("expected MENUNGGU status_verifikasi, got %s", unverifiedPub.StatusVerifikasi)
+	}
+
+	// 8. Recap
 	recap, err := repo.GetRecap()
 	if err != nil || recap.TotalPublikasi != 1 || recap.Terverifikasi != 1 {
-		t.Fatalf("GetRecap failed: %v", err)
+		t.Fatalf("GetRecap failed: got total=%d terverifikasi=%d err=%v", recap.TotalPublikasi, recap.Terverifikasi, err)
 	}
 }

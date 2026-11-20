@@ -39,7 +39,7 @@ export default function RoleGuard({ children }: { children: React.ReactNode }) {
               Peran aktif Anda saat ini (<span className="font-semibold text-slate-900">{user.activeRole.replace('_', ' ')}</span>) tidak memiliki wewenang untuk membuka modul atau halaman ini.
             </p>
             <p className="text-xs text-slate-500">
-              Sesuai SKPL SIMPRO Bab 2 &amp; NF-02, setiap tindakan dan akses modul dibatasi ketat berdasarkan peran yang aktif. Jika Anda memiliki peran lain, silakan ganti peran melalui menu di bagian atas header.
+              Setiap tindakan dan akses modul dibatasi ketat berdasarkan peran yang aktif. Jika Anda memiliki peran lain, silakan ganti peran melalui menu di bagian atas header.
             </p>
             <div className="pt-3">
               <Link

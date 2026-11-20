@@ -123,9 +123,62 @@ export const publicationService = {
     }
   },
 
-  // Verifikasi oleh Dosen Verifikator
-  verifyPublication: async (id: string, data: { status: string; catatan?: string }): Promise<ApiResponse<Publication>> => {
-    storageSync.update(STORAGE_KEYS.PUBLICATIONS, id, { status: data.status as any }, mockPublications);
+  // Update status tahapan publikasi oleh pihak yang mem-publish (Dosen / Mahasiswa)
+  updateStatus: async (
+    id: string,
+    data: { status: string; catatan?: string; bukti?: string }
+  ): Promise<ApiResponse<Publication>> => {
+    const list = storageSync.get<Publication[]>(STORAGE_KEYS.PUBLICATIONS, mockPublications);
+    const current = list.find((p) => p.id === id);
+    const newLog = {
+      id: `psl-${Date.now()}`,
+      publication_id: id,
+      tahap: data.status as Publication['status'],
+      tanggal_tahap: new Date().toISOString().split('T')[0],
+      tautan_bukti: data.bukti,
+      catatan: data.catatan,
+      dicatat_oleh: current?.dicatat_oleh || 'u-dosen1',
+      status_verifikasi: (current?.status_verifikasi === 'MENUNGGU' ? 'MENUNGGU' : 'TIDAK_PERLU') as Publication['status_verifikasi'],
+      created_at: new Date().toISOString(),
+    };
+    storageSync.update(
+      STORAGE_KEYS.PUBLICATIONS,
+      id,
+      {
+        status: data.status as Publication['status'],
+        updated_at: new Date().toISOString(),
+        stage_logs: [newLog, ...(current?.stage_logs || [])],
+      },
+      mockPublications
+    );
+    try {
+      return await apiRequest<Publication>(API_ENDPOINTS.PUBLICATIONS.STATUS(id), {
+        method: 'PATCH',
+        body: data,
+      });
+    } catch {
+      const updatedList = storageSync.get<Publication[]>(STORAGE_KEYS.PUBLICATIONS, mockPublications);
+      const updated = updatedList.find((p) => p.id === id) || mockPublications[0];
+      return { success: true, message: 'Status publikasi diperbarui', data: updated };
+    }
+  },
+
+  // Verifikasi kelayakan masuk rekap oleh Dosen Pembimbing / Penulis Pendamping (FR-31)
+  verifyPublication: async (
+    id: string,
+    data: { status: string; catatan?: string; verifikator_nama?: string }
+  ): Promise<ApiResponse<Publication>> => {
+    storageSync.update(
+      STORAGE_KEYS.PUBLICATIONS,
+      id,
+      {
+        status_verifikasi: data.status as Publication['status_verifikasi'],
+        catatan_verifikasi: data.catatan,
+        verifikator_nama: data.verifikator_nama,
+        diverifikasi_at: new Date().toISOString(),
+      },
+      mockPublications
+    );
     try {
       return await apiRequest<Publication>(API_ENDPOINTS.PUBLICATIONS.VERIFY(id), {
         method: 'POST',
@@ -135,6 +188,85 @@ export const publicationService = {
       const list = storageSync.get<Publication[]>(STORAGE_KEYS.PUBLICATIONS, mockPublications);
       const updated = list.find((p) => p.id === id) || mockPublications[0];
       return { success: true, message: 'Diverifikasi', data: updated };
+    }
+  },
+
+  // Tetapkan dosen reviewer internal sebelum naskah diajukan (FR-31)
+  assignReviewer: async (
+    id: string,
+    data: { reviewer_id: string; reviewer_nama?: string; tenggat_review?: string }
+  ): Promise<ApiResponse<Publication>> => {
+    const list = storageSync.get<Publication[]>(STORAGE_KEYS.PUBLICATIONS, mockPublications);
+    const current = list.find((p) => p.id === id);
+    const newReview = {
+      id: `rev-${Date.now()}`,
+      publication_id: id,
+      reviewer_id: data.reviewer_id,
+      reviewer_nama: data.reviewer_nama,
+      ditetapkan_oleh: current?.dicatat_oleh || 'u-dosen1',
+      status: 'DITUGASKAN' as const,
+      tenggat_review: data.tenggat_review,
+      ditugaskan_at: new Date().toISOString(),
+    };
+    const nextStatus = current?.status === 'DRAF' ? 'REVIEW_INTERNAL' : (current?.status || 'REVIEW_INTERNAL');
+    storageSync.update(
+      STORAGE_KEYS.PUBLICATIONS,
+      id,
+      {
+        status: nextStatus as Publication['status'],
+        reviews: [...(current?.reviews || []), newReview],
+      },
+      mockPublications
+    );
+    try {
+      return await apiRequest<Publication>(API_ENDPOINTS.PUBLICATIONS.REVIEWS(id), {
+        method: 'POST',
+        body: data,
+      });
+    } catch {
+      const updatedList = storageSync.get<Publication[]>(STORAGE_KEYS.PUBLICATIONS, mockPublications);
+      const updated = updatedList.find((p) => p.id === id) || mockPublications[0];
+      return { success: true, message: 'Reviewer internal ditetapkan', data: updated };
+    }
+  },
+
+  // Selesaikan review internal publikasi dengan rekomendasi dan catatan (FR-31)
+  completeReview: async (
+    reviewId: string,
+    data: { rekomendasi: string; catatan: string }
+  ): Promise<ApiResponse<Publication>> => {
+    const list = storageSync.get<Publication[]>(STORAGE_KEYS.PUBLICATIONS, mockPublications);
+    let targetPub: Publication | undefined;
+    for (const pub of list) {
+      if (pub.reviews?.some((r) => r.id === reviewId)) {
+        const updatedReviews = pub.reviews.map((r) =>
+          r.id === reviewId
+            ? {
+                ...r,
+                status: 'SELESAI' as const,
+                rekomendasi: data.rekomendasi as 'LAYAK_DIAJUKAN' | 'PERLU_PERBAIKAN',
+                catatan_review: data.catatan,
+                catatan: data.catatan,
+                selesai_at: new Date().toISOString(),
+              }
+            : r
+        );
+        storageSync.update(STORAGE_KEYS.PUBLICATIONS, pub.id, { reviews: updatedReviews }, mockPublications);
+        targetPub = { ...pub, reviews: updatedReviews };
+        break;
+      }
+    }
+    try {
+      return await apiRequest<Publication>(API_ENDPOINTS.PUBLICATIONS.COMPLETE_REVIEW(reviewId), {
+        method: 'POST',
+        body: data,
+      });
+    } catch {
+      return {
+        success: true,
+        message: 'Review internal diselesaikan',
+        data: targetPub || mockPublications[0],
+      };
     }
   },
 

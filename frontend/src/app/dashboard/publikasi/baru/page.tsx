@@ -2,232 +2,246 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Save, Send, Plus, Trash2, AlertCircle } from 'lucide-react';
+import { Save, Send, Plus, Trash2, Eye, ClipboardCheck } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
-import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
-import { useApp } from '@/lib/context';
-import { mockData as defaultPubs, type Publikasi } from '../page';
-import { MOCK_VERIF, type VerificationItem } from '../verifikasi/page';
-
-type Penulis = {
-  nama: string;
-  tipe: 'dosen' | 'mahasiswa' | 'eksternal';
-  peran: 'penulis_pertama' | 'korespondensi' | 'anggota' | 'pembimbing';
-  urutan: number;
-};
-
-const PERINGKAT_OPTIONS: Record<string, string[]> = {
-  JURNAL: ['SINTA 1', 'SINTA 2', 'SINTA 3', 'SINTA 4', 'SINTA 5', 'SINTA 6', 'Scopus Q1', 'Scopus Q2', 'Scopus Q3', 'Scopus Q4', 'WoS', 'Non-peringkat'],
-  PROSIDING: ['Scopus Q1', 'Scopus Q2', 'Scopus Q3', 'Scopus Q4', 'Non-peringkat'],
-  BUKU: ['Non-peringkat'],
-  HKI: ['Non-peringkat'],
-};
-
-const PERAN_LABELS: Record<string, string> = {
-  penulis_pertama: 'Penulis Pertama',
-  korespondensi: 'Korespondensi',
-  anggota: 'Anggota',
-  pembimbing: 'Pembimbing',
-};
-
-const TIPE_LABELS: Record<string, string> = {
-  dosen: 'Dosen',
-  mahasiswa: 'Mahasiswa',
-  eksternal: 'Eksternal',
-};
-
-const VERIFIKATOR_MAP: Record<string, string> = {
-  DR001: 'Dr. Rina Fitriani, M.Kom.',
-  DR002: 'Budi Hartono, M.Kom.',
-  DR003: 'Dewi Kartika, M.Sc.',
-};
+import { useUser } from '@/lib/context';
+import { publicationService } from '@/lib/api/services/publication.service';
+import {
+  DOSEN_LIST,
+  PERAN_LABELS,
+  PERINGKAT_OPTIONS,
+  TIPE_LABELS,
+  type Penulis,
+} from '@/components/publikasi/publicationFormConstants';
+import type { AuthorRole, AuthorType, PublicationRank, PublicationStatus, PublicationType } from '@/lib/types';
 
 export default function Page() {
   const router = useRouter();
-  const { user } = useApp();
+  const { user, currentRole } = useUser();
+  const isKaprodi = currentRole === 'KAPRODI';
+  const isMahasiswaRole = currentRole === 'MAHASISWA';
+
   const [judul, setJudul] = useState('');
-  const [jenis, setJenis] = useState<'JURNAL' | 'PROSIDING' | 'BUKU' | 'HKI'>('JURNAL');
+  const [jenis, setJenis] = useState<PublicationType>('JURNAL');
   const [namaTarget, setNamaTarget] = useState('');
-  const [peringkat, setPeringkat] = useState('');
+  const [peringkat, setPeringkat] = useState<PublicationRank>('SINTA_2');
   const [tahun, setTahun] = useState('2025');
   const [penulisList, setPenulisList] = useState<Penulis[]>([
     {
-      nama: user.activeRole === 'MAHASISWA' ? user.nama_lengkap || 'Ahmad Mahasiswa' : '',
-      tipe: user.activeRole === 'MAHASISWA' ? 'mahasiswa' : 'dosen',
-      peran: 'penulis_pertama',
+      user_id: user.id,
+      nama: '',
+      tipe: isMahasiswaRole ? 'MAHASISWA' : 'DOSEN',
+      peran: 'PENULIS_PERTAMA',
       urutan: 1,
     },
   ]);
-  const [verifikator, setVerifikator] = useState('DR002');
+  const [verifikator, setVerifikator] = useState('');
+  const [reviewerId, setReviewerId] = useState('');
+  const [tenggatReview, setTenggatReview] = useState('2025-11-30');
   const [errorMsg, setErrorMsg] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Jika pengguna yang mengunggah memiliki peran Mahasiswa ATAU ada penulis bertipe mahasiswa, butuh verifikator
-  const isMahasiswaUploader = user.activeRole === 'MAHASISWA';
-  const hasMahasiswaPenulis = penulisList.some((p) => p.tipe === 'mahasiswa');
-  const needsVerifikator = isMahasiswaUploader || hasMahasiswaPenulis;
+  const hasMahasiswa = isMahasiswaRole || penulisList.some((p) => p.tipe === 'MAHASISWA');
+  const authorNames = new Set(penulisList.map((p) => p.nama.trim().toLowerCase()).filter(Boolean));
+  const eligibleReviewers = DOSEN_LIST.filter((d) => !authorNames.has(d.nama.toLowerCase()));
 
   const handleAddPenulis = () => {
     setPenulisList((prev) => [
       ...prev,
-      { nama: '', tipe: 'dosen', peran: 'anggota', urutan: prev.length + 1 },
+      { nama: '', tipe: 'DOSEN', peran: 'ANGGOTA', urutan: prev.length + 1 },
     ]);
   };
 
   const handleRemovePenulis = (idx: number) => {
-    setPenulisList((prev) => prev.filter((_, i) => i !== idx).map((p, i) => ({ ...p, urutan: i + 1 })));
+    setPenulisList((prev) =>
+      prev.filter((_, i) => i !== idx).map((p, i) => ({ ...p, urutan: i + 1 }))
+    );
   };
 
   const updatePenulis = (idx: number, field: keyof Penulis, value: string) => {
     setPenulisList((prev) => prev.map((p, i) => (i === idx ? { ...p, [field]: value } : p)));
   };
 
-  const handleSubmit = (status: 'DRAF' | 'DIAJUKAN') => {
+  const handleSubmit = async (targetStatus: PublicationStatus) => {
     setErrorMsg('');
-
     if (!judul.trim()) {
       setErrorMsg('Judul publikasi wajib diisi.');
       return;
     }
-
-    const filledAuthors = penulisList.filter((p) => p.nama.trim().length > 0);
-    if (filledAuthors.length === 0) {
-      setErrorMsg('Minimal satu nama penulis wajib diisi.');
+    if (targetStatus === 'REVIEW_INTERNAL' && !reviewerId) {
+      setErrorMsg('Pilih Dosen Reviewer Internal terlebih dahulu sebelum mengajukan Review Internal.');
+      return;
+    }
+    if (hasMahasiswa && targetStatus !== 'DRAF' && !verifikator) {
+      setErrorMsg('Pilih Dosen Verifikator (Dosen Pembimbing / Penulis Pendamping) terlebih dahulu.');
       return;
     }
 
-    if (needsVerifikator && status === 'DIAJUKAN' && !verifikator) {
-      setErrorMsg('Publikasi yang dicatat oleh atau melibatkan mahasiswa wajib memilih Dosen Verifikator.');
-      return;
+    setIsSaving(true);
+    try {
+      const selectedVerif = DOSEN_LIST.find((d) => d.id === verifikator);
+      const selectedRev = DOSEN_LIST.find((d) => d.id === reviewerId);
+      const pubId = `pub-${Date.now()}`;
+      const nowIso = new Date().toISOString();
+
+      const actorDisplay = user.nama_lengkap || user.name || 'Pengguna';
+      const verifStatus = hasMahasiswa ? 'MENUNGGU' : 'TIDAK_PERLU';
+
+      await publicationService.createPublication({
+        id: pubId,
+        judul: judul.trim(),
+        jenis,
+        tipe_pencatat: isMahasiswaRole ? 'MAHASISWA' : 'DOSEN',
+        nama_target: namaTarget.trim() || 'Target Publikasi',
+        peringkat,
+        tahun: parseInt(tahun, 10) || 2025,
+        status: targetStatus,
+        status_verifikasi: verifStatus,
+        dicatat_oleh: user.id,
+        verifikator_id: selectedVerif?.id,
+        verifikator_nama: selectedVerif?.nama,
+        authors: penulisList.map((p, i) => ({
+          id: `auth-${pubId}-${i + 1}`,
+          publication_id: pubId,
+          user_id: p.user_id,
+          nama_penulis: p.nama.trim() || `Penulis ${i + 1}`,
+          tipe_penulis: p.tipe,
+          peran: p.peran,
+          urutan: p.urutan,
+          persentase_kontribusi: Number((100 / penulisList.length).toFixed(2)),
+        })),
+        stage_logs: [
+          {
+            id: `stage-${pubId}-1`,
+            publication_id: pubId,
+            tahap: targetStatus,
+            tanggal_tahap: nowIso.split('T')[0],
+            status_verifikasi: verifStatus,
+            dicatat_oleh: actorDisplay,
+            catatan: targetStatus === 'DRAF' ? 'Pembuatan draf awal' : 'Pengajuan publikasi pertama kali',
+            created_at: nowIso,
+          },
+        ],
+        reviews: selectedRev
+          ? [
+              {
+                id: `rev-${pubId}-1`,
+                publication_id: pubId,
+                reviewer_id: selectedRev.id,
+                reviewer_nama: selectedRev.nama,
+                ditetapkan_oleh: actorDisplay,
+                tenggat_review: tenggatReview,
+                ditugaskan_at: nowIso,
+                status: 'DITUGASKAN',
+              },
+            ]
+          : [],
+      });
+
+      router.push('/dashboard/publikasi');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gagal menyimpan publikasi';
+      setErrorMsg(msg);
+    } finally {
+      setIsSaving(false);
     }
-
-    setIsSubmitting(true);
-
-    const pubId = `PUB-${Date.now().toString().slice(-4)}`;
-    const verifikatorLabel = VERIFIKATOR_MAP[verifikator] || verifikator || 'Budi Hartono, M.Kom.';
-    const studentAuthor = penulisList.find((p) => p.tipe === 'mahasiswa') || penulisList[0];
-
-    const newPub: Publikasi = {
-      id: pubId,
-      judul: judul.trim(),
-      jenis,
-      penulisUtama: filledAuthors[0].nama.trim(),
-      peringkat: peringkat || 'Non-peringkat',
-      tahun: parseInt(tahun, 10) || 2025,
-      status,
-      target: namaTarget.trim() || undefined,
-      status_verifikasi: needsVerifikator ? (status === 'DIAJUKAN' ? 'MENUNGGU' : 'DRAF') : 'TIDAK_PERLU',
-      verifikator: needsVerifikator ? verifikatorLabel : undefined,
-    };
-
-    // Prepend to publications in storageSync
-    storageSync.prepend(STORAGE_KEYS.PUBLICATIONS, newPub, defaultPubs);
-
-    // If submitted with Mahasiswa author or uploader, insert into verification queue
-    if (needsVerifikator && status === 'DIAJUKAN') {
-      const cleanFileName = judul.trim().replace(/[^a-zA-Z0-9]/g, '_').slice(0, 20);
-      const newVerif: VerificationItem = {
-        id: `ver-${Date.now()}`,
-        publication_id: newPub.id,
-        judul: newPub.judul,
-        jenis: newPub.jenis,
-        mahasiswa: studentAuthor?.nama.trim() || user.nama_lengkap || 'Mahasiswa',
-        nim: '1201220055',
-        tahap: 'DIAJUKAN',
-        bukti: `Bukti_Submit_${cleanFileName}.pdf`,
-        tanggal: new Date().toISOString().split('T')[0],
-        status: 'MENUNGGU',
-        verifikator: verifikatorLabel,
-      };
-
-      storageSync.prepend(STORAGE_KEYS.PUBLICATION_VERIFICATIONS, newVerif, MOCK_VERIF);
-    }
-
-    router.push('/dashboard/publikasi');
   };
 
-  const inputCls = 'w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500';
-  const labelCls = 'block text-sm font-medium text-slate-700 mb-1.5';
+  const inputCls =
+    'w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500';
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-4xl">
       <PageHeader
         title="Pencatatan Publikasi Baru"
-        description="Isi detail publikasi dan daftar penulis"
+        description="Dosen atau mahasiswa mencatat publikasi karya ilmiah baru"
       />
 
       {errorMsg && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
-          <AlertCircle size={16} className="shrink-0" />
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 text-sm px-4 py-3 rounded-xl flex items-center justify-between">
           <span>{errorMsg}</span>
+          <button onClick={() => setErrorMsg('')} className="text-xs font-bold underline">
+            Tutup
+          </button>
         </div>
       )}
 
-      {/* Form Utama */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-5">
+      {/* Informasi Umum */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
         <h2 className="text-lg font-semibold text-slate-800">Informasi Publikasi</h2>
 
         <div>
-          <label className={labelCls}>Judul Publikasi</label>
+          <label className="text-xs font-semibold text-slate-700 block mb-1">
+            Judul Publikasi <span className="text-rose-500">*</span>
+          </label>
           <input
+            type="text"
             value={judul}
             onChange={(e) => setJudul(e.target.value)}
+            placeholder="Masukkan judul artikel / naskah publikasi"
             className={inputCls}
-            placeholder="Masukkan judul publikasi"
+            required
           />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className={labelCls}>Jenis Publikasi</label>
+            <label className="text-xs font-semibold text-slate-700 block mb-1">Jenis Publikasi</label>
             <select
               value={jenis}
               onChange={(e) => {
-                setJenis(e.target.value as any);
-                setPeringkat('');
+                const j = e.target.value as PublicationType;
+                setJenis(j);
+                setPeringkat(PERINGKAT_OPTIONS[j][0].value);
               }}
               className={inputCls}
             >
               <option value="JURNAL">Jurnal</option>
               <option value="PROSIDING">Prosiding</option>
               <option value="BUKU">Buku</option>
-              <option value="HKI">HKI</option>
+              <option value="HKI">HKI / Paten</option>
             </select>
           </div>
+
           <div>
-            <label className={labelCls}>Nama Target (Jurnal/Konferensi)</label>
+            <label className="text-xs font-semibold text-slate-700 block mb-1">
+              Nama Target (Jurnal / Konferensi)
+            </label>
             <input
+              type="text"
               value={namaTarget}
               onChange={(e) => setNamaTarget(e.target.value)}
+              placeholder="Contoh: IEEE Access / JTIIK"
               className={inputCls}
-              placeholder="cth: IEEE Access, ICAICTA 2025"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className={labelCls}>Peringkat</label>
+            <label className="text-xs font-semibold text-slate-700 block mb-1">Peringkat / Indeks</label>
             <select
               value={peringkat}
-              onChange={(e) => setPeringkat(e.target.value)}
+              onChange={(e) => setPeringkat(e.target.value as PublicationRank)}
               className={inputCls}
             >
-              <option value="">— Pilih Peringkat —</option>
-              {(PERINGKAT_OPTIONS[jenis] || []).map((p) => (
-                <option key={p} value={p}>{p}</option>
+              {PERINGKAT_OPTIONS[jenis].map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
               ))}
             </select>
           </div>
+
           <div>
-            <label className={labelCls}>Tahun</label>
+            <label className="text-xs font-semibold text-slate-700 block mb-1">Tahun Publikasi</label>
             <input
               type="number"
               value={tahun}
               onChange={(e) => setTahun(e.target.value)}
               className={inputCls}
-              min="2020"
-              max="2030"
+              min="2000"
+              max="2035"
             />
           </div>
         </div>
@@ -236,24 +250,29 @@ export default function Page() {
       {/* Daftar Penulis */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-800">Daftar Penulis</h2>
+          <div>
+            <h2 className="text-lg font-semibold text-slate-800">Daftar Penulis</h2>
+            <p className="text-xs text-slate-500">
+              Penulis urutan pertama ditetapkan sebagai Penulis Utama (Lead Author).
+            </p>
+          </div>
           <button
             type="button"
             onClick={handleAddPenulis}
-            className="bg-white text-slate-700 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 hover:bg-slate-50 transition-colors cursor-pointer"
+            className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 hover:bg-slate-100 transition-colors"
           >
             <Plus size={14} /> Tambah Penulis
           </button>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-slate-100">
                 <th className="px-3 py-2 text-left text-xs font-medium text-slate-400 w-10">#</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-slate-400">Nama Penulis</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-slate-400 w-36">Tipe</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-slate-400 w-40">Peran</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-slate-400 w-44">Peran</th>
                 <th className="px-3 py-2 w-10"></th>
               </tr>
             </thead>
@@ -265,29 +284,33 @@ export default function Page() {
                     <input
                       value={p.nama}
                       onChange={(e) => updatePenulis(idx, 'nama', e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                       placeholder="Nama penulis"
                     />
                   </td>
                   <td className="px-3 py-2">
                     <select
                       value={p.tipe}
-                      onChange={(e) => updatePenulis(idx, 'tipe', e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-sm cursor-pointer"
+                      onChange={(e) => updatePenulis(idx, 'tipe', e.target.value as AuthorType)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-sm"
                     >
                       {Object.entries(TIPE_LABELS).map(([v, l]) => (
-                        <option key={v} value={v}>{l}</option>
+                        <option key={v} value={v}>
+                          {l}
+                        </option>
                       ))}
                     </select>
                   </td>
                   <td className="px-3 py-2">
                     <select
                       value={p.peran}
-                      onChange={(e) => updatePenulis(idx, 'peran', e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-sm cursor-pointer"
+                      onChange={(e) => updatePenulis(idx, 'peran', e.target.value as AuthorRole)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-sm"
                     >
                       {Object.entries(PERAN_LABELS).map(([v, l]) => (
-                        <option key={v} value={v}>{l}</option>
+                        <option key={v} value={v}>
+                          {l}
+                        </option>
                       ))}
                     </select>
                   </td>
@@ -296,7 +319,7 @@ export default function Page() {
                       <button
                         type="button"
                         onClick={() => handleRemovePenulis(idx)}
-                        className="text-rose-500 hover:text-rose-700 transition-colors cursor-pointer"
+                        className="text-rose-500 hover:text-rose-700 transition-colors"
                       >
                         <Trash2 size={14} />
                       </button>
@@ -309,43 +332,83 @@ export default function Page() {
         </div>
       </div>
 
-      {/* Verifikator (conditional: jika upload oleh role mahasiswa atau melibatkan mahasiswa) */}
-      {needsVerifikator && (
+      {/* Review Internal Opsional */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
+        <h2 className="text-lg font-semibold text-slate-800">Dosen Reviewer Internal (Opsional)</h2>
+        <p className="text-xs text-slate-500">
+          Tetapkan dosen reviewer internal (bukan penulis naskah) untuk memberi catatan sebelum naskah diajukan ke penerbit.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <select
+            value={reviewerId}
+            onChange={(e) => setReviewerId(e.target.value)}
+            className={inputCls}
+          >
+            <option value="">— Tanpa Reviewer Internal —</option>
+            {eligibleReviewers.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.nama}
+              </option>
+            ))}
+          </select>
+          <input
+            type="date"
+            value={tenggatReview}
+            onChange={(e) => setTenggatReview(e.target.value)}
+            className={inputCls}
+          />
+        </div>
+      </div>
+
+      {/* Verifikator Mahasiswa */}
+      {hasMahasiswa && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
-          <h2 className="text-lg font-semibold text-slate-800">Dosen Verifikator</h2>
+          <h2 className="text-lg font-semibold text-slate-800">
+            Dosen Verifikator (Dosen Pembimbing / Penulis Pendamping)
+          </h2>
           <p className="text-xs text-slate-500">
-            Publikasi dicatat oleh mahasiswa / melibatkan mahasiswa — pilih dosen verifikator untuk validasi bukti publikasi sebelum masuk ke rekap program studi.
+            Publikasi mahasiswa wajib diverifikasi oleh dosen pembimbing atau dosen penulis pendamping sebelum masuk rekap program studi.
           </p>
           <select
             value={verifikator}
             onChange={(e) => setVerifikator(e.target.value)}
             className={inputCls}
           >
-            <option value="">— Pilih Dosen Verifikator —</option>
-            <option value="DR001">Dr. Rina Fitriani, M.Kom.</option>
-            <option value="DR002">Budi Hartono, M.Kom.</option>
-            <option value="DR003">Dewi Kartika, M.Sc.</option>
+            <option value="">— Pilih Dosen Pembimbing / Penulis Pendamping —</option>
+            {DOSEN_LIST.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.nama}
+              </option>
+            ))}
           </select>
         </div>
       )}
 
       {/* Footer Actions */}
-      <div className="flex items-center justify-end gap-3 pt-2">
+      <div className="flex items-center justify-end gap-3 flex-wrap">
         <button
           type="button"
-          disabled={isSubmitting}
+          disabled={isSaving}
           onClick={() => handleSubmit('DRAF')}
-          className="bg-white text-slate-700 border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50"
+          className="bg-white text-slate-700 border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center gap-2"
         >
           <Save size={14} /> Simpan Draf
         </button>
         <button
           type="button"
-          disabled={isSubmitting}
-          onClick={() => handleSubmit('DIAJUKAN')}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-4 py-2 text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
+          disabled={isSaving}
+          onClick={() => handleSubmit('REVIEW_INTERNAL')}
+          className="bg-indigo-600 text-white rounded-xl px-4 py-2 text-sm font-semibold hover:bg-indigo-700 transition-colors flex items-center gap-2"
         >
-          <Send size={14} /> {isSubmitting ? 'Mengajukan...' : 'Ajukan'}
+          <ClipboardCheck size={14} /> Ajukan Review Internal
+        </button>
+        <button
+          type="button"
+          disabled={isSaving}
+          onClick={() => handleSubmit('DIAJUKAN')}
+          className="bg-blue-600 text-white rounded-xl px-4 py-2 text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2"
+        >
+          <Send size={14} /> Ajukan Publikasi
         </button>
       </div>
     </div>

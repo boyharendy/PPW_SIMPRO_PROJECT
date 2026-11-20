@@ -46,31 +46,52 @@ func (u *rkaUsecase) GetRkaByID(id string) (*model.RkaDocument, error) {
 	return u.repo.FindByID(id)
 }
 
+func recomputeAndValidateDocPagu(doc *model.RkaDocument) (float64, error) {
+	var total float64
+	seen := make(map[string]bool)
+
+	for _, act := range doc.Activities {
+		for _, item := range act.BudgetItems {
+			if item.AnggaranAlokasi < 0 {
+				return 0, errors.New("anggaran alokasi tidak boleh bernilai negatif")
+			}
+			total += item.AnggaranAlokasi
+			if item.ID != "" {
+				seen[item.ID] = true
+			}
+		}
+	}
+
+	for _, item := range doc.BudgetItems {
+		if item.AnggaranAlokasi < 0 {
+			return 0, errors.New("anggaran alokasi tidak boleh bernilai negatif")
+		}
+		if item.ID == "" || !seen[item.ID] {
+			total += item.AnggaranAlokasi
+		}
+	}
+	return total, nil
+}
+
 func (u *rkaUsecase) CreateRka(doc *model.RkaDocument) (*model.RkaDocument, error) {
 	if strings.TrimSpace(doc.TahunAnggaran) == "" {
 		return nil, errors.New("tahun anggaran wajib diisi")
 	}
-	if doc.PaguTotal < 0 {
-		return nil, errors.New("pagu total tidak boleh bernilai negatif")
+	total, err := recomputeAndValidateDocPagu(doc)
+	if err != nil {
+		return nil, err
 	}
-	for _, item := range doc.BudgetItems {
-		if item.AnggaranAlokasi < 0 {
-			return nil, errors.New("anggaran alokasi tidak boleh bernilai negatif")
-		}
-	}
-	doc.Status = model.BudgetStatusDraft
+	doc.PaguTotal = total
+	doc.Status = model.BudgetStatusDraf
 	return u.repo.Create(doc)
 }
 
 func (u *rkaUsecase) UpdateRka(tahun string, doc *model.RkaDocument) (*model.RkaDocument, error) {
-	if doc.PaguTotal < 0 {
-		return nil, errors.New("pagu total tidak boleh bernilai negatif")
+	total, err := recomputeAndValidateDocPagu(doc)
+	if err != nil {
+		return nil, err
 	}
-	for _, item := range doc.BudgetItems {
-		if item.AnggaranAlokasi < 0 {
-			return nil, errors.New("anggaran alokasi tidak boleh bernilai negatif")
-		}
-	}
+	doc.PaguTotal = total
 	return u.repo.Update(tahun, doc)
 }
 
@@ -102,6 +123,22 @@ func (u *rkaUsecase) GetVersionDiff(rkaIDOrYear string, nomorVersi int) (map[str
 }
 
 func (u *rkaUsecase) DecideVersion(rkaIDOrYear string, nomorVersi int, approved bool, actorID string) error {
+	if approved {
+		doc, err := u.repo.FindByYear(rkaIDOrYear)
+		if err != nil {
+			doc, err = u.repo.FindByID(rkaIDOrYear)
+		}
+		if err == nil && doc != nil {
+			if _, valErr := recomputeAndValidateDocPagu(doc); valErr != nil {
+				return valErr
+			}
+			for _, act := range doc.Activities {
+				if len(act.BudgetItems) == 0 && len(doc.BudgetItems) == 0 {
+					return errors.New("setiap kegiatan wajib memiliki pos anggaran sebelum disahkan")
+				}
+			}
+		}
+	}
 	return u.repo.DecideVersion(rkaIDOrYear, nomorVersi, approved, actorID)
 }
 

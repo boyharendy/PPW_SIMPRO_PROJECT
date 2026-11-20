@@ -8,7 +8,8 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import Modal from '@/components/ui/Modal';
 import { formatDateShort } from '@/lib/utils';
 import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
-import { mockData as defaultPubs, type Publikasi } from '../page';
+import { mockPublications } from '@/lib/mock-data';
+import type { Publication } from '@/lib/types';
 
 export interface VerificationItem {
   id: string;
@@ -102,18 +103,25 @@ export default function Page() {
 
     // Sync to STORAGE_KEYS.PUBLICATIONS
     const targetPubId = selectedItem.publication_id || selectedItem.id;
-    const currentPubs = storageSync.get<Publikasi[]>(STORAGE_KEYS.PUBLICATIONS, defaultPubs);
-    const existingPub = currentPubs.find((p) => p.id === targetPubId || p.judul.trim().toLowerCase() === selectedItem.judul.trim().toLowerCase());
+    const currentPubs = storageSync.get<Publication[]>(STORAGE_KEYS.PUBLICATIONS, mockPublications);
+    const existingPub = currentPubs.find(
+      (p) => p.id === targetPubId || p.judul.trim().toLowerCase() === selectedItem.judul.trim().toLowerCase()
+    );
     if (existingPub) {
-      storageSync.update(
+      storageSync.update<Publication>(
         STORAGE_KEYS.PUBLICATIONS,
         existingPub.id,
         {
           status_verifikasi: decision,
-          status: decision === 'TERVERIFIKASI' ? (existingPub.status === 'DRAF' ? 'DIAJUKAN' : existingPub.status) : 'DRAF',
-          verifikator: selectedItem.verifikator || existingPub.verifikator,
+          status:
+            decision === 'TERVERIFIKASI'
+              ? existingPub.status === 'DRAF'
+                ? 'DIAJUKAN'
+                : existingPub.status
+              : 'DRAF',
+          verifikator_nama: selectedItem.verifikator || existingPub.verifikator_nama,
         },
-        defaultPubs
+        mockPublications
       );
     }
 
