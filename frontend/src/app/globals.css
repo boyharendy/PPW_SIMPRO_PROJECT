@@ -285,7 +285,7 @@
     box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
   }
 
-  /* Standar Tipografi LearnUI: Body 16px & Secondary 13.5px */
+  /* Standar Tipografi LearnUI & WCAG 2.2 AA: Body 16px & Secondary 13.5px (#64748B >= 4.76:1) */
   .text-body {
     font-size: 16px;
     line-height: 1.6;
@@ -299,7 +299,33 @@
   .text-caption {
     font-size: 12px;
     line-height: 1.4;
-    color: #94A3B8;
+    color: #64748B;
+  }
+
+  /* Tabular Figures (tabular-nums) wajib untuk angka KPI, grafik, dan tabel */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  /* Skeleton Shimmer halus selaras palet Light Pastel SIMPRO */
+  @keyframes simproShimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      #F1F5F9 25%,
+      #E2E8F0 50%,
+      #F1F5F9 75%
+    );
+    background-size: 200% 100%;
+    animation: simproShimmer 1.5s ease-in-out infinite;
   }
 
   /* Label */
