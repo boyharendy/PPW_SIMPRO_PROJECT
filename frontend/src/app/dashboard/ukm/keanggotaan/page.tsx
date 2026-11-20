@@ -1,289 +1,261 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import PageHeader from '@/components/ui/PageHeader';
-import DataTable from '@/components/ui/DataTable';
+import DataTable, { type DataTableColumn } from '@/components/ui/DataTable';
 import StatusBadge from '@/components/ui/StatusBadge';
 import StatCard from '@/components/ui/StatCard';
 import Modal from '@/components/ui/Modal';
 import { useUser } from '@/lib/context';
-import { mockUkmMemberships, mockUkmDirectories } from '@/lib/mock-data';
-import type { UkmMembership, UkmPosition } from '@/lib/types';
-import { formatDate } from '@/lib/utils';
-import {
-  ArrowLeft,
-  Users,
-  CheckCircle2,
-  Clock,
-  Plus,
-  FileCheck,
-  XCircle,
-  Compass,
-} from 'lucide-react';
+import { mockUkmDirectories, mockUkmMemberships } from '@/lib/mock-data';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
+import type { UkmDirectory, UkmMembership, UkmPosition } from '@/lib/types';
+import { ArrowLeft, Plus, CheckCircle2, XCircle, Users, Clock, Search } from 'lucide-react';
+
+const POSITIONS: UkmPosition[] = ['ANGGOTA', 'KORDINATOR_DIVISI', 'SEKRETARIS', 'BENDAHARA', 'WAKIL_KETUA', 'KETUA'];
 
 export default function KeanggotaanUkmPage() {
   const { currentRole } = useUser();
+  const [ukms, setUkms] = useState<UkmDirectory[]>(mockUkmDirectories);
   const [memberships, setMemberships] = useState<UkmMembership[]>(mockUkmMemberships);
+  const [filterStatus, setFilterStatus] = useState<'ALL' | 'MENUNGGU' | 'TERVERIFIKASI' | 'DITOLAK'>('ALL');
+  const [search, setSearch] = useState('');
   const [showJoinModal, setShowJoinModal] = useState(false);
-  const [selectedMembership, setSelectedMembership] = useState<UkmMembership | null>(null);
 
-  // Form states
-  const [selectedUkmId, setSelectedUkmId] = useState(mockUkmDirectories[0].id);
-  const [nim, setNim] = useState('230201018');
-  const [nama, setNama] = useState('Fajar Nugraha');
-  const [angkatan, setAngkatan] = useState('2023');
+  const [selectedUkmId, setSelectedUkmId] = useState(mockUkmDirectories[0]?.id ?? '');
+  const [mhsNama, setMhsNama] = useState('Muhammad Rizky Pratama');
+  const [mhsNim, setMhsNim] = useState('1201220001');
+  const [angkatan, setAngkatan] = useState('2022');
   const [jabatan, setJabatan] = useState<UkmPosition>('ANGGOTA');
   const [periode, setPeriode] = useState('2024/2025');
 
-  const pendingMembers = memberships.filter((m) => m.status === 'MENUNGGU');
-  const verifiedMembers = memberships.filter((m) => m.status === 'TERVERIFIKASI');
+  useEffect(() => {
+    const sync = () => {
+      setUkms(storageSync.get<UkmDirectory[]>(STORAGE_KEYS.UKM_DIRECTORIES, mockUkmDirectories));
+      setMemberships(storageSync.get<UkmMembership[]>(STORAGE_KEYS.UKM_MEMBERSHIPS, mockUkmMemberships));
+    };
+    sync();
+    window.addEventListener('simpro_storage_change', sync);
+    return () => window.removeEventListener('simpro_storage_change', sync);
+  }, []);
 
-  const handleJoinSubmit = () => {
-    const targetUkm = mockUkmDirectories.find((u) => u.id === selectedUkmId);
-    if (!targetUkm) return;
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return memberships.filter((m) => {
+      const matchSt = filterStatus === 'ALL' || m.status === filterStatus;
+      const matchQ =
+        !q ||
+        m.mahasiswa_nama.toLowerCase().includes(q) ||
+        m.mahasiswa_nim.toLowerCase().includes(q) ||
+        m.ukm_nama.toLowerCase().includes(q);
+      return matchSt && matchQ;
+    });
+  }, [memberships, filterStatus, search]);
 
-    const newMembership: UkmMembership = {
+  const handleJoin = (e: React.FormEvent) => {
+    e.preventDefault();
+    const ukm = ukms.find((u) => u.id === selectedUkmId) ?? ukms[0];
+    if (!ukm || !mhsNama.trim() || !mhsNim.trim()) return;
+
+    const entry: UkmMembership = {
       id: `ukm-mem-${Date.now()}`,
-      ukm_id: targetUkm.id,
-      ukm_nama: targetUkm.nama_ukm,
-      mahasiswa_nim: nim,
-      mahasiswa_nama: nama,
-      angkatan: parseInt(angkatan) || 2023,
+      ukm_id: ukm.id,
+      ukm_nama: ukm.nama_ukm,
+      mahasiswa_nim: mhsNim.trim(),
+      mahasiswa_nama: mhsNama.trim(),
+      angkatan: parseInt(angkatan, 10) || 2022,
       jabatan,
       periode_kepengurusan: periode,
       status: 'MENUNGGU',
       created_at: new Date().toISOString(),
     };
-
-    setMemberships([newMembership, ...memberships]);
+    setMemberships(storageSync.prepend(STORAGE_KEYS.UKM_MEMBERSHIPS, entry, mockUkmMemberships));
     setShowJoinModal(false);
   };
 
-  const handleVerify = (id: string, isApproved: boolean) => {
-    setMemberships(
-      memberships.map((m) =>
-        m.id === id
-          ? {
-              ...m,
-              status: isApproved ? 'TERVERIFIKASI' : 'DITOLAK',
-              diverifikasi_oleh: 'Dr. Ahmad Fauzi, M.T. (Dosen Pembina UKM)',
-              diverifikasi_at: new Date().toISOString(),
-              catatan: isApproved ? 'Keanggotaan disahkan.' : 'Ditolak: data kepengurusan tidak sesuai.',
-            }
-          : m
-      )
+  const handleVerify = (id: string, status: 'TERVERIFIKASI' | 'DITOLAK') => {
+    const updated = storageSync.update<UkmMembership>(
+      STORAGE_KEYS.UKM_MEMBERSHIPS,
+      id,
+      {
+        status,
+        diverifikasi_oleh: 'Dosen Pembina UKM',
+        diverifikasi_at: new Date().toISOString(),
+      },
+      mockUkmMemberships
     );
+    setMemberships(updated);
   };
 
-  const columns = [
+  const columns: DataTableColumn<UkmMembership>[] = [
     {
       key: 'mahasiswa',
       header: 'Mahasiswa',
-      render: (row: UkmMembership) => (
-        <div className="space-y-0.5">
-          <span className="font-bold text-slate-800 text-xs sm:text-sm">{row.mahasiswa_nama}</span>
-          <p className="text-[11px] text-slate-500">NIM: {row.mahasiswa_nim} • Angkatan {row.angkatan}</p>
+      render: (r) => (
+        <div>
+          <p className="font-bold text-slate-800 text-xs sm:text-sm">{r.mahasiswa_nama}</p>
+          <p className="text-[11px] font-mono text-slate-500">NIM: {r.mahasiswa_nim} • Angkatan {r.angkatan}</p>
         </div>
       ),
     },
     {
       key: 'ukm',
-      header: 'Nama UKM & Periode',
-      render: (row: UkmMembership) => (
-        <div className="space-y-0.5">
-          <span className="font-semibold text-blue-700 text-xs">{row.ukm_nama}</span>
-          <p className="text-[11px] text-slate-500">Periode: {row.periode_kepengurusan}</p>
+      header: 'UKM & Periode',
+      render: (r) => (
+        <div>
+          <p className="font-semibold text-slate-800 text-xs">{r.ukm_nama}</p>
+          <p className="text-[11px] text-slate-500">Periode {r.periode_kepengurusan}</p>
         </div>
       ),
     },
     {
       key: 'jabatan',
-      header: 'Jabatan Organisasi',
-      render: (row: UkmMembership) => (
-        <span className="text-[11px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
-          {row.jabatan.replace('_', ' ')}
+      header: 'Jabatan',
+      render: (r) => (
+        <span className="text-xs font-semibold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
+          {r.jabatan.replace('_', ' ')}
         </span>
       ),
     },
     {
       key: 'status',
-      header: 'Status Verifikasi',
-      render: (row: UkmMembership) => <StatusBadge status={row.status} size="sm" />,
+      header: 'Status',
+      render: (r) => <StatusBadge status={r.status} size="sm" />,
     },
-    {
-      key: 'aksi',
-      header: 'Aksi Pembina',
-      render: (row: UkmMembership) => (
-        row.status === 'MENUNGGU' ? (
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => handleVerify(row.id, true)}
-              className="p-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-semibold flex items-center gap-1"
-            >
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              <span>Verifikasi</span>
-            </button>
-            <button
-              onClick={() => handleVerify(row.id, false)}
-              className="p-1.5 rounded-lg bg-rose-600 text-white hover:bg-rose-700 text-xs font-semibold flex items-center gap-1"
-            >
-              <XCircle className="h-3.5 w-3.5" />
-              <span>Tolak</span>
-            </button>
-          </div>
-        ) : (
-          <span className="text-[11px] text-slate-400 italic">Tercatat Resmi</span>
-        )
-      ),
-    },
+    ...(currentRole === 'DOSEN_PEMBINA'
+      ? [
+          {
+            key: 'aksi',
+            header: 'Verifikasi',
+            render: (r: UkmMembership) =>
+              r.status === 'MENUNGGU' ? (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleVerify(r.id, 'TERVERIFIKASI')}
+                    className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Setujui
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleVerify(r.id, 'DITOLAK')}
+                    className="px-2.5 py-1 rounded-lg bg-rose-600 text-white text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <XCircle className="h-3.5 w-3.5" /> Tolak
+                  </button>
+                </div>
+              ) : (
+                <span className="text-xs text-slate-400">{r.diverifikasi_oleh || '-'}</span>
+              ),
+          },
+        ]
+      : []),
   ];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
         <Link href="/dashboard/ukm" className="hover:text-blue-600 flex items-center gap-1">
-          <ArrowLeft className="h-3.5 w-3.5" />
-          <span>Kembali ke Direktori UKM</span>
+          <ArrowLeft className="h-3.5 w-3.5" /> Kembali ke Direktori UKM
         </Link>
       </div>
 
       <PageHeader
-        title="Keanggotaan & Kepengurusan UKM (FR-15)"
-        description="Mahasiswa mendaftarkan keanggotaan dan kepengurusan pada UKM prodi. Keanggotaan baru resmi tercatat setelah diverifikasi oleh dosen pembina UKM terkait."
+        title="Keanggotaan Unit Kegiatan Mahasiswa"
+        description="Pendaftaran keanggotaan dan kepengurusan UKM mahasiswa serta verifikasi resmi oleh Dosen Pembina."
         actions={
           <button
+            type="button"
             onClick={() => setShowJoinModal(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 shadow-xs transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 shadow-xs cursor-pointer"
           >
-            <Plus className="h-4 w-4" />
-            <span>Daftar Keanggotaan UKM</span>
+            <Plus className="h-4 w-4" /> Ajukan Keanggotaan
           </button>
         }
       />
 
-      {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard
-          title="Anggota Terverifikasi"
-          value={verifiedMembers.length.toString()}
-          description="Tercatat aktif di prodi"
-          icon="CheckCircle2"
-        />
-        <StatCard
-          title="Menunggu Verifikasi"
-          value={pendingMembers.length.toString()}
-          description="Pendaftaran baru masuk"
-          icon="Clock"
-        />
-        <StatCard
-          title="Total Registrasi"
-          value={memberships.length.toString()}
-          description="Periode 2024/2025"
-          icon="Users"
-        />
+        <StatCard title="Total Pengajuan" value={memberships.length} subtitle="Data keanggotaan UKM" icon={<Users size={16} />} badgeTone="blue" />
+        <StatCard title="Terverifikasi" value={memberships.filter((m) => m.status === 'TERVERIFIKASI').length} subtitle="Keanggotaan aktif" icon="CheckCircle2" badgeTone="emerald" />
+        <StatCard title="Menunggu Pembina" value={memberships.filter((m) => m.status === 'MENUNGGU').length} subtitle="Perlu persetujuan" icon={<Clock size={16} />} badgeTone="amber" />
       </div>
 
-      {/* Table */}
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
-        <h3 className="text-sm font-bold text-slate-900">Daftar Pengajuan & Riwayat Keanggotaan Mahasiswa</h3>
-        <DataTable
-          data={memberships}
-          columns={columns}
-          searchPlaceholder="Cari mahasiswa atau UKM..."
-          searchKey="mahasiswa_nama"
-        />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+            {(['ALL', 'MENUNGGU', 'TERVERIFIKASI', 'DITOLAK'] as const).map((st) => (
+              <button
+                key={st}
+                type="button"
+                onClick={() => setFilterStatus(st)}
+                className={`px-3 py-1 rounded text-xs font-semibold cursor-pointer ${
+                  filterStatus === st ? 'bg-white text-blue-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {st === 'ALL' ? 'Semua' : st === 'MENUNGGU' ? 'Menunggu' : st === 'TERVERIFIKASI' ? 'Terverifikasi' : 'Ditolak'}
+              </button>
+            ))}
+          </div>
+          <div className="relative">
+            <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari mahasiswa atau UKM..."
+              className="pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:border-blue-500 focus:outline-none w-full sm:w-56"
+            />
+          </div>
+        </div>
+
+        <DataTable data={filtered} columns={columns} emptyMessage="Belum ada data keanggotaan UKM." />
       </div>
 
-      {/* MODAL: Daftar UKM (FR-15) */}
-      <Modal
-        isOpen={showJoinModal}
-        onClose={() => setShowJoinModal(false)}
-        title="Formulir Pendaftaran Keanggotaan UKM (FR-15)"
-      >
-        <div className="space-y-4 text-xs sm:text-sm">
-          <p className="text-slate-600 text-xs">
-            Pilih unit kegiatan mahasiswa yang ingin Anda ikuti beserta posisi jabatan kepengurusan. Pendaftaran akan dikirimkan ke Dosen Pembina UKM untuk diverifikasi.
-          </p>
-
+      <Modal isOpen={showJoinModal} onClose={() => setShowJoinModal(false)} title="Ajukan Keanggotaan UKM">
+        <form onSubmit={handleJoin} className="space-y-3 text-xs">
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Pilih UKM Tujuan *</label>
-            <select
-              value={selectedUkmId}
-              onChange={(e) => setSelectedUkmId(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 p-2 text-xs"
-            >
-              {mockUkmDirectories.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nama_ukm} ({u.kategori})
-                </option>
+            <label className="block font-bold text-slate-700 mb-1">Pilih UKM *</label>
+            <select value={selectedUkmId} onChange={(e) => setSelectedUkmId(e.target.value)} className="w-full rounded-lg border border-slate-300 p-2 bg-white">
+              {ukms.map((u) => (
+                <option key={u.id} value={u.id}>{u.nama_ukm}</option>
               ))}
             </select>
           </div>
-
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">NIM Mahasiswa</label>
-              <input
-                type="text"
-                value={nim}
-                onChange={(e) => setNim(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 p-2 text-xs"
-              />
+              <label className="block font-bold text-slate-700 mb-1">Nama Mahasiswa *</label>
+              <input type="text" value={mhsNama} onChange={(e) => setMhsNama(e.target.value)} className="w-full rounded-lg border border-slate-300 p-2" required />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Nama Mahasiswa</label>
-              <input
-                type="text"
-                value={nama}
-                onChange={(e) => setNama(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 p-2 text-xs"
-              />
+              <label className="block font-bold text-slate-700 mb-1">NIM *</label>
+              <input type="text" value={mhsNim} onChange={(e) => setMhsNim(e.target.value)} className="w-full rounded-lg border border-slate-300 p-2" required />
             </div>
           </div>
-
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Jabatan dalam UKM *</label>
-              <select
-                value={jabatan}
-                onChange={(e) => setJabatan(e.target.value as UkmPosition)}
-                className="w-full rounded-lg border border-slate-300 p-2 text-xs"
-              >
-                <option value="ANGGOTA">Anggota Biasa</option>
-                <option value="KORDINATOR_DIVISI">Koordinator Divisi</option>
-                <option value="SEKRETARIS">Sekretaris</option>
-                <option value="BENDAHARA">Bendahara</option>
-                <option value="WAKIL_KETUA">Wakil Ketua</option>
-                <option value="KETUA">Ketua UKM</option>
+              <label className="block font-bold text-slate-700 mb-1">Angkatan</label>
+              <input type="number" value={angkatan} onChange={(e) => setAngkatan(e.target.value)} className="w-full rounded-lg border border-slate-300 p-2" />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Jabatan</label>
+              <select value={jabatan} onChange={(e) => setJabatan(e.target.value as UkmPosition)} className="w-full rounded-lg border border-slate-300 p-2 bg-white">
+                {POSITIONS.map((p) => (
+                  <option key={p} value={p}>{p.replace('_', ' ')}</option>
+                ))}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Periode Kepengurusan</label>
-              <input
-                type="text"
-                value={periode}
-                onChange={(e) => setPeriode(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 p-2 text-xs"
-              />
+              <label className="block font-bold text-slate-700 mb-1">Periode</label>
+              <input type="text" value={periode} onChange={(e) => setPeriode(e.target.value)} className="w-full rounded-lg border border-slate-300 p-2" />
             </div>
           </div>
-
           <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
-            <button
-              onClick={() => setShowJoinModal(false)}
-              className="px-3 py-2 rounded-lg border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50"
-            >
-              Batal
-            </button>
-            <button
-              onClick={handleJoinSubmit}
-              className="px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700"
-            >
-              Kirim Pendaftaran
-            </button>
+            <button type="button" onClick={() => setShowJoinModal(false)} className="px-3 py-2 rounded-lg border border-slate-300 text-slate-700 font-semibold cursor-pointer">Batal</button>
+            <button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold cursor-pointer">Kirim Pengajuan</button>
           </div>
-        </div>
+        </form>
       </Modal>
     </div>
   );

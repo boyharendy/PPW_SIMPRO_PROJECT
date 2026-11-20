@@ -1,466 +1,281 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import PageHeader from '@/components/ui/PageHeader';
-import DataTable from '@/components/ui/DataTable';
+import DataTable, { type DataTableColumn } from '@/components/ui/DataTable';
 import StatusBadge from '@/components/ui/StatusBadge';
 import StatCard from '@/components/ui/StatCard';
 import Modal from '@/components/ui/Modal';
 import { useUser } from '@/lib/context';
 import { mockUkmDirectories } from '@/lib/mock-data';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
+import { getStatusLabel } from '@/lib/utils';
 import type { UkmDirectory, UkmCategory } from '@/lib/types';
-import {
-  Compass,
-  Users,
-  Trophy,
-  Plus,
-  Mail,
-  Phone,
-  Globe,
-  Calendar,
-  CheckCircle2,
-  PieChart,
-  UserCheck,
-  Eye,
-} from 'lucide-react';
+import { Plus, Eye, Users, Compass, PieChart, Search, Mail, Phone, Calendar } from 'lucide-react';
 
-export default function UkmListPage() {
+const CATEGORIES: Array<'ALL' | UkmCategory> = ['ALL', 'PENALARAN', 'OLAHRAGA', 'SENI', 'KEAGAMAAN', 'SOSIAL', 'KHUSUS'];
+
+export default function DirektoriUkmPage() {
   const { currentRole } = useUser();
   const [ukms, setUkms] = useState<UkmDirectory[]>(mockUkmDirectories);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [category, setCategory] = useState<'ALL' | UkmCategory>('ALL');
+  const [search, setSearch] = useState('');
   const [selectedUkm, setSelectedUkm] = useState<UkmDirectory | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [showAdd, setShowAdd] = useState(false);
 
-  // Form states (FR-14)
-  const [nama, setNama] = useState('');
   const [kode, setKode] = useState('');
-  const [kategori, setKategori] = useState<UkmCategory>('PENALARAN');
+  const [nama, setNama] = useState('');
+  const [formKat, setFormKat] = useState<UkmCategory>('PENALARAN');
   const [pembina, setPembina] = useState('Dr. Ahmad Fauzi, M.T.');
-  const [ketuaNim, setKetuaNim] = useState('');
-  const [ketuaNama, setKetuaNama] = useState('');
-  const [email, setEmail] = useState('');
-  const [telepon, setTelepon] = useState('');
-  const [instagram, setInstagram] = useState('');
+  const [ketua, setKetua] = useState('');
   const [jadwal, setJadwal] = useState('');
   const [deskripsi, setDeskripsi] = useState('');
 
-  const filteredUkms = ukms.filter((u) => {
-    return selectedCategory === 'ALL' || u.kategori === selectedCategory;
-  });
+  useEffect(() => {
+    const sync = () => setUkms(storageSync.get<UkmDirectory[]>(STORAGE_KEYS.UKM_DIRECTORIES, mockUkmDirectories));
+    sync();
+    window.addEventListener('simpro_storage_change', sync);
+    return () => window.removeEventListener('simpro_storage_change', sync);
+  }, []);
 
-  const handleAddUkm = () => {
-    if (!nama || !ketuaNama) return;
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return ukms.filter((u) => {
+      const matchCat = category === 'ALL' || u.kategori === category;
+      const matchQ = !q || u.nama_ukm.toLowerCase().includes(q) || u.kode_ukm.toLowerCase().includes(q);
+      return matchCat && matchQ;
+    });
+  }, [ukms, category, search]);
 
-    const newUkm: UkmDirectory = {
-      id: `ukm-${Date.now()}`,
-      kode_ukm: kode || `UKM-${kategori.substring(0, 3)}-${Date.now().toString().slice(-2)}`,
-      nama_ukm: nama,
-      kategori,
+  const handleAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!kode.trim() || !nama.trim() || !ketua.trim()) return;
+    const item: UkmDirectory = {
+      id: `ukm-dir-${Date.now()}`,
+      kode_ukm: kode.trim().toUpperCase(),
+      nama_ukm: nama.trim(),
+      kategori: formKat,
       dosen_pembina_id: 'u-kaprodi',
       dosen_pembina_nama: pembina,
-      ketua_nim: ketuaNim || '220101001',
-      ketua_nama: ketuaNama,
-      kontak_email: email || `${nama.toLowerCase().replace(/\s+/g, '')}@univ.ac.id`,
-      kontak_telepon: telepon || '081234567890',
-      kontak_instagram: instagram || `@${nama.toLowerCase().replace(/\s+/g, '')}`,
-      deskripsi: deskripsi || 'Unit kegiatan mahasiswa aktif binaan program studi.',
-      jadwal_rutin: jadwal || 'Setiap akhir pekan di kampus',
+      ketua_nim: '220101000',
+      ketua_nama: ketua.trim(),
+      kontak_email: `${kode.trim().toLowerCase()}@univ.ac.id`,
+      kontak_telepon: '081200000000',
+      deskripsi: deskripsi.trim() || 'Unit Kegiatan Mahasiswa Program Studi.',
+      jadwal_rutin: jadwal.trim() || 'Jadwal menyusul',
       status_aktif: 'AKTIF',
       jumlah_anggota_aktif: 1,
-      created_at: new Date().toISOString(),
+      created_at: new Date().toISOString().split('T')[0],
     };
-
-    setUkms([newUkm, ...ukms]);
-    setShowAddModal(false);
-    setNama('');
+    setUkms(storageSync.prepend(STORAGE_KEYS.UKM_DIRECTORIES, item, mockUkmDirectories));
+    setShowAdd(false);
     setKode('');
-    setKetuaNim('');
-    setKetuaNama('');
+    setNama('');
+    setKetua('');
+    setJadwal('');
     setDeskripsi('');
   };
 
-  const columns = [
+  const columns: DataTableColumn<UkmDirectory>[] = [
     {
-      key: 'nama',
-      header: 'Nama UKM & Kode',
-      render: (row: UkmDirectory) => (
-        <div className="space-y-0.5">
-          <span className="font-bold text-slate-900 text-xs sm:text-sm">{row.nama_ukm}</span>
-          <p className="text-[11px] text-slate-500 font-mono">{row.kode_ukm}</p>
+      key: 'nama_ukm',
+      header: 'Nama & Kode UKM',
+      render: (r) => (
+        <div>
+          <p className="font-bold text-slate-800 text-xs sm:text-sm">{r.nama_ukm}</p>
+          <p className="text-[11px] font-mono text-slate-500">{r.kode_ukm}</p>
         </div>
       ),
     },
     {
       key: 'kategori',
       header: 'Kategori',
-      render: (row: UkmDirectory) => (
-        <span className="text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full">
-          {row.kategori}
+      render: (r) => (
+        <span className="text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded">
+          {getStatusLabel(r.kategori)}
         </span>
       ),
     },
     {
       key: 'pembina',
-      header: 'Dosen Pembina & Ketua',
-      render: (row: UkmDirectory) => (
-        <div className="space-y-0.5">
-          <p className="text-xs font-semibold text-slate-800">Pembina: {row.dosen_pembina_nama}</p>
-          <p className="text-[11px] text-slate-500">Ketua: {row.ketua_nama} ({row.ketua_nim})</p>
+      header: 'Pembina & Ketua',
+      render: (r) => (
+        <div className="text-xs">
+          <p className="font-semibold text-slate-800">{r.dosen_pembina_nama}</p>
+          <p className="text-slate-500">Ketua: {r.ketua_nama}</p>
         </div>
       ),
     },
     {
       key: 'anggota',
       header: 'Anggota Aktif',
-      render: (row: UkmDirectory) => (
-        <span className="font-extrabold text-blue-700 text-xs sm:text-sm">
-          {row.jumlah_anggota_aktif} Mahasiswa
-        </span>
-      ),
+      render: (r) => <span className="text-xs font-bold text-slate-800">{r.jumlah_anggota_aktif} Mahasiswa</span>,
     },
     {
-      key: 'jadwal',
-      header: 'Jadwal Rutin',
-      render: (row: UkmDirectory) => (
-        <span className="text-xs text-slate-600 line-clamp-1">{row.jadwal_rutin}</span>
-      ),
-    },
-    {
-      key: 'status',
+      key: 'status_aktif',
       header: 'Status',
-      render: (row: UkmDirectory) => <StatusBadge status={row.status_aktif} size="sm" />,
+      render: (r) => <StatusBadge status={r.status_aktif} size="sm" />,
     },
     {
       key: 'aksi',
       header: 'Aksi',
-      render: (row: UkmDirectory) => (
+      render: (r) => (
         <button
-          onClick={() => setSelectedUkm(row)}
-          className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1"
+          type="button"
+          onClick={() => setSelectedUkm(r)}
+          className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
         >
-          <Eye className="h-3.5 w-3.5" />
-          <span>Profil</span>
+          <Eye className="h-3.5 w-3.5" /> Detail
         </button>
       ),
     },
   ];
 
+  const totalMembers = ukms.reduce((sum, u) => sum + u.jumlah_anggota_aktif, 0);
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Modul 4: Unit Kegiatan Mahasiswa (UKM)"
-        description="Direktori resmi UKM prodi (FR-14), pendaftaran dan verifikasi keanggotaan mahasiswa (FR-15), serta rekapitulasi partisipasi per angkatan (FR-16)."
+        title="Direktori Unit Kegiatan Mahasiswa (UKM)"
+        description="Daftar resmi UKM di lingkungan Program Studi beserta dosen pembina, pengurus, jadwal kegiatan rutin, dan informasi kontak."
         actions={
-          <div className="flex items-center gap-2">
-            <Link
-              href="/dashboard/ukm/keanggotaan"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs"
-            >
-              <Users className="h-4 w-4 text-blue-600" />
-              <span>Keanggotaan UKM</span>
-            </Link>
-            <Link
-              href="/dashboard/ukm/rekap"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs"
-            >
-              <PieChart className="h-4 w-4 text-emerald-600" />
-              <span>Rekap Partisipasi</span>
-            </Link>
-            {(currentRole === 'ADMIN_PRODI' || currentRole === 'DOSEN_PEMBINA' || currentRole === 'KAPRODI') && (
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 shadow-xs transition-colors"
+          <div className="flex items-center gap-2 flex-wrap">
+            {(currentRole === 'MAHASISWA' || currentRole === 'DOSEN_PEMBINA') && (
+              <Link
+                href="/dashboard/ukm/keanggotaan"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs"
               >
-                <Plus className="h-4 w-4" />
-                <span>Tambah UKM Baru</span>
+                <Users className="h-4 w-4 text-blue-600" /> Keanggotaan UKM
+              </Link>
+            )}
+            {(currentRole === 'ADMIN_PRODI' || currentRole === 'DOSEN_PEMBINA' || currentRole === 'KAPRODI') && (
+              <Link
+                href="/dashboard/ukm/rekap"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs"
+              >
+                <PieChart className="h-4 w-4 text-emerald-600" /> Rekap Partisipasi
+              </Link>
+            )}
+            {(currentRole === 'ADMIN_PRODI' || currentRole === 'KAPRODI') && (
+              <button
+                type="button"
+                onClick={() => setShowAdd(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 shadow-xs cursor-pointer"
+              >
+                <Plus className="h-4 w-4" /> Tambah UKM
               </button>
             )}
           </div>
         }
       />
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Total UKM Terdaftar"
-          value={ukms.length.toString()}
-          description="Direktori aktif prodi"
-          icon="Compass"
-        />
-        <StatCard
-          title="Total Anggota Aktif"
-          value={ukms.reduce((acc, u) => acc + u.jumlah_anggota_aktif, 0).toString()}
-          description="Mahasiswa terlibat kegiatan"
-          icon="Users"
-        />
-        <StatCard
-          title="Kategori Penalaran"
-          value={ukms.filter((u) => u.kategori === 'PENALARAN').length.toString()}
-          description="Fokus riset & kompetisi IT"
-          icon="Trophy"
-        />
-        <StatCard
-          title="Status Keaktifan"
-          value="100% Aktif"
-          description="Berjalan di semester ini"
-          icon="CheckCircle2"
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard title="Total UKM Terdaftar" value={ukms.length} subtitle="Organisasi kemahasiswaan" icon={<Compass size={16} />} badgeTone="blue" />
+        <StatCard title="UKM Aktif" value={ukms.filter((u) => u.status_aktif === 'AKTIF').length} subtitle="Berjalan pada periode ini" icon="CheckCircle2" badgeTone="emerald" />
+        <StatCard title="Total Anggota Aktif" value={totalMembers} subtitle="Akumulasi seluruh UKM" icon={<Users size={16} />} badgeTone="indigo" />
       </div>
 
-      {/* Filter and Table */}
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-500">Kategori:</span>
-            <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-lg">
-              {['ALL', 'PENALARAN', 'OLAHRAGA', 'SENI', 'KEAGAMAAN'].map((kat) => (
-                <button
-                  key={kat}
-                  onClick={() => setSelectedCategory(kat)}
-                  className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${
-                    selectedCategory === kat
-                      ? 'bg-white text-blue-700 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  {kat === 'ALL' ? 'Semua' : kat}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <DataTable
-          data={filteredUkms}
-          columns={columns}
-          searchPlaceholder="Cari UKM, pembina, atau ketua..."
-          searchKey="nama_ukm"
-        />
-      </div>
-
-      {/* MODAL: Tambah UKM Baru (FR-14) */}
-      <Modal
-        isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        title="Registrasi Direktori UKM Baru (FR-14)"
-      >
-        <div className="space-y-4 text-xs sm:text-sm">
-          <p className="text-slate-600 text-xs">
-            Admin Prodi atau Dosen Pembina menambahkan entitas UKM resmi program studi beserta informasi kepengurusan dan kontaknya.
-          </p>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Nama UKM *</label>
-              <input
-                type="text"
-                placeholder="Contoh: Mobile App Developer Club"
-                value={nama}
-                onChange={(e) => setNama(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 p-2 text-xs"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Kode UKM</label>
-              <input
-                type="text"
-                placeholder="UKM-PEN-05"
-                value={kode}
-                onChange={(e) => setKode(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 p-2 text-xs"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Kategori UKM *</label>
-              <select
-                value={kategori}
-                onChange={(e) => setKategori(e.target.value as UkmCategory)}
-                className="w-full rounded-lg border border-slate-300 p-2 text-xs"
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg flex-wrap">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setCategory(cat)}
+                className={`px-2.5 py-1 rounded text-xs font-semibold cursor-pointer ${
+                  category === cat ? 'bg-white text-blue-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
-                <option value="PENALARAN">Penalaran & Riset</option>
-                <option value="OLAHRAGA">Olahraga</option>
-                <option value="SENI">Seni & Kreativitas</option>
-                <option value="KEAGAMAAN">Keagamaan</option>
-                <option value="SOSIAL">Sosial & Lingkungan</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Dosen Pembina UKM *</label>
-              <input
-                type="text"
-                value={pembina}
-                onChange={(e) => setPembina(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 p-2 text-xs"
-              />
-            </div>
+                {cat === 'ALL' ? 'Semua' : getStatusLabel(cat)}
+              </button>
+            ))}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">NIM Ketua UKM</label>
-              <input
-                type="text"
-                placeholder="2201010..."
-                value={ketuaNim}
-                onChange={(e) => setKetuaNim(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 p-2 text-xs"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Nama Ketua UKM *</label>
-              <input
-                type="text"
-                placeholder="Nama Mahasiswa"
-                value={ketuaNama}
-                onChange={(e) => setKetuaNama(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 p-2 text-xs"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Email Resmi</label>
-              <input
-                type="email"
-                placeholder="ukm@univ.ac.id"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 p-2 text-xs"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Telepon / WhatsApp</label>
-              <input
-                type="text"
-                placeholder="0812..."
-                value={telepon}
-                onChange={(e) => setTelepon(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 p-2 text-xs"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Instagram</label>
-              <input
-                type="text"
-                placeholder="@nama_ukm"
-                value={instagram}
-                onChange={(e) => setInstagram(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 p-2 text-xs"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Jadwal Rutin Kegiatan</label>
+          <div className="relative">
+            <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Contoh: Setiap Sabtu pukul 13.00 WIB di Ruang Diskusi"
-              value={jadwal}
-              onChange={(e) => setJadwal(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 p-2 text-xs"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari nama atau kode UKM..."
+              className="pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:border-blue-500 focus:outline-none w-full sm:w-56"
             />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Deskripsi Singkat UKM</label>
-            <textarea
-              rows={2}
-              placeholder="Jelaskan tujuan dan fokus kegiatan UKM..."
-              value={deskripsi}
-              onChange={(e) => setDeskripsi(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 p-2 text-xs"
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
-            <button
-              onClick={() => setShowAddModal(false)}
-              className="px-3 py-2 rounded-lg border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50"
-            >
-              Batal
-            </button>
-            <button
-              onClick={handleAddUkm}
-              className="px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700"
-            >
-              Simpan UKM
-            </button>
           </div>
         </div>
-      </Modal>
 
-      {/* MODAL: Profil Detail UKM */}
+        <DataTable data={filtered} columns={columns} emptyMessage="Belum ada UKM untuk filter yang dipilih." />
+      </div>
+
       {selectedUkm && (
-        <Modal
-          isOpen={!!selectedUkm}
-          onClose={() => setSelectedUkm(null)}
-          title={`Profil UKM: ${selectedUkm.nama_ukm}`}
-        >
-          <div className="space-y-4 text-xs sm:text-sm">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div>
-                <p className="font-mono text-xs text-blue-600 font-bold">{selectedUkm.kode_ukm}</p>
-                <h4 className="font-bold text-slate-900 text-base">{selectedUkm.nama_ukm}</h4>
-              </div>
-              <StatusBadge status={selectedUkm.status_aktif} size="md" />
+        <Modal isOpen={!!selectedUkm} onClose={() => setSelectedUkm(null)} title={selectedUkm.nama_ukm}>
+          <div className="space-y-3 text-xs sm:text-sm">
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-xs text-slate-500">{selectedUkm.kode_ukm}</span>
+              <StatusBadge status={selectedUkm.status_aktif} size="sm" />
             </div>
-
-            <p className="text-slate-600 text-xs bg-slate-50 p-3 rounded-lg border border-slate-200">
-              {selectedUkm.deskripsi}
-            </p>
-
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-3 bg-white border border-slate-200 rounded-lg space-y-1">
-                <span className="font-bold text-slate-500 block">Dosen Pembina:</span>
-                <p className="font-bold text-slate-800">{selectedUkm.dosen_pembina_nama}</p>
-              </div>
-              <div className="p-3 bg-white border border-slate-200 rounded-lg space-y-1">
-                <span className="font-bold text-slate-500 block">Ketua Pengurus:</span>
-                <p className="font-bold text-slate-800">{selectedUkm.ketua_nama} ({selectedUkm.ketua_nim})</p>
-              </div>
+            <p className="text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs leading-relaxed">{selectedUkm.deskripsi}</p>
+            <div className="space-y-1.5 text-xs text-slate-700">
+              <p className="flex items-center gap-2"><Calendar className="h-3.5 w-3.5 text-blue-600" /> <strong>Jadwal:</strong> {selectedUkm.jadwal_rutin}</p>
+              <p className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-blue-600" /> <strong>Email:</strong> {selectedUkm.kontak_email}</p>
+              <p className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-blue-600" /> <strong>Telepon:</strong> {selectedUkm.kontak_telepon}</p>
+              <p><strong>Dosen Pembina:</strong> {selectedUkm.dosen_pembina_nama}</p>
+              <p><strong>Ketua UKM:</strong> {selectedUkm.ketua_nama} ({selectedUkm.ketua_nim})</p>
             </div>
-
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-1 text-xs">
-              <span className="font-bold text-blue-900 block flex items-center gap-1.5">
-                <Calendar className="h-4 w-4 text-blue-700" />
-                Jadwal Latihan / Pertemuan Rutin:
-              </span>
-              <p className="text-blue-800">{selectedUkm.jadwal_rutin}</p>
-            </div>
-
-            <div className="border-t border-slate-100 pt-3 flex flex-wrap items-center gap-4 text-xs text-slate-600">
-              <span className="flex items-center gap-1">
-                <Mail className="h-3.5 w-3.5 text-slate-400" />
-                {selectedUkm.kontak_email}
-              </span>
-              <span className="flex items-center gap-1">
-                <Phone className="h-3.5 w-3.5 text-slate-400" />
-                {selectedUkm.kontak_telepon}
-              </span>
-              {selectedUkm.kontak_instagram && (
-                <span className="flex items-center gap-1">
-                  <Globe className="h-3.5 w-3.5 text-slate-400" />
-                  {selectedUkm.kontak_instagram}
-                </span>
-              )}
-            </div>
-
             <div className="flex justify-end pt-3 border-t border-slate-100">
-              <button
-                onClick={() => setSelectedUkm(null)}
-                className="px-4 py-2 rounded-lg bg-slate-800 text-white text-xs font-semibold hover:bg-slate-900"
-              >
+              <button type="button" onClick={() => setSelectedUkm(null)} className="px-4 py-2 rounded-lg bg-slate-800 text-white text-xs font-semibold cursor-pointer">
                 Tutup
               </button>
             </div>
           </div>
         </Modal>
       )}
+
+      <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="Tambah UKM Baru">
+        <form onSubmit={handleAdd} className="space-y-3 text-xs">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Kode UKM *</label>
+              <input type="text" value={kode} onChange={(e) => setKode(e.target.value)} placeholder="UKM-PEN-05" className="w-full rounded-lg border border-slate-300 p-2" required />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Kategori</label>
+              <select value={formKat} onChange={(e) => setFormKat(e.target.value as UkmCategory)} className="w-full rounded-lg border border-slate-300 p-2 bg-white">
+                {CATEGORIES.filter((c) => c !== 'ALL').map((c) => (
+                  <option key={c} value={c}>{getStatusLabel(c)}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Nama UKM *</label>
+            <input type="text" value={nama} onChange={(e) => setNama(e.target.value)} className="w-full rounded-lg border border-slate-300 p-2" required />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Ketua UKM *</label>
+              <input type="text" value={ketua} onChange={(e) => setKetua(e.target.value)} className="w-full rounded-lg border border-slate-300 p-2" required />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Dosen Pembina</label>
+              <input type="text" value={pembina} onChange={(e) => setPembina(e.target.value)} className="w-full rounded-lg border border-slate-300 p-2" />
+            </div>
+          </div>
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Jadwal Rutin</label>
+            <input type="text" value={jadwal} onChange={(e) => setJadwal(e.target.value)} placeholder="Setiap Jumat 15:00 WIB" className="w-full rounded-lg border border-slate-300 p-2" />
+          </div>
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Deskripsi</label>
+            <textarea rows={2} value={deskripsi} onChange={(e) => setDeskripsi(e.target.value)} className="w-full rounded-lg border border-slate-300 p-2" />
+          </div>
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+            <button type="button" onClick={() => setShowAdd(false)} className="px-3 py-2 rounded-lg border border-slate-300 text-slate-700 font-semibold cursor-pointer">Batal</button>
+            <button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold cursor-pointer">Simpan</button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

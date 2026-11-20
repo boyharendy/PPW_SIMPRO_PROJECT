@@ -1,71 +1,118 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import PageHeader from '@/components/ui/PageHeader';
-import DataTable from '@/components/ui/DataTable';
+import DataTable, { type DataTableColumn } from '@/components/ui/DataTable';
 import StatusBadge from '@/components/ui/StatusBadge';
 import StatCard from '@/components/ui/StatCard';
 import Modal from '@/components/ui/Modal';
 import { useUser } from '@/lib/context';
 import { mockStudentViolations } from '@/lib/mock-data';
-import type { StudentViolation, ViolationType, ViolationLevel } from '@/lib/types';
+import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
+import type {
+  StudentViolation,
+  ViolationType,
+  ViolationLevel,
+} from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import {
   ShieldAlert,
-  AlertTriangle,
+  Plus,
+  Eye,
+  FileCheck,
+  FileText,
+  CheckCircle,
+  Search,
   Clock,
   CheckCircle2,
-  Plus,
-  Lock,
-  Eye,
-  FileText,
-  Trash2,
-  ShieldCheck,
+  AlertTriangle,
 } from 'lucide-react';
 
-export default function PelanggaranListPage() {
+const VIOLATION_TYPE_LABELS: Record<ViolationType, string> = {
+  AKADEMIK: 'Akademik',
+  NON_AKADEMIK: 'Non-Akademik',
+  KODE_ETIK: 'Kode Etik',
+};
+
+export default function DataPelanggaranPage() {
   const { currentRole } = useUser();
   const [violations, setViolations] = useState<StudentViolation[]>(mockStudentViolations);
-  const [showAddModal, setShowAddModal] = useState(false);
   const [selectedViolation, setSelectedViolation] = useState<StudentViolation | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<string>('ALL');
+  const [filterType, setFilterType] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [notification, setNotification] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  // Form states (FR-09)
+  // Add violation form state
   const [nim, setNim] = useState('');
   const [nama, setNama] = useState('');
-  const [angkatan, setAngkatan] = useState('2023');
-  const [tanggal, setTanggal] = useState('2024-11-03');
+  const [angkatan, setAngkatan] = useState('2022');
+  const [tanggalPelanggaran, setTanggalPelanggaran] = useState('2024-11-01');
   const [jenis, setJenis] = useState<ViolationType>('AKADEMIK');
-  const [tingkat, setTingkat] = useState<ViolationLevel>('SEDANG');
-  const [judul, setJudul] = useState('');
+  const [tingkat, setTingkat] = useState<ViolationLevel>('RINGAN');
+  const [judulKasus, setJudulKasus] = useState('');
   const [uraian, setUraian] = useState('');
   const [dasarKeputusan, setDasarKeputusan] = useState('');
-  const [jamSanksi, setJamSanksi] = useState('15');
+  const [totalJamSanksi, setTotalJamSanksi] = useState('12');
 
-  // Strict Access Restriction Check (FR-12 & NF-03)
-  const isAuthorizedLecturer =
-    currentRole === 'KAPRODI' ||
-    currentRole === 'DOSEN' ||
-    currentRole === 'DOSEN_WALI' ||
-    currentRole === 'DOSEN_VERIFIKATOR';
+  useEffect(() => {
+    const sync = () => {
+      setViolations(
+        storageSync.get<StudentViolation[]>(STORAGE_KEYS.VIOLATIONS, mockStudentViolations)
+      );
+    };
+    sync();
+    window.addEventListener('simpro_storage_change', sync);
+    window.addEventListener('focus', sync);
+    return () => {
+      window.removeEventListener('simpro_storage_change', sync);
+      window.removeEventListener('focus', sync);
+    };
+  }, []);
 
-  const handleAddViolation = () => {
-    if (!nim || !nama || !judul || !dasarKeputusan) return;
-    const totalJam = parseInt(jamSanksi) || 10;
+  const filteredViolations = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return violations.filter((v) => {
+      const matchStatus = filterStatus === 'ALL' || v.status_sanksi === filterStatus;
+      const matchType = filterType === 'ALL' || v.jenis_pelanggaran === filterType;
+      const matchSearch =
+        !q ||
+        v.mahasiswa_nama.toLowerCase().includes(q) ||
+        v.mahasiswa_nim.toLowerCase().includes(q) ||
+        v.judul_kasus.toLowerCase().includes(q) ||
+        v.dasar_keputusan.toLowerCase().includes(q);
+      return matchStatus && matchType && matchSearch;
+    });
+  }, [violations, filterStatus, filterType, searchQuery]);
+
+  const handleAddViolation = (e: React.FormEvent) => {
+    e.preventDefault();
+    const jam = parseInt(totalJamSanksi, 10);
+    if (!nim.trim() || !nama.trim() || !judulKasus.trim() || !dasarKeputusan.trim()) {
+      setFormError('Mohon lengkapi NIM, nama mahasiswa, judul kasus, dan nomor SK keputusan.');
+      return;
+    }
+    if (isNaN(jam) || jam <= 0) {
+      setFormError('Total jam sanksi harus lebih dari 0.');
+      return;
+    }
 
     const newViolation: StudentViolation = {
       id: `vio-${Date.now()}`,
-      mahasiswa_nim: nim,
-      mahasiswa_nama: nama,
-      angkatan: parseInt(angkatan) || 2023,
+      mahasiswa_nim: nim.trim(),
+      mahasiswa_nama: nama.trim(),
+      angkatan: parseInt(angkatan, 10) || 2022,
       status_mahasiswa: 'AKTIF',
-      tanggal_pelanggaran: tanggal,
+      tanggal_pelanggaran: tanggalPelanggaran,
       jenis_pelanggaran: jenis,
-      tingkat: tingkat,
-      judul_kasus: judul,
-      uraian: uraian || 'Tercatat pelanggaran tata tertib mahasiswa.',
-      dasar_keputusan: dasarKeputusan,
-      total_jam_sanksi: totalJam,
+      tingkat,
+      judul_kasus: judulKasus.trim(),
+      uraian: uraian.trim() || judulKasus.trim(),
+      dasar_keputusan: dasarKeputusan.trim(),
+      total_jam_sanksi: jam,
       jam_sanksi_terpenuhi: 0,
       status_sanksi: 'BELUM_DIMULAI',
       dosen_pencatat_id: 'u-kaprodi',
@@ -77,91 +124,106 @@ export default function PelanggaranListPage() {
       created_at: new Date().toISOString(),
     };
 
-    setViolations([newViolation, ...violations]);
+    const updated = storageSync.prepend(
+      STORAGE_KEYS.VIOLATIONS,
+      newViolation,
+      mockStudentViolations
+    );
+    setViolations(updated);
     setShowAddModal(false);
+    setFormError(null);
     setNim('');
     setNama('');
-    setJudul('');
+    setJudulKasus('');
     setUraian('');
     setDasarKeputusan('');
+    setTotalJamSanksi('12');
+    setNotification(
+      `Rekaman pelanggaran untuk ${newViolation.mahasiswa_nama} (${newViolation.total_jam_sanksi} Jam) berhasil disimpan.`
+    );
+    setTimeout(() => setNotification(null), 5000);
   };
 
-  const columns = [
+  const columns: DataTableColumn<StudentViolation>[] = [
     {
-      key: 'kasus',
-      header: 'Kasus Pelanggaran & Nomor BA',
-      render: (row: StudentViolation) => (
-        <div className="space-y-1">
-          <p className="font-bold text-slate-800 text-xs sm:text-sm line-clamp-1">{row.judul_kasus}</p>
+      key: 'mahasiswa',
+      header: 'Mahasiswa',
+      render: (row) => (
+        <div className="space-y-0.5">
+          <span className="font-bold text-slate-800 text-xs sm:text-sm">
+            {row.mahasiswa_nama}
+          </span>
           <p className="text-[11px] text-slate-500 font-mono">
-            Dasar: <strong className="text-slate-700">{row.dasar_keputusan}</strong> • Tgl: {formatDate(row.tanggal_pelanggaran)}
+            NIM: {row.mahasiswa_nim} • Angkatan {row.angkatan}
           </p>
         </div>
       ),
     },
     {
-      key: 'mahasiswa',
-      header: 'Mahasiswa Terkait',
-      render: (row: StudentViolation) => (
-        <div className="space-y-0.5">
-          <span className="font-bold text-slate-800 text-xs">{row.mahasiswa_nama}</span>
-          <p className="text-[11px] text-slate-500">NIM: {row.mahasiswa_nim} • Angkatan {row.angkatan}</p>
-        </div>
-      ),
-    },
-    {
-      key: 'kategori',
-      header: 'Jenis & Tingkat',
-      render: (row: StudentViolation) => (
-        <div className="space-y-1">
-          <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
-            {row.jenis_pelanggaran.replace('_', ' ')}
-          </span>
-          <div>
+      key: 'kasus',
+      header: 'Kasus & Dasar Keputusan',
+      render: (row) => (
+        <div className="space-y-1 max-w-sm">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded">
+              {VIOLATION_TYPE_LABELS[row.jenis_pelanggaran]}
+            </span>
             <StatusBadge status={row.tingkat} size="sm" />
           </div>
+          <p className="text-xs font-semibold text-slate-800 line-clamp-2">
+            {row.judul_kasus}
+          </p>
+          <p className="text-[11px] text-slate-500 font-mono">{row.dasar_keputusan}</p>
         </div>
       ),
     },
     {
-      key: 'sanksi',
-      header: 'Sanksi Sosial (Jam)',
-      render: (row: StudentViolation) => {
-        const sisa = Math.max(0, row.total_jam_sanksi - row.jam_sanksi_terpenuhi);
-        const pct = Math.min(100, Math.round((row.jam_sanksi_terpenuhi / row.total_jam_sanksi) * 100));
+      key: 'progres',
+      header: 'Pemenuhan Sanksi',
+      render: (row) => {
+        const pct =
+          row.total_jam_sanksi > 0
+            ? Math.min(100, Math.round((row.jam_sanksi_terpenuhi / row.total_jam_sanksi) * 100))
+            : 0;
         return (
-          <div className="space-y-1 min-w-[130px]">
+          <div className="space-y-1.5 min-w-[150px]">
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-slate-800">
                 {row.jam_sanksi_terpenuhi} / {row.total_jam_sanksi} Jam
               </span>
-              <span className="font-semibold text-slate-500">{pct}%</span>
+              <span
+                className={`font-semibold ${
+                  pct >= 100 ? 'text-emerald-600' : 'text-blue-600'
+                }`}
+              >
+                {pct}%
+              </span>
             </div>
-            <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+            <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
               <div
-                className={`h-full rounded-full ${
-                  pct >= 100 ? 'bg-emerald-500' : 'bg-amber-500'
+                className={`h-full rounded-full transition-all ${
+                  pct >= 100 ? 'bg-emerald-500' : 'bg-blue-600'
                 }`}
                 style={{ width: `${pct}%` }}
               />
             </div>
-            <p className="text-[10px] text-slate-500">Sisa: <strong className="text-amber-700">{sisa} Jam</strong></p>
           </div>
         );
       },
     },
     {
-      key: 'status',
+      key: 'status_sanksi',
       header: 'Status Sanksi',
-      render: (row: StudentViolation) => <StatusBadge status={row.status_sanksi} size="sm" />,
+      render: (row) => <StatusBadge status={row.status_sanksi} size="sm" />,
     },
     {
       key: 'aksi',
       header: 'Aksi',
-      render: (row: StudentViolation) => (
+      render: (row) => (
         <button
+          type="button"
           onClick={() => setSelectedViolation(row)}
-          className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1"
+          className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
         >
           <Eye className="h-3.5 w-3.5" />
           <span>Detail</span>
@@ -170,137 +232,258 @@ export default function PelanggaranListPage() {
     },
   ];
 
-  // If user role is NOT authorized (e.g. ADMIN_PRODI or unrelated roles per FR-12)
-  if (!isAuthorizedLecturer && currentRole !== 'MAHASISWA') {
-    return (
-      <div className="p-8 rounded-xl border border-rose-200 bg-rose-50 text-center max-w-2xl mx-auto my-12 space-y-4">
-        <Lock className="h-12 w-12 text-rose-500 mx-auto" />
-        <h3 className="text-lg font-bold text-rose-900">Akses Dibatasi — Kebutuhan Fungsional FR-12 & NF-03</h3>
-        <p className="text-xs sm:text-sm text-rose-700 leading-relaxed">
-          Sesuai spesifikasi SKPL (FR-12 & NF-03) dan UU Perlindungan Data Pribadi No. 27/2022, data pelanggaran mahasiswa bersifat rahasia dan <strong>HANYA DAPAT DIAKSES</strong> oleh mahasiswa yang bersangkutan dan dosen terkait (Dosen Wali, Dosen Pencatat, Dosen Verifikator, dan Kaprodi). Admin Prodi dan pihak lain tidak memiliki hak akses terhadap data ini.
-        </p>
-      </div>
-    );
-  }
+  const totalHoursAll = violations.reduce((acc, v) => acc + v.total_jam_sanksi, 0);
+  const inProgressCount = violations.filter((v) => v.status_sanksi === 'DALAM_PROSES').length;
+  const doneCount = violations.filter((v) => v.status_sanksi === 'SELESAI').length;
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Modul 3: Pelanggaran & Jam Sanksi Sosial"
-        description="Pencatatan pelanggaran oleh dosen berwenang (FR-09), pembatasan akses data (FR-12), dan monitoring penyelesaian sanksi sosial mahasiswa (FR-11)."
+        title="Data Pelanggaran & Sanksi Sosial"
+        description="Pengelolaan catatan pelanggaran akademik, non-akademik, dan kode etik mahasiswa beserta penetapan serta pemantauan pemenuhan jam sanksi sosial."
         actions={
-          <div className="flex items-center gap-2">
-            <Link
-              href="/dashboard/pelanggaran/sanksi-saya"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs"
-            >
-              <Clock className="h-4 w-4 text-blue-600" />
-              <span>Sanksi Sosial Saya</span>
-            </Link>
-            <Link
-              href="/dashboard/pelanggaran/verifikasi"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs"
-            >
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-              <span>Verifikasi Pelaksanaan Sanksi</span>
-            </Link>
-            <Link
-              href="/dashboard/pelanggaran/retensi"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs"
-            >
-              <ShieldCheck className="h-4 w-4 text-purple-600" />
-              <span>Log Retensi (UU PDP)</span>
-            </Link>
-            {isAuthorizedLecturer && (
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700 shadow-xs transition-colors"
+          <div className="flex items-center gap-2 flex-wrap">
+            {currentRole === 'DOSEN_WALI' && (
+              <Link
+                href="/dashboard/pelanggaran/verifikasi"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs transition-colors"
               >
-                <Plus className="h-4 w-4" />
-                <span>Catat Pelanggaran</span>
-              </button>
+                <FileCheck className="h-4 w-4 text-emerald-600" />
+                <span>Verifikasi Sanksi</span>
+              </Link>
             )}
+            {currentRole === 'KAPRODI' && (
+              <Link
+                href="/dashboard/pelanggaran/retensi"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs transition-colors"
+              >
+                <FileText className="h-4 w-4 text-blue-600" />
+                <span>Log Retensi (UU PDP)</span>
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setFormError(null);
+                setShowAddModal(true);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 shadow-xs transition-colors cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Catat Pelanggaran</span>
+            </button>
           </div>
         }
       />
 
-      {/* Security Privacy Notice */}
-      <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2.5">
-        <ShieldAlert className="h-5 w-5 text-amber-600 flex-shrink-0" />
-        <span>
-          <strong>Kerahasiaan Data Terjamin (FR-12 & NF-03):</strong> Data pada modul ini dienkripsi dan hanya dapat dilihat oleh Dosen Wali, Dosen Verifikator, Kaprodi, dan mahasiswa terkait.
-        </span>
-      </div>
+      {notification && (
+        <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs sm:text-sm flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />
+            <span className="font-medium">{notification}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setNotification(null)}
+            className="text-emerald-500 hover:text-emerald-800 font-bold ml-2 cursor-pointer"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
-      {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Total Kasus Pelanggaran"
+          title="Total Kasus Tercatat"
           value={violations.length.toString()}
-          description="Semester Ganjil 2024/2025"
-          icon="ShieldAlert"
+          description="Rekaman pelanggaran aktif"
+          icon={<ShieldAlert size={16} />}
+          badgeTone="rose"
         />
         <StatCard
-          title="Sanksi Sedang Berjalan"
-          value={violations.filter((v) => v.status_sanksi === 'DALAM_PROSES').length.toString()}
-          description="Mahasiswa menjalankan jam sanksi"
-          icon="Clock"
+          title="Dalam Proses Sanksi"
+          value={inProgressCount.toString()}
+          description="Sedang menjalani jam sosial"
+          icon={<Clock size={16} />}
+          badgeTone="amber"
         />
         <StatCard
-          title="Sanksi Tuntas (Selesai)"
-          value={violations.filter((v) => v.status_sanksi === 'SELESAI').length.toString()}
-          description="Seluruh jam sanksi terpenuhi"
-          icon="CheckCircle2"
+          title="Sanksi Tuntas"
+          value={doneCount.toString()}
+          description="Kewajiban jam terpenuhi 100%"
+          icon={<CheckCircle2 size={16} />}
+          badgeTone="emerald"
         />
         <StatCard
-          title="Tingkat Berat / BA Resmi"
-          value={violations.filter((v) => v.tingkat === 'BERAT').length.toString()}
-          description="Tercatat dalam SK Rektor/Dekan"
-          icon="AlertTriangle"
+          title="Akumulasi Jam Sanksi"
+          value={`${totalHoursAll} Jam`}
+          description="Total kewajiban seluruh kasus"
+          icon={<AlertTriangle size={16} />}
+          badgeTone="blue"
         />
       </div>
 
-      {/* Table */}
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
-        <h3 className="text-sm font-bold text-slate-900">Daftar Pelanggaran & Status Jam Sanksi Sosial</h3>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+              {['ALL', 'BELUM_DIMULAI', 'DALAM_PROSES', 'SELESAI'].map((st) => (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => setFilterStatus(st)}
+                  className={`px-3 py-1 rounded text-xs font-semibold transition-colors cursor-pointer ${
+                    filterStatus === st
+                      ? 'bg-white text-blue-700 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {st === 'ALL'
+                    ? 'Semua Status'
+                    : st === 'BELUM_DIMULAI'
+                      ? 'Belum Dimulai'
+                      : st === 'DALAM_PROSES'
+                        ? 'Dalam Proses'
+                        : 'Selesai'}
+                </button>
+              ))}
+            </div>
+
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="rounded-lg border border-slate-300 p-1.5 text-xs text-slate-700 bg-white"
+            >
+              <option value="ALL">Semua Jenis Pelanggaran</option>
+              <option value="AKADEMIK">Pelanggaran Akademik</option>
+              <option value="NON_AKADEMIK">Pelanggaran Non-Akademik</option>
+              <option value="KODE_ETIK">Pelanggaran Kode Etik</option>
+            </select>
+          </div>
+
+          <div className="relative">
+            <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari mahasiswa, NIM, atau kasus..."
+              className="pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-700 focus:bg-white focus:border-blue-500 focus:outline-none w-full sm:w-64"
+            />
+          </div>
+        </div>
+
         <DataTable
-          data={violations}
+          data={filteredViolations}
           columns={columns}
-          searchPlaceholder="Cari kasus, nomor BA, atau mahasiswa..."
-          searchKey="judul_kasus"
+          emptyMessage="Tidak ada data pelanggaran untuk filter yang dipilih."
         />
       </div>
 
-      {/* MODAL: Catat Pelanggaran (FR-09) */}
+      {/* MODAL: Detail Pelanggaran */}
+      {selectedViolation && (
+        <Modal
+          isOpen={!!selectedViolation}
+          onClose={() => setSelectedViolation(null)}
+          title={`Detail Kasus — ${selectedViolation.mahasiswa_nama}`}
+        >
+          <div className="space-y-4 text-xs sm:text-sm">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 gap-2">
+              <div>
+                <h4 className="font-bold text-slate-900 text-sm">
+                  {selectedViolation.mahasiswa_nama}
+                </h4>
+                <p className="text-slate-500 text-xs font-mono">
+                  NIM: {selectedViolation.mahasiswa_nim} • Angkatan {selectedViolation.angkatan}
+                </p>
+              </div>
+              <StatusBadge status={selectedViolation.status_sanksi} size="md" />
+            </div>
+
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-bold text-slate-700">
+                  {VIOLATION_TYPE_LABELS[selectedViolation.jenis_pelanggaran]}
+                </span>
+                <StatusBadge status={selectedViolation.tingkat} size="sm" />
+                <span className="font-mono text-slate-600">
+                  SK: {selectedViolation.dasar_keputusan}
+                </span>
+              </div>
+              <p className="font-bold text-slate-900 text-sm">
+                {selectedViolation.judul_kasus}
+              </p>
+              <p className="text-slate-700 leading-relaxed">{selectedViolation.uraian}</p>
+              <div className="pt-2 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-slate-600">
+                <span>
+                  Tanggal: <strong>{formatDate(selectedViolation.tanggal_pelanggaran)}</strong>
+                </span>
+                <span>
+                  Kewajiban:{' '}
+                  <strong>
+                    {selectedViolation.jam_sanksi_terpenuhi} / {selectedViolation.total_jam_sanksi} Jam
+                  </strong>
+                </span>
+                <span>
+                  Dosen Wali: <strong>{selectedViolation.dosen_wali_nama}</strong>
+                </span>
+                <span>
+                  Verifikator: <strong>{selectedViolation.dosen_verifikator_nama}</strong>
+                </span>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setSelectedViolation(null)}
+                className="px-4 py-2 rounded-lg bg-slate-800 text-white text-xs font-semibold hover:bg-slate-900 cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* MODAL: Tambah Pelanggaran */}
       <Modal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
-        title="Catat Pelanggaran Mahasiswa (FR-09)"
+        title="Catat Pelanggaran & Penetapan Sanksi"
       >
-        <div className="space-y-4 text-xs sm:text-sm">
-          <p className="text-slate-600 text-xs">
-            Dosen yang berwenang (Kaprodi atau dosen yang ditunjuk) mencatat pelanggaran mahasiswa, jenis/tingkat pelanggaran, nomor berita acara keputusan, dan beban jam sanksi sosial.
-          </p>
+        <form onSubmit={handleAddViolation} className="space-y-3.5 text-xs sm:text-sm">
+          {formError && (
+            <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+              {formError}
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">NIM Mahasiswa *</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                NIM Mahasiswa *
+              </label>
               <input
                 type="text"
                 value={nim}
                 onChange={(e) => setNim(e.target.value)}
                 placeholder="2201010..."
-                className="w-full rounded-lg border border-slate-300 p-2 text-xs"
+                className="w-full rounded-lg border border-slate-300 p-2 text-xs bg-white"
+                required
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Nama Mahasiswa *</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Nama Mahasiswa *
+              </label>
               <input
                 type="text"
                 value={nama}
                 onChange={(e) => setNama(e.target.value)}
-                placeholder="Nama Mahasiswa"
-                className="w-full rounded-lg border border-slate-300 p-2 text-xs"
+                placeholder="Nama lengkap mahasiswa"
+                className="w-full rounded-lg border border-slate-300 p-2 text-xs bg-white"
+                required
               />
             </div>
           </div>
@@ -312,164 +495,124 @@ export default function PelanggaranListPage() {
                 type="number"
                 value={angkatan}
                 onChange={(e) => setAngkatan(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 p-2 text-xs"
+                className="w-full rounded-lg border border-slate-300 p-2 text-xs bg-white"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal Kejadian *</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Tanggal Kejadian
+              </label>
               <input
                 type="date"
-                value={tanggal}
-                onChange={(e) => setTanggal(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 p-2 text-xs"
+                value={tanggalPelanggaran}
+                onChange={(e) => setTanggalPelanggaran(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 p-2 text-xs bg-white"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Jam Sanksi Sosial *</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Total Jam Sanksi *
+              </label>
               <input
                 type="number"
-                value={jamSanksi}
-                onChange={(e) => setJamSanksi(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 p-2 text-xs"
+                min="1"
+                value={totalJamSanksi}
+                onChange={(e) => setTotalJamSanksi(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 p-2 text-xs bg-white"
+                required
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Jenis Pelanggaran *</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Jenis Pelanggaran
+              </label>
               <select
                 value={jenis}
                 onChange={(e) => setJenis(e.target.value as ViolationType)}
-                className="w-full rounded-lg border border-slate-300 p-2 text-xs"
+                className="w-full rounded-lg border border-slate-300 p-2 text-xs bg-white"
               >
-                <option value="AKADEMIK">Akademik (Plagiarisme, Kecurangan Ujian)</option>
-                <option value="NON_AKADEMIK">Non-Akademik (Tata Tertib, Fasilitas)</option>
-                <option value="KODE_ETIK">Kode Etik Perilaku Mahasiswa</option>
+                <option value="AKADEMIK">Akademik</option>
+                <option value="NON_AKADEMIK">Non-Akademik</option>
+                <option value="KODE_ETIK">Kode Etik</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Tingkat Pelanggaran *</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Tingkat Pelanggaran
+              </label>
               <select
                 value={tingkat}
                 onChange={(e) => setTingkat(e.target.value as ViolationLevel)}
-                className="w-full rounded-lg border border-slate-300 p-2 text-xs"
+                className="w-full rounded-lg border border-slate-300 p-2 text-xs bg-white"
               >
-                <option value="RINGAN">Ringan (Teguran & Sanksi Ringan)</option>
-                <option value="SEDANG">Sedang (Jam Sanksi Sosial 10–30 Jam)</option>
-                <option value="BERAT">Berat (Sanksi Sosial & Peringatan Tertulis)</option>
+                <option value="RINGAN">Ringan</option>
+                <option value="SEDANG">Sedang</option>
+                <option value="BERAT">Berat</option>
               </select>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Nomor Berita Acara / Dasar Keputusan *</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Nomor Berita Acara / Dasar Keputusan *
+            </label>
             <input
               type="text"
               value={dasarKeputusan}
               onChange={(e) => setDasarKeputusan(e.target.value)}
-              placeholder="Contoh: BA-KOMISI-ETIK/2024/X/012"
-              className="w-full rounded-lg border border-slate-300 p-2 text-xs"
+              placeholder="Contoh: BA-KOMISI-ETIK/2024/XI/004"
+              className="w-full rounded-lg border border-slate-300 p-2 text-xs bg-white"
+              required
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Judul / Pokok Kasus *</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Judul Kasus Pelanggaran *
+            </label>
             <input
               type="text"
-              value={judul}
-              onChange={(e) => setJudul(e.target.value)}
-              placeholder="Ringkasan singkat kasus pelanggaran..."
-              className="w-full rounded-lg border border-slate-300 p-2 text-xs"
+              value={judulKasus}
+              onChange={(e) => setJudulKasus(e.target.value)}
+              placeholder="Ringkasan kasus pelanggaran"
+              className="w-full rounded-lg border border-slate-300 p-2 text-xs bg-white"
+              required
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Uraian Kasus & Keputusan Sanksi *</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Uraian Kronologi &amp; Ketentuan Sanksi
+            </label>
             <textarea
               rows={3}
               value={uraian}
               onChange={(e) => setUraian(e.target.value)}
-              placeholder="Jelaskan fakta kejadian dan bentuk sanksi sosial yang harus dijalankan mahasiswa..."
-              className="w-full rounded-lg border border-slate-300 p-2 text-xs"
+              placeholder="Jelaskan kronologi pelanggaran dan bentuk sanksi sosial yang ditetapkan..."
+              className="w-full rounded-lg border border-slate-300 p-2 text-xs bg-white"
             />
           </div>
 
           <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
             <button
+              type="button"
               onClick={() => setShowAddModal(false)}
-              className="px-3 py-2 rounded-lg border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50"
+              className="px-3.5 py-2 rounded-lg border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 cursor-pointer"
             >
               Batal
             </button>
             <button
-              onClick={handleAddViolation}
-              className="px-4 py-2 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700"
+              type="submit"
+              className="px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 shadow-xs cursor-pointer"
             >
-              Simpan Pelanggaran
+              Simpan Catatan Pelanggaran
             </button>
           </div>
-        </div>
+        </form>
       </Modal>
-
-      {/* MODAL: Detail Pelanggaran */}
-      {selectedViolation && (
-        <Modal
-          isOpen={!!selectedViolation}
-          onClose={() => setSelectedViolation(null)}
-          title={`Detail Pelanggaran — ${selectedViolation.judul_kasus}`}
-        >
-          <div className="space-y-4 text-xs sm:text-sm">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div>
-                <p className="font-bold text-slate-900">{selectedViolation.mahasiswa_nama} ({selectedViolation.mahasiswa_nim})</p>
-                <p className="text-slate-500 text-xs">Angkatan {selectedViolation.angkatan} • Status: {selectedViolation.status_mahasiswa}</p>
-              </div>
-              <StatusBadge status={selectedViolation.status_sanksi} size="md" />
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
-                  <span className="font-bold text-slate-500 block">Dasar Keputusan / Nomor BA:</span>
-                  <p className="font-mono font-bold text-slate-800 mt-0.5">{selectedViolation.dasar_keputusan}</p>
-                </div>
-                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
-                  <span className="font-bold text-slate-500 block">Tingkat Pelanggaran:</span>
-                  <p className="font-bold text-slate-800 mt-0.5">{selectedViolation.tingkat} ({selectedViolation.jenis_pelanggaran})</p>
-                </div>
-              </div>
-
-              <div>
-                <span className="font-bold text-slate-700 block">Uraian Fakta Pelanggaran:</span>
-                <p className="text-slate-600 mt-0.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200">{selectedViolation.uraian}</p>
-              </div>
-
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-1">
-                <span className="font-bold text-blue-900 block">Status Pelaksanaan Jam Sanksi Sosial:</span>
-                <p className="text-blue-800 text-xs">
-                  Beban Sanksi: <strong>{selectedViolation.total_jam_sanksi} Jam</strong> • Terpenuhi: <strong>{selectedViolation.jam_sanksi_terpenuhi} Jam</strong> • Sisa: <strong>{Math.max(0, selectedViolation.total_jam_sanksi - selectedViolation.jam_sanksi_terpenuhi)} Jam</strong>
-                </p>
-              </div>
-
-              <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 text-[11px] space-y-0.5">
-                <p>Dosen Pencatat: {selectedViolation.dosen_pencatat_nama}</p>
-                <p>Dosen Wali: {selectedViolation.dosen_wali_nama}</p>
-                <p>Dosen Verifikator Sanksi: {selectedViolation.dosen_verifikator_nama}</p>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-3 border-t border-slate-100">
-              <button
-                onClick={() => setSelectedViolation(null)}
-                className="px-4 py-2 rounded-lg bg-slate-800 text-white text-xs font-semibold hover:bg-slate-900"
-              >
-                Tutup
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 }
