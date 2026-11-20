@@ -23,6 +23,8 @@ interface AppContextType {
   markAsRead: (id: string) => void;
   sidebarOpen: boolean;
   setSidebarOpen: (v: boolean) => void;
+  mobileSidebarOpen: boolean;
+  setMobileSidebarOpen: (v: boolean) => void;
   isAuthenticated: boolean;
   isLoadingSession: boolean;
   login: (payload: LoginPayload) => Promise<void>;
@@ -91,6 +93,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isLoadingSession, setIsLoadingSession] = useState<boolean>(true);
   const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Sync session with Golang Backend if token is present
   const refreshSession = useCallback(async () => {
@@ -226,6 +229,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         markAsRead,
         sidebarOpen,
         setSidebarOpen,
+        mobileSidebarOpen,
+        setMobileSidebarOpen,
         isAuthenticated,
         isLoadingSession,
         login,
