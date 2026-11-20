@@ -118,9 +118,9 @@ export default function AnimatedSimproLogo({
           type="button"
           onClick={onMobileClose}
           aria-label="Tutup Menu"
-          className="lg:hidden absolute top-3 right-3 z-20 flex items-center justify-center w-8 h-8 rounded-full hover:bg-white/10 text-white transition-colors"
+          className="lg:hidden absolute top-3 right-3 z-20 flex items-center justify-center w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
         >
-          <X size={18} />
+          <X size={20} />
         </button>
       )}
 

@@ -143,7 +143,7 @@ export default function LaporanPerjalananDinasPage() {
       </div>
 
       <PageHeader
-        title={`Laporan Realisasi: ${trip.tujuan}`}
+        title={`Laporan Realisasi Perjalanan Dinas: ${trip.tujuan}`}
         description={`No. Surat Tugas: ${trip.nomor_surat_tugas || '-'} • Jadwal: ${formatDateShort(
           trip.tanggal_berangkat
         )} – ${formatDateShort(trip.tanggal_kembali)} (FR-34)`}

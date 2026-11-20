@@ -16,6 +16,7 @@ import {
 } from '@/lib/mock-data';
 import AnimatedSimproLogo from '@/components/Logo/AnimatedSimproLogo';
 import AnimatedCollapse from '@/components/ui/AnimatedCollapse';
+import { CANONICAL_ROLES, ROLE_LABELS } from '@/components/layout/Header';
 import {
   LayoutDashboard, FileCheck, Wallet, SmilePlus, FileText,
   GraduationCap, Users, BookOpen, Handshake, Settings,
@@ -69,7 +70,43 @@ const categoryIconMap: Record<string, React.ComponentType<{ className?: string }
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user, sidebarOpen, setSidebarOpen } = useApp();
+  const { user, setActiveRole, sidebarOpen, setSidebarOpen, mobileSidebarOpen, setMobileSidebarOpen } = useApp();
+  const [isDesktop, setIsDesktop] = useState(true);
+  const [mobileRolePickerOpen, setMobileRolePickerOpen] = useState(false);
+
+  const availableRoles = (user?.roles && user.roles.length > 0)
+    ? CANONICAL_ROLES.filter((r) => user.roles.includes(r))
+    : [user.activeRole];
+
+  // Track lg (>=1024px) breakpoint so mobile drawer always renders expanded labels & closes on desktop resize
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const syncViewport = () => {
+      setIsDesktop(mq.matches);
+      if (mq.matches) {
+        setMobileSidebarOpen(false);
+        setMobileRolePickerOpen(false);
+      }
+    };
+    syncViewport();
+    mq.addEventListener('change', syncViewport);
+    return () => mq.removeEventListener('change', syncViewport);
+  }, [setMobileSidebarOpen]);
+
+  // Close mobile drawer on Escape key
+  useEffect(() => {
+    if (!mobileSidebarOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMobileSidebarOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [mobileSidebarOpen, setMobileSidebarOpen]);
+
+  // Desktop respects sidebarOpen collapse state; mobile off-canvas drawer is always expanded when visible
+  const isExpanded = isDesktop ? sidebarOpen : true;
 
   // Filter items visible to current user's active role or user's assigned roles
   const visibleItems = NAV_ITEMS.filter(item =>
@@ -178,7 +215,7 @@ export default function Sidebar() {
   }, [activeItemHref]);
 
   const toggleCategory = (cat: string) => {
-    if (!sidebarOpen) {
+    if (isDesktop && !sidebarOpen) {
       setSidebarOpen(true);
       setOpenCategories((prev) => ({ ...prev, [cat]: true }));
       return;
@@ -198,7 +235,7 @@ export default function Sidebar() {
       return;
     }
 
-    if (sidebarOpen) {
+    if (isExpanded) {
       remove('.simpro-nav-text-container');
       remove('.simpro-nav-badge');
       remove('.simpro-nav-public-block');
@@ -254,38 +291,91 @@ export default function Sidebar() {
         ease: 'outQuad',
       });
     }
-  }, [sidebarOpen]);
+  }, [isExpanded]);
 
   return (
     <>
-      {/* Mobile overlay */}
-      {sidebarOpen && (
+      {/* Mobile dark backdrop overlay */}
+      {mobileSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/40 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 bg-black/45 z-40 lg:hidden"
+          onClick={() => setMobileSidebarOpen(false)}
+          aria-hidden="true"
         />
       )}
 
       <aside
+        aria-label="Navigasi Utama"
         className={`
-          fixed top-0 left-0 z-50 h-screen
+          fixed top-0 left-0 z-50 h-dvh lg:h-screen
           bg-blue-600
-          transition-[width,transform] duration-500 ease-out
+          transition-[width,transform] duration-300 lg:duration-500 ease-out
           flex flex-col shadow-xl
-          ${sidebarOpen ? 'w-64' : 'w-20'}
+          w-64 ${sidebarOpen ? 'lg:w-64' : 'lg:w-20'}
           lg:relative
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          ${mobileSidebarOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-full pointer-events-none lg:translate-x-0 lg:pointer-events-auto'}
         `}
       >
         {/* Animated SVG Logo & Blue Header Section (Anime.js createScope + SVG Morphing) */}
         <AnimatedSimproLogo
-          collapsed={!sidebarOpen}
+          collapsed={!isExpanded}
           onToggleCollapse={(nextCollapsed) => setSidebarOpen(!nextCollapsed)}
-          onMobileClose={() => setSidebarOpen(false)}
+          onMobileClose={() => setMobileSidebarOpen(false)}
         />
 
         {/* White Navigation Container with rounded-tr-[2rem] */}
-        <div className="flex-1 bg-white rounded-tr-[2rem] flex flex-col pt-5 overflow-hidden relative shadow-[0_-8px_15px_-3px_rgba(0,0,0,0.1)]">
+        <div className="flex-1 bg-white rounded-tr-[2rem] flex flex-col pt-4 lg:pt-5 overflow-hidden relative shadow-[0_-8px_15px_-3px_rgba(0,0,0,0.1)]">
+          {/* Mobile-only Context Bar: Academic Period + Role Selector inside drawer */}
+          <div className="lg:hidden px-3 pb-3 mb-2 border-b border-slate-100 space-y-2 shrink-0">
+            <div className="flex items-center gap-2 rounded-full bg-slate-50 border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-800">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+              <span className="truncate">Semester Ganjil 2024/2025</span>
+            </div>
+            <div>
+              <button
+                type="button"
+                onClick={() => setMobileRolePickerOpen((prev) => !prev)}
+                className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-800 transition-colors cursor-pointer"
+                aria-expanded={mobileRolePickerOpen}
+              >
+                <span className="truncate">
+                  <span className="text-slate-500 font-normal">Peran: </span>
+                  {ROLE_LABELS[user.activeRole] || user.activeRole}
+                </span>
+                <ChevronDown
+                  size={14}
+                  className={`text-slate-500 shrink-0 transition-transform duration-200 ${
+                    mobileRolePickerOpen ? 'rotate-180 text-blue-600' : ''
+                  }`}
+                />
+              </button>
+              <AnimatedCollapse open={mobileRolePickerOpen} duration={200}>
+                <div className="mt-1.5 max-h-44 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 divide-y divide-slate-50">
+                  {availableRoles.map((role) => (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => {
+                        setActiveRole(role);
+                        setMobileRolePickerOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center justify-between ${
+                        user.activeRole === role
+                          ? 'bg-blue-50 text-blue-700 font-semibold'
+                          : 'text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="truncate">{ROLE_LABELS[role] || role}</span>
+                      {user.activeRole === role && (
+                        <span className="text-xs text-blue-600 font-bold ml-2">✓</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </AnimatedCollapse>
+            </div>
+          </div>
+
           <nav className="flex-1 overflow-y-auto px-3 space-y-1 custom-scrollbar">
             {categories.map((cat) => {
               const catItems = visibleItems.filter((i) => (i.category || 'Lainnya') === cat);
@@ -302,7 +392,7 @@ export default function Sidebar() {
                     key={mainItem.href}
                     href={mainItem.href}
                     onClick={() => {
-                      if (typeof window !== 'undefined' && window.innerWidth < 1024) setSidebarOpen(false);
+                      if (!isDesktop) setMobileSidebarOpen(false);
                     }}
                     className={`
                       group flex items-center px-3 py-2.5 rounded-lg text-sm font-semibold
@@ -312,7 +402,7 @@ export default function Sidebar() {
                         : 'text-slate-700 hover:text-blue-600 hover:bg-slate-50'
                       }
                     `}
-                    title={!sidebarOpen ? mainItem.title : undefined}
+                    title={!isExpanded ? mainItem.title : undefined}
                   >
                     <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
                       <MainIcon
@@ -324,8 +414,8 @@ export default function Sidebar() {
                     <div
                       className="simpro-nav-text-container flex-1 min-w-0 flex items-center justify-between ml-2.5 overflow-hidden whitespace-nowrap"
                       style={{
-                        maxWidth: sidebarOpen ? '180px' : '0px',
-                        opacity: sidebarOpen ? 1 : 0,
+                        maxWidth: isExpanded ? '180px' : '0px',
+                        opacity: isExpanded ? 1 : 0,
                       }}
                     >
                       <span className="truncate">{mainItem.title}</span>
@@ -354,7 +444,7 @@ export default function Sidebar() {
                         : 'text-slate-700 hover:text-blue-600 hover:bg-slate-50'
                       }
                     `}
-                    title={!sidebarOpen ? cat : undefined}
+                    title={!isExpanded ? cat : undefined}
                     aria-expanded={isCatOpen}
                   >
                     <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
@@ -368,8 +458,8 @@ export default function Sidebar() {
                     <div
                       className="simpro-nav-text-container flex-1 min-w-0 flex items-center justify-between ml-2.5 overflow-hidden whitespace-nowrap"
                       style={{
-                        maxWidth: sidebarOpen ? '180px' : '0px',
-                        opacity: sidebarOpen ? 1 : 0,
+                        maxWidth: isExpanded ? '180px' : '0px',
+                        opacity: isExpanded ? 1 : 0,
                       }}
                     >
                       <span className="truncate">{cat}</span>
@@ -390,7 +480,7 @@ export default function Sidebar() {
                   </button>
 
                   {/* Dropdown Items: Direct vertical list matching Image 2 composition without truncation */}
-                  <AnimatedCollapse open={sidebarOpen && isCatOpen} duration={220}>
+                  <AnimatedCollapse open={isExpanded && isCatOpen} duration={220}>
                     <div className="mt-0.5 mb-1 space-y-0.5 pl-2 pr-0.5 py-0.5">
                       {catItems.map((item) => {
                         const Icon = iconMap[item.icon] || LayoutDashboard;
@@ -402,7 +492,7 @@ export default function Sidebar() {
                             key={item.href}
                             href={item.href}
                             onClick={() => {
-                              if (typeof window !== 'undefined' && window.innerWidth < 1024) setSidebarOpen(false);
+                              if (!isDesktop) setMobileSidebarOpen(false);
                             }}
                             className={`
                               anime-collapse-item group flex items-center px-2.5 py-2 rounded-lg text-sm font-medium
@@ -448,9 +538,9 @@ export default function Sidebar() {
             <div
               className="simpro-nav-public-block overflow-hidden transition-none border-t border-slate-100"
               style={{
-                maxHeight: sidebarOpen ? '140px' : '0px',
-                opacity: sidebarOpen ? 1 : 0,
-                borderTopWidth: sidebarOpen ? '1px' : '0px',
+                maxHeight: isExpanded ? '140px' : '0px',
+                opacity: isExpanded ? 1 : 0,
+                borderTopWidth: isExpanded ? '1px' : '0px',
               }}
             >
               <div className="pt-2 space-y-1">
@@ -459,9 +549,12 @@ export default function Sidebar() {
                 </p>
                 <Link
                   href="/mitra/isi/tok-telkom-2025"
+                  onClick={() => {
+                    if (!isDesktop) setMobileSidebarOpen(false);
+                  }}
                   className="flex items-center px-3.5 py-2 text-sm text-slate-600 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-colors overflow-hidden whitespace-nowrap"
                   target="_blank"
-                  title={!sidebarOpen ? 'Kuesioner Mitra (Demo)' : undefined}
+                  title={!isExpanded ? 'Kuesioner Mitra (Demo)' : undefined}
                 >
                   <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
                     <ExternalLink className="w-4 h-4 text-slate-400" />
@@ -470,9 +563,12 @@ export default function Sidebar() {
                 </Link>
                 <Link
                   href="/aduan/lacak"
+                  onClick={() => {
+                    if (!isDesktop) setMobileSidebarOpen(false);
+                  }}
                   className="flex items-center px-3.5 py-2 text-sm text-slate-600 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-colors overflow-hidden whitespace-nowrap"
                   target="_blank"
-                  title={!sidebarOpen ? 'Lacak Tiket Aduan' : undefined}
+                  title={!isExpanded ? 'Lacak Tiket Aduan' : undefined}
                 >
                   <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
                     <ExternalLink className="w-4 h-4 text-slate-400" />
@@ -487,8 +583,11 @@ export default function Sidebar() {
           <div className="p-3 border-t border-slate-100 bg-white">
             <Link
               href="/"
+              onClick={() => {
+                if (!isDesktop) setMobileSidebarOpen(false);
+              }}
               className="flex items-center px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors w-full font-semibold text-sm overflow-hidden"
-              title={!sidebarOpen ? 'Keluar Sistem' : undefined}
+              title={!isExpanded ? 'Keluar Sistem' : undefined}
             >
               <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
                 <LogOut className="w-4 h-4 flex-shrink-0" />
@@ -496,8 +595,8 @@ export default function Sidebar() {
               <div
                 className="simpro-nav-text-container flex-1 min-w-0 ml-2.5 overflow-hidden whitespace-nowrap"
                 style={{
-                  maxWidth: sidebarOpen ? '180px' : '0px',
-                  opacity: sidebarOpen ? 1 : 0,
+                  maxWidth: isExpanded ? '180px' : '0px',
+                  opacity: isExpanded ? 1 : 0,
                 }}
               >
                 <span className="truncate">Keluar Sistem</span>
