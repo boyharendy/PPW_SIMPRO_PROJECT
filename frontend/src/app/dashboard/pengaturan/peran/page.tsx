@@ -7,6 +7,8 @@ import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import Modal from '@/components/ui/Modal';
 import { formatDateShort } from '@/lib/utils';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
 interface PengelolaAduan {
   id: string;
@@ -208,12 +210,17 @@ export default function Page() {
       />
 
       {/* Bagian 1: Pengelola Aduan */}
-      <div className="card space-y-4">
+      <MotionCard index={0} interactive={false} className="card space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              <Shield size={16} className="text-blue-600" /> Penugasan Pengelola Layanan Aduan
-            </h3>
+            <div className="flex items-center gap-1.5">
+              <Shield size={16} className="text-blue-600 shrink-0" />
+              <WordRevealHeading
+                as="h3"
+                text="Penugasan Pengelola Layanan Aduan"
+                className="text-sm font-bold text-slate-800 uppercase tracking-wider"
+              />
+            </div>
             <p className="text-xs text-slate-500 mt-0.5">
               Pengelola yang ditunjuk menangani telaah awal, disposisi tiket, dan kanal sensitif kekerasan (PGL-K).
             </p>
@@ -227,15 +234,20 @@ export default function Page() {
         </div>
 
         <DataTable columns={pengelolaColumns} data={pengelola} />
-      </div>
+      </MotionCard>
 
       {/* Bagian 2: Dosen Verifikator Publikasi */}
-      <div className="card space-y-4">
+      <MotionCard index={1} interactive={false} className="card space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              <Award size={16} className="text-blue-600" /> Penugasan Dosen Verifikator Publikasi Mahasiswa
-            </h3>
+            <div className="flex items-center gap-1.5">
+              <Award size={16} className="text-blue-600 shrink-0" />
+              <WordRevealHeading
+                as="h3"
+                text="Penugasan Dosen Verifikator Publikasi Mahasiswa"
+                className="text-sm font-bold text-slate-800 uppercase tracking-wider"
+              />
+            </div>
             <p className="text-xs text-slate-500 mt-0.5">
               Dosen yang berwenang memvalidasi LoA dan DOI publikasi yang diunggah oleh mahasiswa (FR-32).
             </p>
@@ -249,7 +261,7 @@ export default function Page() {
         </div>
 
         <DataTable columns={verifikatorColumns} data={verifikator} />
-      </div>
+      </MotionCard>
 
       {/* Modal Tunjuk Pengelola */}
       <Modal

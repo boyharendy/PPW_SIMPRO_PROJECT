@@ -6,6 +6,8 @@ import PageHeader from '@/components/ui/PageHeader';
 import { type CaseRow, useCaseData } from '@/components/aduan/CaseList';
 import { apiClient } from '@/lib/api/client';
 import { useApp } from '@/lib/context';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
 export default function Page() {
   const { id } = useParams<{id:string}>();
@@ -38,11 +40,11 @@ export default function Page() {
   }
   return <div className="space-y-4"><PageHeader title="Detail Aduan" />
     {error ? <p role="alert">{error}</p> : !data ? <p>Memuat aduan...</p> : <>
-      <section className="card space-y-2"><h2 className="font-bold">{data.nomor_aduan}</h2><p>{data.kategori} &middot; {data.status}</p>
+      <MotionCard as="section" index={0} interactive={false} className="card space-y-2"><WordRevealHeading as="h2" text={data.nomor_aduan} className="font-bold" /><p>{data.kategori} &middot; {data.status}</p>
         {data.judul && <h3>{data.judul}</h3>}<p className="whitespace-pre-wrap">{data.isi_aduan}</p>
         {data.lampiran_url && <button className="btn-secondary" onClick={() => download(data.lampiran_url!)}>Buka lampiran</button>}
-      </section>
-      {data.isi_aduan && <section className="card space-y-4"><h2 className="font-semibold">Penanganan aduan</h2>
+      </MotionCard>
+      {data.isi_aduan && <MotionCard as="section" index={1} interactive={false} className="card space-y-4"><WordRevealHeading as="h2" text="Penanganan aduan" className="font-semibold" />
         {data.messages?.map(m => <div className="rounded bg-slate-50 p-2" key={m.id}>
           <strong>{m.is_catatan_internal?'Catatan internal':m.sender_type}</strong><p className="whitespace-pre-wrap">{m.pesan}</p>
           {m.lampiran_url && <button className="btn-secondary" onClick={() => download(m.lampiran_url!)}>Lampiran pesan</button>}
@@ -72,7 +74,7 @@ export default function Page() {
             <label className="block">Alasan penutupan<input className="input-field" name="alasan" required /></label><button className="btn-secondary">Tutup aduan</button>
           </form>}
         </fieldset>
-      </section>}
+      </MotionCard>}
     </>}
     {feedback && <p role="status">{feedback}</p>}
   </div>;

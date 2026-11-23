@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { Settings, Save, CheckCircle2, Shield, Clock, FileText, Database } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
 export default function Page() {
   const [saved, setSaved] = useState(false);
@@ -41,12 +43,10 @@ export default function Page() {
 
       <form onSubmit={handleSave} className="space-y-6">
         {/* 1. Pengaturan Berkas & Mode Aduan */}
-        <div className="card space-y-4">
+        <MotionCard index={0} interactive={false} className="card space-y-4">
           <div className="flex items-center gap-2">
             <FileText size={16} className="text-blue-600" />
-            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-              1. Pengaturan Berkas & Sistem
-            </h3>
+            <WordRevealHeading as="h3" text="1. Pengaturan Berkas & Sistem" className="text-sm font-bold text-slate-800 uppercase tracking-wider" />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -85,15 +85,13 @@ export default function Page() {
               </p>
             </div>
           </div>
-        </div>
+        </MotionCard>
 
         {/* 2. Tenggat Waktu & Batas SLA */}
-        <div className="card space-y-4">
+        <MotionCard index={1} interactive={false} className="card space-y-4">
           <div className="flex items-center gap-2">
             <Clock size={16} className="text-blue-600" />
-            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-              2. Batas Tenggat Waktu & SLA Siklus Operasional
-            </h3>
+            <WordRevealHeading as="h3" text="2. Batas Tenggat Waktu & SLA Siklus Operasional" className="text-sm font-bold text-slate-800 uppercase tracking-wider" />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -182,7 +180,7 @@ export default function Page() {
               />
             </div>
           </div>
-        </div>
+        </MotionCard>
 
         <div className="flex justify-end pt-2">
           <button type="submit" className="btn-primary text-xs px-5 py-2 flex items-center gap-1.5">

@@ -31,6 +31,8 @@ import {
 } from '@/lib/trip-utils';
 import type { BusinessTrip } from '@/lib/types';
 import { formatDateShort, formatDateTime, formatRupiah, getStatusLabel } from '@/lib/utils';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
 export default function DetailPerjalananDinasPage() {
   const { id } = useParams<{ id: string }>();
@@ -243,10 +245,8 @@ export default function DetailPerjalananDinasPage() {
 
       {/* Rincian Kegiatan & Pembiayaan */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="card md:col-span-2 space-y-4">
-          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-            Informasi Surat Tugas &amp; Jadwal
-          </h3>
+        <MotionCard index={0} interactive={false} className="card md:col-span-2 space-y-4">
+          <WordRevealHeading as="h3" text="Informasi Surat Tugas & Jadwal" className="text-sm font-bold text-slate-800 uppercase tracking-wider" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
             <div>
               <span className="text-slate-400 block mb-0.5">Kota / Lokasi Tujuan:</span>
@@ -284,13 +284,11 @@ export default function DetailPerjalananDinasPage() {
               </div>
             )}
           </div>
-        </div>
+        </MotionCard>
 
         {/* Anggaran & Pos RKA */}
-        <div className="card space-y-3">
-          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-            Sumber Pembiayaan
-          </h3>
+        <MotionCard index={1} interactive={false} className="card space-y-3">
+          <WordRevealHeading as="h3" text="Sumber Pembiayaan" className="text-sm font-bold text-slate-800 uppercase tracking-wider" />
           <div>
             <span className="text-xs text-slate-400 block mb-0.5">Sumber Dana:</span>
             <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded border border-blue-100 inline-block">
@@ -320,16 +318,14 @@ export default function DetailPerjalananDinasPage() {
               </span>
             </div>
           )}
-        </div>
+        </MotionCard>
       </div>
 
       <TripProofList proofs={trip.proofs} />
 
         {/* Komparasi Estimasi vs Realisasi Biaya */}
-      <div className="card">
-        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-3">
-          Rincian Estimasi vs Realisasi Biaya
-        </h3>
+      <MotionCard index={2} interactive={false} className="card">
+        <WordRevealHeading as="h3" text="Rincian Estimasi vs Realisasi Biaya" className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-3" />
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
@@ -416,7 +412,7 @@ export default function DetailPerjalananDinasPage() {
             </tfoot>
           </table>
         </div>
-      </div>
+      </MotionCard>
 
       <TripApprovalModal
         trip={trip}

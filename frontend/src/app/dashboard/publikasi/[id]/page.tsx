@@ -26,6 +26,8 @@ import {
   UpdateStageModal,
   VerifyStudentPubModal,
 } from './PublicationActionModals';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
 
 
@@ -199,10 +201,8 @@ export default function Page() {
 
       {/* Info Karya Ilmiah & Verifikasi Pembimbing */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="card md:col-span-2 space-y-4">
-          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-            Informasi Manuskrip & Target
-          </h3>
+        <MotionCard index={0} interactive={false} className="card md:col-span-2 space-y-4">
+          <WordRevealHeading as="h3" text="Informasi Manuskrip & Target" className="text-sm font-bold text-slate-800 uppercase tracking-wider" />
           <div className="grid grid-cols-2 gap-4 text-xs">
             <div>
               <span className="text-slate-400 block mb-0.5">Jenis Publikasi:</span>
@@ -238,13 +238,11 @@ export default function Page() {
               )}
             </div>
           </div>
-        </div>
+        </MotionCard>
 
         {/* Status Verifikasi Mahasiswa (FR-31) */}
-        <div className="card space-y-3">
-          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-            Verifikasi Rekap (FR-31)
-          </h3>
+        <MotionCard index={1} interactive={false} className="card space-y-3">
+          <WordRevealHeading as="h3" text="Verifikasi Rekap (FR-31)" className="text-sm font-bold text-slate-800 uppercase tracking-wider" />
           <div>
             <div className="text-xs text-slate-400 mb-1">Status Verifikasi:</div>
             <StatusBadge status={pub.status_verifikasi} size="md" />
@@ -261,15 +259,13 @@ export default function Page() {
               Status tahapan diperbarui langsung oleh {publisherType === 'MAHASISWA' ? 'Mahasiswa' : 'Dosen'} pem-publish.
             </p>
           </div>
-        </div>
+        </MotionCard>
       </div>
 
       {/* Review Internal Sebelum Diajukan (FR-31) */}
-      <div className="card space-y-3">
+      <MotionCard index={2} interactive={false} className="card space-y-3">
         <div>
-          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-            Review Internal Naskah (FR-31)
-          </h3>
+          <WordRevealHeading as="h3" text="Review Internal Naskah (FR-31)" className="text-sm font-bold text-slate-800 uppercase tracking-wider" />
           <p className="text-xs text-slate-500 mt-0.5">
             Catatan telaah dari dosen reviewer internal (bukan penulis) sebelum naskah diajukan.
           </p>
@@ -320,13 +316,11 @@ export default function Page() {
             ))}
           </div>
         )}
-      </div>
+      </MotionCard>
 
       {/* Daftar Penulis */}
-      <div className="card">
-        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-3">
-          Susunan Penulis Karya
-        </h3>
+      <MotionCard index={3} interactive={false} className="card">
+        <WordRevealHeading as="h3" text="Susunan Penulis Karya" className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-3" />
         <div className="divide-y divide-slate-100">
           {(pub.authors || []).map((p) => (
             <div key={p.id || p.urutan} className="py-2.5 flex items-center justify-between text-xs">
@@ -343,13 +337,11 @@ export default function Page() {
             </div>
           ))}
         </div>
-      </div>
+      </MotionCard>
 
       {/* Riwayat Tahapan */}
-      <div className="card">
-        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">
-          Riwayat Tahapan Publikasi (FR-30)
-        </h3>
+      <MotionCard index={4} interactive={false} className="card">
+        <WordRevealHeading as="h3" text="Riwayat Tahapan Publikasi (FR-30)" className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4" />
         <div className="space-y-4 relative before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
           {(pub.stage_logs || []).map((t, i) => (
             <div key={t.id || i} className="flex items-start gap-4 relative">
@@ -372,7 +364,7 @@ export default function Page() {
             </div>
           ))}
         </div>
-      </div>
+      </MotionCard>
 
       <UpdateStageModal
         open={stageModal}

@@ -12,6 +12,8 @@ import { useBusinessTrips } from '@/lib/use-business-trips';
 import type { BusinessTripCost, BusinessTripParticipant, TripCostComponent, TripFundingSource } from '@/lib/types';
 import { formatRupiah } from '@/lib/utils';
 import { AlertCircle, AlertTriangle, ArrowLeft, CheckCircle2, Save, Send } from 'lucide-react';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
 const SUMBER_DANA: Array<{ value: TripFundingSource; label: string }> = [
   { value: 'RKA_PRODI', label: 'RKA Prodi' },
@@ -277,8 +279,8 @@ function TripFormContent() {
       )}
 
       {/* Informasi Perjalanan */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-5">
-        <h2 className="text-lg font-semibold text-slate-800">Informasi Perjalanan</h2>
+      <MotionCard index={0} interactive={false} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-5">
+        <WordRevealHeading as="h2" text="Informasi Perjalanan" className="text-lg font-semibold text-slate-800" />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5 sm:col-span-2">
@@ -414,12 +416,12 @@ function TripFormContent() {
             </div>
           )}
         </div>
-      </div>
+      </MotionCard>
 
       {/* Estimasi Biaya */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+      <MotionCard index={1} interactive={false} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <h2 className="text-lg font-semibold text-slate-800">Estimasi Biaya per Komponen</h2>
+          <WordRevealHeading as="h2" text="Estimasi Biaya per Komponen" className="text-lg font-semibold text-slate-800" />
           <span className="text-xs text-slate-400">Wajib diisi ≥ 0 (NF-07)</span>
         </div>
 
@@ -469,7 +471,7 @@ function TripFormContent() {
             </span>
           </p>
         )}
-      </div>
+      </MotionCard>
 
       {/* Peringatan Kebijakan */}
       {(overBudget || tooSoon) && (

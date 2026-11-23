@@ -5,6 +5,7 @@ import Link from 'next/link';
 import PageHeader from '@/components/ui/PageHeader';
 import Modal from '@/components/ui/Modal';
 import { complaintService } from '@/lib/api/services/complaint.service';
+import MotionCard from '@/components/motion/MotionCard';
 
 const categories = [
   ['AKADEMIK', 'Akademik'], ['LAYANAN_ADMINISTRASI', 'Layanan administrasi'],
@@ -34,14 +35,16 @@ export default function ComplaintPage() {
 
   return <div className="space-y-5">
     <PageHeader title="Kirim Aduan Anonim" description="Akun mahasiswa digunakan untuk memperoleh izin kirim. Simpan kode tiket untuk membaca tanggapan petugas." />
-    <form className="card space-y-4" onSubmit={send}>
-      <label className="block">Kategori<select className="input-field" name="kategori">{categories.map(([v,t]) => <option key={v} value={v}>{t}</option>)}</select></label>
-      <label className="block">Judul<input className="input-field" name="judul" required /></label>
-      <label className="block">Uraian<textarea className="textarea-field" name="isi_aduan" rows={5} required /></label>
-      <label className="block">Lampiran opsional<input className="input-field" name="file" type="file" accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx" /></label>
-      {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}
-      <button className="btn-primary" disabled={busy}>{busy ? 'Mengirim...' : 'Kirim aduan'}</button>
-    </form>
+    <MotionCard index={0} interactive={false} className="card">
+      <form className="space-y-4" onSubmit={send}>
+        <label className="block">Kategori<select className="input-field" name="kategori">{categories.map(([v,t]) => <option key={v} value={v}>{t}</option>)}</select></label>
+        <label className="block">Judul<input className="input-field" name="judul" required /></label>
+        <label className="block">Uraian<textarea className="textarea-field" name="isi_aduan" rows={5} required /></label>
+        <label className="block">Lampiran opsional<input className="input-field" name="file" type="file" accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx" /></label>
+        {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}
+        <button className="btn-primary" disabled={busy}>{busy ? 'Mengirim...' : 'Kirim aduan'}</button>
+      </form>
+    </MotionCard>
     <Link className="btn-secondary" href="/aduan/lacak">Lacak aduan dengan kode tiket</Link>
     <Modal open={Boolean(ticket)} onClose={() => setTicket('')} title="Simpan kode tiket Anda" size="md">
       <div className="space-y-4">

@@ -48,6 +48,8 @@ import {
   formatRupiah,
   getStatusLabel,
 } from '@/lib/utils';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
 type ViewDimension = 'KEGIATAN' | 'POS_ANGGARAN' | 'TRIWULAN';
 
@@ -592,6 +594,7 @@ export default function Page() {
       {/* 3 StatCards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
+          animationIndex={0}
           title={filterTW === 'ALL' ? 'Total Pagu Aktif' : `Pagu Terjadwal (${filterTW})`}
           value={formatRupiah(totalPagu)}
           subtitle={`${filteredActivities.length} kegiatan ditampilkan`}
@@ -599,6 +602,7 @@ export default function Page() {
           icon={<Wallet size={16} />}
         />
         <StatCard
+          animationIndex={1}
           title="Total Realisasi Belanja"
           value={formatRupiah(totalRealisasi)}
           subtitle={
@@ -610,6 +614,7 @@ export default function Page() {
           icon={<PieChart size={16} />}
         />
         <StatCard
+          animationIndex={2}
           title="Persentase Serapan Pagu"
           value={`${pctTotal}%`}
           subtitle="Kalkulasi aktual tanpa clamping"
@@ -620,7 +625,7 @@ export default function Page() {
       </div>
 
       {/* View Switcher (3 Dimensi FR-38) + Filter Triwulan + Tabel */}
-      <div className="card space-y-4">
+      <MotionCard index={0} interactive={false} className="card space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           {/* View Switcher 3 Dimensi */}
           <div className="inline-flex rounded-xl border border-slate-200 p-1 bg-slate-50 flex-wrap">
@@ -699,13 +704,17 @@ export default function Page() {
             {/* Rincian tiap pos di dalam kategori */}
             {byCategory.length > 0 && (
               <div className="pt-2 border-t border-slate-100 space-y-2">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Rincian Pos Anggaran Per Kategori
-                </h3>
+                <WordRevealHeading
+                  as="h3"
+                  text="Rincian Pos Anggaran Per Kategori"
+                  className="text-xs font-bold uppercase tracking-wider text-slate-500"
+                />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {byCategory.map((cat) => (
-                    <div
+                  {byCategory.map((cat, idx) => (
+                    <MotionCard
                       key={cat.kategori}
+                      index={idx}
+                      interactive
                       className="rounded-xl border border-slate-200 p-3.5 bg-slate-50/50 space-y-2"
                     >
                       <div className="flex items-center justify-between">
@@ -751,7 +760,7 @@ export default function Page() {
                           );
                         })}
                       </div>
-                    </div>
+                    </MotionCard>
                   ))}
                 </div>
               </div>
@@ -760,7 +769,7 @@ export default function Page() {
         ) : (
           <DataTable columns={quarterColumns} data={byQuarter} />
         )}
-      </div>
+      </MotionCard>
     </div>
   );
 }

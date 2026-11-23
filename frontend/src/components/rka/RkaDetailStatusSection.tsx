@@ -123,6 +123,7 @@ export default function RkaDetailStatusSection({
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
+          animationIndex={0}
           title="Total Pagu (Otomatis)"
           value={formatRupiah(displayedTotalPagu)}
           subtitle={`Dari ${displayedActivityCount} butir kegiatan`}
@@ -130,6 +131,7 @@ export default function RkaDetailStatusSection({
           color="blue"
         />
         <StatCard
+          animationIndex={1}
           title="Total Realisasi Berjalan"
           value={formatRupiah(totalRealisasi)}
           subtitle={
@@ -141,6 +143,7 @@ export default function RkaDetailStatusSection({
           color={totalRealisasi > displayedTotalPagu ? 'rose' : 'emerald'}
         />
         <StatCard
+          animationIndex={2}
           title="Persentase Serapan"
           value={`${serapanPct}%`}
           subtitle={`Versi ditampilkan: v${selectedVersion?.nomor_versi ?? 1}`}

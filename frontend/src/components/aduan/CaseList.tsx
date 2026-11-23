@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api/client';
+import MotionCard from '@/components/motion/MotionCard';
 
 export interface CaseRow {
   id: string; nomor_aduan: string; kategori: string; status: string; is_sensitif: boolean;
@@ -31,7 +32,7 @@ export default function CaseList({ assigned = false, sensitive = false }: { assi
   if (sensitive) query.set('is_sensitif', 'true');
   const { data, error } = useCaseData<CaseRow[]>(assigned ? '/aduan/my-dispositions' : '/aduan?' + query);
   const rows = (data || []).filter(row => (!sensitive || row.is_sensitif) && (!status || row.status === status));
-  return <section className="card space-y-4">
+  return <MotionCard as="section" index={0} interactive={false} className="card space-y-4">
     <label className="block text-sm">Status<select className="input-field" value={status} onChange={e => { setStatus(e.target.value); setPage(1); }}>
       <option value="">Semua status</option>{['DITERIMA','DIVERIFIKASI','DIDISPOSISIKAN','DITINDAKLANJUTI','SELESAI','DITUTUP'].map(v => <option key={v}>{v}</option>)}
     </select></label>
@@ -44,5 +45,5 @@ export default function CaseList({ assigned = false, sensitive = false }: { assi
       <button className="btn-secondary" disabled={page===1} onClick={() => setPage(p => p-1)}>Sebelumnya</button>
       <button className="btn-secondary" disabled={(data?.length || 0)<20} onClick={() => setPage(p => p+1)}>Berikutnya</button>
     </div>}
-  </section>;
+  </MotionCard>;
 }

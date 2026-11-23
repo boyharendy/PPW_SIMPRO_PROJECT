@@ -2,6 +2,7 @@ import SessionGate from '@/components/layout/SessionGate';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import RoleGuard from '@/components/layout/RoleGuard';
+import SmoothScrollProvider from '@/components/motion/SmoothScrollProvider';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -9,11 +10,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 h-dvh lg:h-screen overflow-x-clip">
         <Header />
-        <main className="flex-1 p-4 overflow-y-auto overflow-x-hidden custom-scrollbar">
+        <SmoothScrollProvider mode="container" className="flex-1 p-4 overflow-y-auto overflow-x-hidden custom-scrollbar">
           <RoleGuard>
             {children}
           </RoleGuard>
-        </main>
+        </SmoothScrollProvider>
       </div>
     </div></SessionGate>
   );

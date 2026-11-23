@@ -7,6 +7,7 @@ import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import Modal from '@/components/ui/Modal';
 import { formatDateShort } from '@/lib/utils';
+import MotionCard from '@/components/motion/MotionCard';
 
 interface VerificationItem {
   id: string;
@@ -151,13 +152,13 @@ export default function Page() {
         description="Validasi keabsahan bukti publikasi karya mahasiswa oleh Dosen Verifikator (FR-32)."
       />
 
-      <div className="card">
+      <MotionCard index={0} interactive={false} className="card">
         <DataTable
           columns={columns}
           data={items}
           emptyMessage="Tidak ada publikasi mahasiswa yang memerlukan verifikasi."
         />
-      </div>
+      </MotionCard>
 
       <Modal
         open={Boolean(selectedItem)}

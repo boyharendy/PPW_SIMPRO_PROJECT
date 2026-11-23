@@ -20,6 +20,8 @@ import {
   formatRupiah,
   getStatusLabel,
 } from '@/lib/utils';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
 interface RkaActivityListProps {
   activities: RkaActivity[];
@@ -43,12 +45,14 @@ export default function RkaActivityList({
   onDeleteActivity,
 }: RkaActivityListProps) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+    <MotionCard index={0} interactive={false} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h2 className="text-lg font-semibold text-slate-800">
-            Daftar Butir Kegiatan &amp; Pos Anggaran (FR-36)
-          </h2>
+          <WordRevealHeading
+            as="h2"
+            text="Daftar Butir Kegiatan & Pos Anggaran (FR-36)"
+            className="text-lg font-semibold text-slate-800"
+          />
           <p className="text-xs text-slate-500">
             Klik baris kegiatan untuk melihat rincian Pos Anggaran, Sumber Dana, Indikator Kinerja, PIC, dan Jadwal Pelaksanaan.
           </p>
@@ -81,7 +85,7 @@ export default function RkaActivityList({
         </div>
       ) : (
         <div className="space-y-3">
-          {activities.map((act) => {
+          {activities.map((act, idx) => {
             const isExpanded = expandedIds[act.id] ?? true;
             const actPagu = computeActivityTotal(act);
             const actReal = act.total_realisasi ?? 0;
@@ -89,8 +93,10 @@ export default function RkaActivityList({
             const isOver = actReal > actPagu;
 
             return (
-              <div
+              <MotionCard
                 key={act.id}
+                index={idx}
+                interactive
                 className="rounded-xl border border-slate-200 overflow-hidden bg-white"
               >
                 {/* Activity Header Row */}
@@ -236,11 +242,11 @@ export default function RkaActivityList({
                     </table>
                   </div>
                 )}
-              </div>
+              </MotionCard>
             );
           })}
         </div>
       )}
-    </div>
+    </MotionCard>
   );
 }

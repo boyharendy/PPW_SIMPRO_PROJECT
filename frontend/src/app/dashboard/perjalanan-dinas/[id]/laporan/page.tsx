@@ -18,6 +18,8 @@ import { apiClient } from '@/lib/api/client';
 import { useBusinessTrips } from '@/lib/use-business-trips';
 import type { BusinessTripCost, TripCostComponent } from '@/lib/types';
 import { formatDateShort, formatRupiah, getStatusLabel } from '@/lib/utils';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
 const DEFAULT_COMPONENTS: TripCostComponent[] = [
   'TRANSPORTASI',
@@ -185,11 +187,9 @@ export default function LaporanPerjalananDinasPage() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* 1. Realisasi Biaya & Unggah Bukti Per Komponen */}
-        <div className="card space-y-4">
+        <MotionCard index={0} interactive={false} className="card space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-              1. Realisasi Biaya Riil &amp; Bukti Pengeluaran (NF-07 &amp; NF-08)
-            </h3>
+            <WordRevealHeading as="h3" text="1. Realisasi Biaya Riil & Bukti Pengeluaran (NF-07 & NF-08)" className="text-sm font-bold text-slate-800 uppercase tracking-wider" />
             <div className="text-xs text-slate-500">
               Estimasi: <strong>{formatRupiah(totalEstimasi)}</strong> &bull; Total Realisasi:{' '}
               <strong className="text-blue-700 font-mono text-sm">{formatRupiah(totalRealisasi)}</strong>
@@ -252,13 +252,11 @@ export default function LaporanPerjalananDinasPage() {
               </div>
             ))}
           </div>
-        </div>
+        </MotionCard>
 
         {/* 2. Laporan Naratif Hasil */}
-        <div className="card space-y-3">
-          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-            2. Uraian Laporan Hasil Perjalanan
-          </h3>
+        <MotionCard index={1} interactive={false} className="card space-y-3">
+          <WordRevealHeading as="h3" text="2. Uraian Laporan Hasil Perjalanan" className="text-sm font-bold text-slate-800 uppercase tracking-wider" />
           <textarea
             rows={4}
             value={laporanHasil}
@@ -267,7 +265,7 @@ export default function LaporanPerjalananDinasPage() {
             className="input-field resize-none text-xs leading-relaxed"
             required
           />
-        </div>
+        </MotionCard>
 
         {/* Action Buttons */}
         <label className="block text-sm">Foto kegiatan<input type="file" accept=".png,.jpg,.jpeg" className="input-field" onChange={e=>setPhoto(e.target.files?.[0] || null)} /></label>

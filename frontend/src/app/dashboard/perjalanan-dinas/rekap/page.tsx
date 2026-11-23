@@ -28,6 +28,7 @@ import {
 } from '@/lib/trip-utils';
 import type { BusinessTrip } from '@/lib/types';
 import { formatDateShort, formatRupiah } from '@/lib/utils';
+import MotionCard from '@/components/motion/MotionCard';
 
 type RecapFilter = 'ALL' | 'ATTENTION' | 'OVER_ESTIMATE' | 'COMPLETE';
 
@@ -224,6 +225,7 @@ export default function RekapPerjalananDinasPage() {
       {/* 4 StatCards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
+          animationIndex={0}
           title="Total Perjalanan"
           value={`${summary.totalCount} Perjalanan`}
           subtitle="Disetujui, dilaporkan & selesai"
@@ -231,6 +233,7 @@ export default function RekapPerjalananDinasPage() {
           icon={<Plane size={16} />}
         />
         <StatCard
+          animationIndex={1}
           title="Total Estimasi Pagu"
           value={formatRupiah(summary.totalEstimasi)}
           subtitle="Alokasi pagu usulan"
@@ -238,6 +241,7 @@ export default function RekapPerjalananDinasPage() {
           icon={<Wallet size={16} />}
         />
         <StatCard
+          animationIndex={2}
           title="Total Realisasi Riil"
           value={formatRupiah(summary.totalRealisasi)}
           subtitle={
@@ -251,6 +255,7 @@ export default function RekapPerjalananDinasPage() {
           icon={<TrendingDown size={16} />}
         />
         <StatCard
+          animationIndex={3}
           title="Perlu Perhatian"
           value={summary.attentionCount}
           subtitle="Belum lengkap / terlambat / over"
@@ -296,13 +301,13 @@ export default function RekapPerjalananDinasPage() {
         </select>
       </div>
 
-      <div className="card">
+      <MotionCard index={0} interactive={false} className="card">
         <DataTable
           columns={columns}
           data={filteredTrips}
           emptyMessage="Belum ada data rekap perjalanan dinas untuk filter ini."
         />
-      </div>
+      </MotionCard>
     </div>
   );
 }

@@ -4,6 +4,8 @@ import { useState, type FormEvent } from 'react';
 import PublicShell from '@/components/layout/PublicShell';
 import StatusStepper from '@/components/ui/StatusStepper';
 import { complaintService, type PublicCase } from '@/lib/api/services/complaint.service';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
 const steps = [
   { id: 'DITERIMA', label: 'Diterima' }, { id: 'DIVERIFIKASI', label: 'Diverifikasi' },
@@ -56,24 +58,26 @@ export default function PublicLacakAduanPage() {
   return (
     <PublicShell title="Lacak aduan anonim" badgeText="Akses kode tiket">
       <div className="space-y-5">
-        <form className="card space-y-3" onSubmit={e => submit(e, 'track')}>
-          <label htmlFor="ticket" className="block text-sm font-semibold">Kode tiket rahasia</label>
-          <div className="flex gap-2">
-            <input id="ticket" className="input-field font-mono" required autoComplete="off" spellCheck={false}
-              value={input} disabled={busy} onChange={e => { setInput(e.target.value); setRecord(null); setTicket(''); }} />
-            <button className="btn-primary" disabled={busy}>Lacak</button>
-          </div>
-        </form>
+        <MotionCard index={0} interactive={false} className="card">
+          <form className="space-y-3" onSubmit={e => submit(e, 'track')}>
+            <label htmlFor="ticket" className="block text-sm font-semibold">Kode tiket rahasia</label>
+            <div className="flex gap-2">
+              <input id="ticket" className="input-field font-mono" required autoComplete="off" spellCheck={false}
+                value={input} disabled={busy} onChange={e => { setInput(e.target.value); setRecord(null); setTicket(''); }} />
+              <button className="btn-primary" disabled={busy}>Lacak</button>
+            </div>
+          </form>
+        </MotionCard>
         {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}
         {record && <>
-          <section className="card space-y-3">
-            <h2 className="font-semibold">{record.nomor_aduan}</h2>
+          <MotionCard as="section" index={0} interactive={false} className="card space-y-3">
+            <WordRevealHeading as="h2" text={record.nomor_aduan} className="font-semibold" />
             <p className="text-sm">{record.kategori.replaceAll('_', ' ')} &middot; {record.tanggal_diterima}</p>
             <StatusStepper steps={steps} currentStepId={record.status} />
             {record.lampiran_id && <button className="btn-secondary" onClick={() => download(record.lampiran_id!)}>Buka lampiran awal</button>}
-          </section>
-          <section className="card space-y-4">
-            <h2 className="font-semibold">Percakapan dengan petugas</h2>
+          </MotionCard>
+          <MotionCard as="section" index={1} interactive={false} className="card space-y-4">
+            <WordRevealHeading as="h2" text="Percakapan dengan petugas" className="font-semibold" />
             {record.messages.length === 0 && <p className="text-sm text-slate-500">Belum ada pesan.</p>}
             {record.messages.map((m, i) => <div key={i} className="rounded-lg bg-slate-50 p-3 text-sm">
               <strong>{m.pengirim === 'PELAPOR' ? 'Pelapor' : 'Petugas'}</strong> ? {m.tanggal}
@@ -85,15 +89,15 @@ export default function PublicLacakAduanPage() {
               <label className="block text-sm">Lampiran opsional<input className="input-field" name="file" type="file" accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx" /></label>
               <button className="btn-primary" disabled={busy}>Kirim balasan</button>
             </form>}
-          </section>
-          {['SELESAI','DITUTUP'].includes(record.status) && <section className="card">
+          </MotionCard>
+          {['SELESAI','DITUTUP'].includes(record.status) && <MotionCard as="section" index={2} interactive={false} className="card">
             {record.rating_kepuasan ? <p>Penilaian Anda {record.rating_kepuasan}/5</p> :
               <form className="space-y-3" onSubmit={e => submit(e, 'rate')}>
                 <label className="block">Nilai penanganan<select name="rating" className="input-field" defaultValue="5">{[1,2,3,4,5].map(n => <option key={n}>{n}</option>)}</select></label>
                 <label className="block">Komentar opsional<textarea name="komentar" className="textarea-field" /></label>
                 <button className="btn-primary" disabled={busy}>Simpan penilaian</button>
               </form>}
-          </section>}
+          </MotionCard>}
         </>}
       </div>
     </PublicShell>

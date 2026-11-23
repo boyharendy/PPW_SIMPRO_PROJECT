@@ -8,6 +8,8 @@ import PageHeader from '@/components/ui/PageHeader';
 import { useUser } from '@/lib/context';
 import { publicationService } from '@/lib/api/services/publication.service';
 import type { AuthorRole, AuthorType, PublicationRank, PublicationStatus, PublicationType } from '@/lib/types';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
 type Penulis = {
   user_id?: string;
@@ -166,10 +168,10 @@ export default function Page() {
           title="Pencatatan Publikasi Baru"
           description="Kaprodi hanya memantau data dan rekapitulasi publikasi program studi."
         />
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex items-start gap-3">
+        <MotionCard index={0} interactive={false} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex items-start gap-3">
           <Eye size={20} className="text-blue-600 shrink-0 mt-0.5" />
           <div className="space-y-2">
-            <h2 className="text-base font-semibold text-slate-800">Mode Pantau Kaprodi</h2>
+            <WordRevealHeading as="h2" text="Mode Pantau Kaprodi" className="text-base font-semibold text-slate-800" />
             <p className="text-sm text-slate-600">
               Pada modul Publikasi, Kaprodi hanya bertugas memantau progres serta rekapitulasi publikasi.
               Pencatatan dan pembaruan status publikasi dilakukan langsung oleh Dosen atau Mahasiswa yang mem-publish karya.
@@ -181,7 +183,7 @@ export default function Page() {
               Kembali ke Daftar Publikasi
             </button>
           </div>
-        </div>
+        </MotionCard>
       </div>
     );
   }
@@ -200,8 +202,8 @@ export default function Page() {
       )}
 
       {/* Form Utama */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-5">
-        <h2 className="text-lg font-semibold text-slate-800">Informasi Publikasi</h2>
+      <MotionCard index={0} interactive={false} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-5">
+        <WordRevealHeading as="h2" text="Informasi Publikasi" className="text-lg font-semibold text-slate-800" />
         <div>
           <label className={labelCls}>Judul Publikasi</label>
           <input value={judul} onChange={(e) => setJudul(e.target.value)} className={inputCls} placeholder="Masukkan judul publikasi" />
@@ -243,12 +245,12 @@ export default function Page() {
             <input type="number" value={tahun} onChange={(e) => setTahun(e.target.value)} className={inputCls} min="2020" max="2030" />
           </div>
         </div>
-      </div>
+      </MotionCard>
 
       {/* Daftar Penulis */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+      <MotionCard index={1} interactive={false} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-800">Daftar Penulis</h2>
+          <WordRevealHeading as="h2" text="Daftar Penulis" className="text-lg font-semibold text-slate-800" />
           <button onClick={handleAddPenulis} type="button" className="bg-white text-slate-700 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 hover:bg-slate-50 transition-colors">
             <Plus size={14} /> Tambah Penulis
           </button>
@@ -293,11 +295,11 @@ export default function Page() {
             </tbody>
           </table>
         </div>
-      </div>
+      </MotionCard>
 
       {/* Review Internal Opsional (FR-31) */}
-      {!isMahasiswaRole && <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
-        <h2 className="text-lg font-semibold text-slate-800">Dosen Reviewer Internal (Opsional — FR-31)</h2>
+      {!isMahasiswaRole && <MotionCard index={2} interactive={false} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
+        <WordRevealHeading as="h2" text="Dosen Reviewer Internal (Opsional — FR-31)" className="text-lg font-semibold text-slate-800" />
         <p className="text-xs text-slate-500">
           Tetapkan dosen reviewer internal (bukan penulis naskah) untuk memberi catatan sebelum naskah diajukan ke penerbit.
         </p>
@@ -310,14 +312,12 @@ export default function Page() {
           </select>
           <input type="date" value={tenggatReview} onChange={(e) => setTenggatReview(e.target.value)} className={inputCls} />
         </div>
-      </div>}
+      </MotionCard>}
 
       {/* Verifikator Mahasiswa (FR-31) */}
       {hasMahasiswa && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
-          <h2 className="text-lg font-semibold text-slate-800">
-            Dosen Verifikator (Dosen Pembimbing / Penulis Pendamping — FR-31)
-          </h2>
+        <MotionCard index={3} interactive={false} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
+          <WordRevealHeading as="h2" text="Dosen Verifikator (Dosen Pembimbing / Penulis Pendamping — FR-31)" className="text-lg font-semibold text-slate-800" />
           <p className="text-xs text-slate-500">
             Tambahkan dosen pendamping atau pembimbing dalam daftar penulis untuk memilihnya sebagai verifikator. Kaprodi dapat menunjuk pembimbing melalui penugasan resmi.
           </p>
@@ -327,7 +327,7 @@ export default function Page() {
               <option key={d.id} value={d.id}>{d.nama}</option>
             ))}
           </select>
-        </div>
+        </MotionCard>
       )}
 
       {/* Footer Actions */}

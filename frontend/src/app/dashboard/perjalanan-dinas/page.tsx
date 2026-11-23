@@ -19,6 +19,7 @@ import { useUser } from '@/lib/context';
 import { useBusinessTrips } from '@/lib/use-business-trips';
 import { getTripTotalEstimasi, isTripOwnedByUser } from '@/lib/trip-utils';
 import type { BusinessTrip } from '@/lib/types';
+import MotionCard from '@/components/motion/MotionCard';
 
 const TABS = [
   'Semua',
@@ -314,13 +315,13 @@ export default function PerjalananDinasPage() {
       </div>
 
       {/* Data Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+      <MotionCard index={0} interactive={false} className="bg-white rounded-2xl border border-slate-200 shadow-sm">
         <DataTable
           columns={columns}
           data={filtered}
           emptyMessage="Belum ada data perjalanan dinas untuk filter ini"
         />
-      </div>
+      </MotionCard>
 
       <TripApprovalModal
         trip={selectedTripForApproval}

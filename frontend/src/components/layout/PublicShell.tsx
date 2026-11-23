@@ -5,6 +5,8 @@ import Image from 'next/image';
 import LogoImage from '@/components/Logo/Logos.png';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import SmoothScrollProvider from '@/components/motion/SmoothScrollProvider';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
 interface PublicShellProps {
   children: React.ReactNode;
@@ -20,6 +22,7 @@ export default function PublicShell({
   showBackToPortal = true,
 }: PublicShellProps) {
   return (
+    <SmoothScrollProvider mode="window">
     <div className="min-h-screen bg-slate-50 flex flex-col text-slate-800">
       {/* Top Banner Header */}
       <header className="h-16 bg-white border-b border-slate-200 sticky top-0 z-30 px-4 sm:px-8 flex items-center justify-between">
@@ -60,7 +63,7 @@ export default function PublicShell({
       <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 lg:p-8 animate-fade-in">
         {title && (
           <div className="mb-6 text-center sm:text-left">
-            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">{title}</h1>
+            <WordRevealHeading as="h1" text={title} className="text-2xl font-bold text-slate-800 tracking-tight" />
           </div>
         )}
         {children}
@@ -71,6 +74,7 @@ export default function PublicShell({
         © 2025–2026 SIMPRO — Program Studi Sarjana Sistem Informasi. Akses Terbuka Aman.
       </footer>
     </div>
+    </SmoothScrollProvider>
   );
 }
 

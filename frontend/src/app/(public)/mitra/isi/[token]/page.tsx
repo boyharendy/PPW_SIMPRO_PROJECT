@@ -8,6 +8,8 @@ import { surveyService } from '@/lib/api/services/survey.service';
 import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import type { PartnerSurveyTemplate, PartnerSurveyInvitation, PartnerSurveyResponse, StudentPlacement } from '@/lib/types';
 import { CheckCircle2, Building2, User, BookOpen, Send, ShieldCheck, AlertCircle } from 'lucide-react';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
 export default function PublicMitraSurveyPage() {
   const params = useParams();
@@ -146,11 +148,11 @@ export default function PublicMitraSurveyPage() {
   if (submitted) {
     return (
       <PublicShell badgeText="Survei Kepuasan Mitra">
-        <div className="card text-center py-12 px-6 max-w-lg mx-auto space-y-4 animate-fade-in">
+        <MotionCard index={0} interactive={false} className="card text-center py-12 px-6 max-w-lg mx-auto space-y-4">
           <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
             <CheckCircle2 size={36} />
           </div>
-          <h2 className="text-xl font-bold text-slate-800">Terima Kasih atas Penilaian Anda!</h2>
+          <WordRevealHeading as="h2" text="Terima Kasih atas Penilaian Anda!" className="text-xl font-bold text-slate-800" />
           <p className="text-xs text-slate-600 leading-relaxed">
             Tanggapan dan masukan dari <strong>{placement.partner?.nama_mitra}</strong> telah berhasil kami simpan. Umpan balik ini sangat berharga untuk peningkatan mutu kurikulum Program Studi Sarjana Sistem Informasi.
           </p>
@@ -159,7 +161,7 @@ export default function PublicMitraSurveyPage() {
               Tautan kuesioner ini kini telah ditandai &lsquo;Sudah Diisi&rsquo; dan tidak dapat diubah kembali.
             </span>
           </div>
-        </div>
+        </MotionCard>
       </PublicShell>
     );
   }
@@ -168,7 +170,7 @@ export default function PublicMitraSurveyPage() {
     <PublicShell title="Instrumen Kepuasan Mitra Perusahaan" badgeText="Akses Bebas Akun">
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Placement Info Card */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
+        <MotionCard index={0} interactive={false} className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
           <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
             <ShieldCheck size={16} className="text-blue-600" />
             <span>Keterangan Penempatan Mahasiswa</span>
@@ -204,13 +206,15 @@ export default function PublicMitraSurveyPage() {
               </div>
             </div>
           </div>
-        </div>
+        </MotionCard>
 
         {/* Evaluator Identity Form */}
-        <div className="card space-y-4">
-          <h3 className="text-sm font-bold text-slate-800">
-            Identitas Penilai / Pembimbing Lapangan di Perusahaan
-          </h3>
+        <MotionCard index={1} interactive={false} className="card space-y-4">
+          <WordRevealHeading
+            as="h3"
+            text="Identitas Penilai / Pembimbing Lapangan di Perusahaan"
+            className="text-sm font-bold text-slate-800"
+          />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -236,15 +240,17 @@ export default function PublicMitraSurveyPage() {
               />
             </div>
           </div>
-        </div>
+        </MotionCard>
 
         {/* Aspect Ratings Form */}
-        <div className="card space-y-4">
+        <MotionCard index={2} interactive={false} className="card space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
             <div>
-              <h3 className="text-sm font-bold text-slate-800">
-                Penilaian Aspek Kinerja &amp; Kemampuan Mahasiswa
-              </h3>
+              <WordRevealHeading
+                as="h3"
+                text="Penilaian Aspek Kinerja & Kemampuan Mahasiswa"
+                className="text-sm font-bold text-slate-800"
+              />
               <p className="text-xs text-slate-500 mt-0.5">
                 Berikan penilaian objektif pada skala 1 (Sangat Kurang) hingga {template.skala_maks || 5} (Sangat Baik).
               </p>
@@ -312,10 +318,10 @@ export default function PublicMitraSurveyPage() {
               );
             })}
           </div>
-        </div>
+        </MotionCard>
 
         {/* Feedback Notes */}
-        <div className="card space-y-3">
+        <MotionCard index={3} interactive={false} className="card space-y-3">
           <label className="label">Komentar / Masukan Tambahan untuk Prodi (Opsional)</label>
           <textarea
             rows={3}
@@ -324,7 +330,7 @@ export default function PublicMitraSurveyPage() {
             placeholder="Tuliskan saran kompetensi yang perlu ditingkatkan untuk lulusan prodi sistem informasi..."
             className="textarea-field text-xs"
           />
-        </div>
+        </MotionCard>
 
         {/* Validation Error Alert */}
         {errorMessage && (
