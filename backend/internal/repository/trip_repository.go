@@ -1,8 +1,10 @@
 package repository
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,7 +19,7 @@ type TripRepository interface {
 	Create(trip *model.TravelOrder) (*model.TravelOrder, error)
 	Update(id string, trip *model.TravelOrder) (*model.TravelOrder, error)
 	Delete(id string) error
-	UpdateStatus(id string, status model.TravelStatus, approverID string) error
+	UpdateStatus(id string, status model.TravelStatus, approverID string, decision *model.TripDecision) error
 	AddProof(proof *model.TravelProof) error
 	SubmitReport(report *model.TravelReport, totalRealisasi float64) error
 	GetRecap() (*model.TripRecap, error)
@@ -26,6 +28,7 @@ type TripRepository interface {
 	UpdateCosts(id string, costs []*model.TravelCost) error
 	UpdateRealizationCosts(id string, costs []*model.TravelCost) error
 	ConfirmTrip(id string, actorID string, rkaRepo RkaRepository) (*model.TravelOrder, error)
+	MarkIncomplete(id, note string) error
 	GetCompleteness(id string) (map[string]interface{}, error)
 	GetFlags() ([]map[string]interface{}, error)
 }
@@ -35,10 +38,10 @@ type TripRepository interface {
 // ============================================================
 
 type supabaseTripRepository struct {
-	client *database.SupabaseClient
+	client database.Store
 }
 
-func NewSupabaseTripRepository(client *database.SupabaseClient) TripRepository {
+func NewSupabaseTripRepository(client database.Store) TripRepository {
 	return &supabaseTripRepository{client: client}
 }
 
@@ -57,7 +60,10 @@ func (r *supabaseTripRepository) FindAll(status string, userID string, limit, of
 		params["status"] = fmt.Sprintf("eq.%s", status)
 		countParams["status"] = params["status"]
 	}
-	if userID != "" {
+	if _, scoped := r.client.(*database.TxStore); userID != "" && scoped {
+		params["trip_participant"] = userID
+		countParams["trip_participant"] = userID
+	} else if userID != "" {
 		params["diajukan_oleh"] = fmt.Sprintf("eq.%s", userID)
 		countParams["diajukan_oleh"] = params["diajukan_oleh"]
 	}
@@ -73,6 +79,29 @@ func (r *supabaseTripRepository) FindAll(status string, userID string, limit, of
 		total = len(trips)
 	}
 
+	if store, ok := r.client.(*database.TxStore); ok && store.InternalRequest && len(trips) > 0 {
+		var ids []string
+		byID := map[string]*model.TravelOrder{}
+		for _, t := range trips {
+			ids = append(ids, t.ID)
+			byID[t.ID] = t
+		}
+		filters := map[string]string{"travel_order_id": "in.(" + strings.Join(ids, ",") + ")"}
+		var members []*model.TravelMember
+		var costs []*model.TravelCost
+		if err = r.client.Select("travel_members", filters, &members); err != nil {
+			return nil, 0, err
+		}
+		if err = r.client.Select("travel_costs", filters, &costs); err != nil {
+			return nil, 0, err
+		}
+		for _, m := range members {
+			byID[m.TravelOrderID].Members = append(byID[m.TravelOrderID].Members, m)
+		}
+		for _, c := range costs {
+			byID[c.TravelOrderID].Costs = append(byID[c.TravelOrderID].Costs, c)
+		}
+	}
 	return trips, total, nil
 }
 
@@ -169,17 +198,8 @@ func (r *supabaseTripRepository) Create(trip *model.TravelOrder) (*model.TravelO
 		return nil, fmt.Errorf("gagal membuat perjalanan dinas: %w", err)
 	}
 
-	for _, m := range trip.Members {
-		if m.ID == "" {
-			m.ID = uuid.New().String()
-		}
-		mPayload := map[string]interface{}{
-			"id":              m.ID,
-			"travel_order_id": trip.ID,
-			"user_id":         m.UserID,
-			"peran_tugas":     m.PeranTugas,
-		}
-		_ = r.client.Insert("travel_members", mPayload, nil)
+	if err := r.insertMembers(trip.ID, trip.Members); err != nil {
+		return nil, err
 	}
 
 	for _, c := range trip.Costs {
@@ -194,13 +214,29 @@ func (r *supabaseTripRepository) Create(trip *model.TravelOrder) (*model.TravelO
 			"travel_order_id":  trip.ID,
 			"komponen":         c.Komponen,
 			"nominal_estimasi": c.NominalEstimasi,
+			"keterangan":       c.Keterangan,
 		}
-		_ = r.client.Insert("travel_costs", cPayload, nil)
+		if err := r.client.Insert("travel_costs", cPayload, nil); err != nil {
+			return nil, err
+		}
 	}
 
 	trip.CreatedAt = time.Now()
 	trip.UpdatedAt = time.Now()
 	return trip, nil
+}
+
+func (r *supabaseTripRepository) insertMembers(trip string, members []*model.TravelMember) error {
+	for _, m := range members {
+		m.ID = uuid.NewString()
+		err := r.client.Insert("travel_members", map[string]any{
+			"id": m.ID, "travel_order_id": trip, "user_id": m.UserID, "peran_tugas": m.PeranTugas,
+		}, nil)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *supabaseTripRepository) Update(id string, trip *model.TravelOrder) (*model.TravelOrder, error) {
@@ -213,11 +249,9 @@ func (r *supabaseTripRepository) Update(id string, trip *model.TravelOrder) (*mo
 		"tanggal_berangkat": trip.TanggalBerangkat,
 		"tanggal_kembali":   trip.TanggalKembali,
 	}
-	if trip.NomorSuratTugas != "" {
-		payload["nomor_surat_tugas"] = trip.NomorSuratTugas
-	}
-	if trip.TotalEstimasiBiaya > 0 {
-		payload["total_estimasi_biaya"] = trip.TotalEstimasiBiaya
+	if trip.SumberDana != "" {
+		payload["sumber_dana"] = trip.SumberDana
+		payload["rka_budget_item_id"] = nil
 	}
 	if trip.RkaBudgetItemID != "" {
 		payload["rka_budget_item_id"] = trip.RkaBudgetItemID
@@ -229,6 +263,14 @@ func (r *supabaseTripRepository) Update(id string, trip *model.TravelOrder) (*mo
 	if err != nil {
 		return nil, err
 	}
+	if trip.Members != nil {
+		if err := r.client.Delete("travel_members", map[string]string{"travel_order_id": "eq." + id}); err != nil {
+			return nil, err
+		}
+		if err := r.insertMembers(id, trip.Members); err != nil {
+			return nil, err
+		}
+	}
 	return r.FindByID(id)
 }
 
@@ -238,9 +280,15 @@ func (r *supabaseTripRepository) Delete(id string) error {
 	})
 }
 
-func (r *supabaseTripRepository) UpdateStatus(id string, status model.TravelStatus, approverID string) error {
+func (r *supabaseTripRepository) UpdateStatus(id string, status model.TravelStatus, approverID string, decision *model.TripDecision) error {
 	payload := map[string]interface{}{
 		"status": string(status),
+	}
+	if decision != nil {
+		payload["catatan_keputusan"] = decision.Catatan
+		if status == model.TripStatusDisetujuiKaprodi && decision.SuratTugas != "" {
+			payload["nomor_surat_tugas"] = decision.SuratTugas
+		}
 	}
 	if approverID != "" {
 		payload["disetujui_oleh"] = approverID
@@ -281,7 +329,21 @@ func (r *supabaseTripRepository) SubmitReport(report *model.TravelReport, totalR
 	if report.FileLaporanURL != "" {
 		reportPayload["file_laporan_url"] = report.FileLaporanURL
 	}
-	_ = r.client.Insert("travel_reports", reportPayload, nil)
+	filter := map[string]string{"travel_order_id": "eq." + report.TravelOrderID}
+	count, err := r.client.Count("travel_reports", filter)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		delete(reportPayload, "id")
+		delete(reportPayload, "travel_order_id")
+		err = r.client.Update("travel_reports", filter, reportPayload, nil)
+	} else {
+		err = r.client.Insert("travel_reports", reportPayload, nil)
+	}
+	if err != nil {
+		return err
+	}
 
 	tripPayload := map[string]interface{}{
 		"status":                string(model.TripStatusDilaporkan),
@@ -293,7 +355,30 @@ func (r *supabaseTripRepository) SubmitReport(report *model.TravelReport, totalR
 }
 
 func (r *supabaseTripRepository) GetRecap() (*model.TripRecap, error) {
-	trips, _, err := r.FindAll("", "", 1000, 0)
+	var trips []*model.TravelOrder
+	err := r.client.Select("travel_orders", nil, &trips)
+	if err == nil {
+		var costs []*model.TravelCost
+		err = r.client.Select("travel_costs", nil, &costs)
+		byTrip := make(map[string]*model.TravelOrder, len(trips))
+		for _, t := range trips {
+			byTrip[t.ID] = t
+		}
+		for _, c := range costs {
+			if t := byTrip[c.TravelOrderID]; t != nil {
+				t.Costs = append(t.Costs, c)
+			}
+		}
+		if err == nil {
+			var members []*model.TravelMember
+			err = r.client.Select("travel_members", nil, &members)
+			for _, m := range members {
+				if t := byTrip[m.TravelOrderID]; t != nil {
+					t.Members = append(t.Members, m)
+				}
+			}
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -301,55 +386,22 @@ func (r *supabaseTripRepository) GetRecap() (*model.TripRecap, error) {
 }
 
 func (r *supabaseTripRepository) UpdateCosts(id string, costs []*model.TravelCost) error {
-	_ = r.client.Delete("travel_costs", map[string]string{
-		"travel_order_id": fmt.Sprintf("eq.%s", id),
-	})
-	var total float64
-	for _, c := range costs {
-		if c.ID == "" {
-			c.ID = uuid.New().String()
-		}
-		c.TravelOrderID = id
-		if c.NominalEstimasi == 0 && c.EstimasiBiaya > 0 {
-			c.NominalEstimasi = c.EstimasiBiaya
-		}
-		total += c.NominalEstimasi
-		_ = r.client.Insert("travel_costs", map[string]interface{}{
-			"id":               c.ID,
-			"travel_order_id":  id,
-			"komponen":         c.Komponen,
-			"nominal_estimasi": c.NominalEstimasi,
-			"keterangan":       c.Keterangan,
-		}, nil)
-	}
-	return r.client.Update("travel_orders", map[string]string{
-		"id": fmt.Sprintf("eq.%s", id),
-	}, map[string]interface{}{
-		"total_estimasi_biaya": total,
-	}, nil)
+	return r.replaceCosts(id, costs, false)
 }
-
 func (r *supabaseTripRepository) UpdateRealizationCosts(id string, costs []*model.TravelCost) error {
-	var total float64
-	for _, c := range costs {
-		if c.NominalRealisasi == 0 && c.RealisasiBiaya > 0 {
-			c.NominalRealisasi = c.RealisasiBiaya
-		}
-		total += c.NominalRealisasi
-		_ = r.client.Update("travel_costs", map[string]string{
-			"travel_order_id": fmt.Sprintf("eq.%s", id),
-			"komponen":        fmt.Sprintf("eq.%s", c.Komponen),
-		}, map[string]interface{}{
-			"nominal_realisasi": c.NominalRealisasi,
-			"bukti_url":         c.BuktiURL,
-			"keterangan":        c.Keterangan,
-		}, nil)
+	return r.replaceCosts(id, costs, true)
+}
+func (r *supabaseTripRepository) replaceCosts(id string, costs []*model.TravelCost, actual bool) error {
+	s, ok := r.client.(*database.TxStore)
+	if !ok {
+		return errors.New("transaksi biaya diperlukan")
 	}
-	return r.client.Update("travel_orders", map[string]string{
-		"id": fmt.Sprintf("eq.%s", id),
-	}, map[string]interface{}{
-		"total_realisasi_biaya": total,
-	}, nil)
+	data, err := json.Marshal(costs)
+	if err != nil {
+		return err
+	}
+	_, err = s.Tx.Exec(s.Ctx, "select app.save_trip_costs($1,$2::jsonb,$3)", id, data, actual)
+	return err
 }
 
 func (r *supabaseTripRepository) ConfirmTrip(id string, actorID string, rkaRepo RkaRepository) (*model.TravelOrder, error) {
@@ -481,7 +533,7 @@ func (r *memoryTripRepository) FindAll(status string, userID string, limit, offs
 		if status != "" && string(t.Status) != status {
 			continue
 		}
-		if userID != "" && t.DiajukanOleh != userID {
+		if userID != "" && !t.Participant(userID) {
 			continue
 		}
 		filtered = append(filtered, t)
@@ -538,13 +590,19 @@ func (r *memoryTripRepository) Update(id string, trip *model.TravelOrder) (*mode
 	if !ok {
 		return nil, errors.New("perjalanan dinas tidak ditemukan")
 	}
+	if trip.Members != nil {
+		existing.Members = trip.Members
+	}
 	existing.Tujuan = trip.Tujuan
 	existing.Keperluan = trip.Keperluan
 	existing.TanggalBerangkat = trip.TanggalBerangkat
 	existing.TanggalKembali = trip.TanggalKembali
-	existing.TotalEstimasiBiaya = trip.TotalEstimasiBiaya
-	if trip.NomorSuratTugas != "" {
-		existing.NomorSuratTugas = trip.NomorSuratTugas
+
+	if trip.SumberDana != "" {
+		existing.SumberDana = trip.SumberDana
+		existing.RkaBudgetItemID = trip.RkaBudgetItemID
+	} else if trip.RkaBudgetItemID != "" {
+		existing.RkaBudgetItemID = trip.RkaBudgetItemID
 	}
 	existing.UpdatedAt = time.Now()
 	return existing, nil
@@ -557,7 +615,7 @@ func (r *memoryTripRepository) Delete(id string) error {
 	return nil
 }
 
-func (r *memoryTripRepository) UpdateStatus(id string, status model.TravelStatus, approverID string) error {
+func (r *memoryTripRepository) UpdateStatus(id string, status model.TravelStatus, approverID string, decision *model.TripDecision) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	t, ok := r.trips[id]
@@ -565,6 +623,12 @@ func (r *memoryTripRepository) UpdateStatus(id string, status model.TravelStatus
 		return errors.New("perjalanan dinas tidak ditemukan")
 	}
 	t.Status = status
+	if decision != nil {
+		t.CatatanKeputusan = decision.Catatan
+		if status == model.TripStatusDisetujuiKaprodi && decision.SuratTugas != "" {
+			t.NomorSuratTugas = decision.SuratTugas
+		}
+	}
 	if approverID != "" {
 		t.DisetujuiOleh = approverID
 		now := time.Now()
@@ -624,6 +688,9 @@ func (r *memoryTripRepository) UpdateCosts(id string, costs []*model.TravelCost)
 	if !ok {
 		return errors.New("perjalanan dinas tidak ditemukan")
 	}
+	if !t.Draft() {
+		return errors.New("perjalanan bukan draf")
+	}
 	var total float64
 	for _, c := range costs {
 		if c.ID == "" {
@@ -648,21 +715,29 @@ func (r *memoryTripRepository) UpdateRealizationCosts(id string, costs []*model.
 	if !ok {
 		return errors.New("perjalanan dinas tidak ditemukan")
 	}
-	var total float64
+	if !t.Approved() {
+		return errors.New("perjalanan belum disetujui")
+	}
+	byComponent := map[string]*model.TravelCost{}
+	for _, c := range t.Costs {
+		byComponent[c.Komponen] = c
+	}
 	for _, c := range costs {
-		if c.NominalRealisasi == 0 && c.RealisasiBiaya > 0 {
-			c.NominalRealisasi = c.RealisasiBiaya
-		}
-		total += c.NominalRealisasi
-		for _, existing := range t.Costs {
-			if existing.Komponen == c.Komponen {
-				existing.NominalRealisasi = c.NominalRealisasi
-				existing.BuktiURL = c.BuktiURL
-				existing.Keterangan = c.Keterangan
-			}
+		if byComponent[c.Komponen] == nil {
+			return errors.New("komponen tidak ada dalam estimasi")
 		}
 	}
-	t.TotalRealisasiBiaya = total
+	for _, c := range costs {
+		row := byComponent[c.Komponen]
+		row.NominalRealisasi = c.NominalRealisasi
+		row.RealisasiDiisi = true
+		row.Keterangan = c.Keterangan
+		row.BuktiURL = c.BuktiURL
+	}
+	t.TotalRealisasiBiaya = 0
+	for _, c := range t.Costs {
+		t.TotalRealisasiBiaya += c.NominalRealisasi
+	}
 	t.UpdatedAt = time.Now()
 	return nil
 }
@@ -677,7 +752,7 @@ func (r *memoryTripRepository) ConfirmTrip(id string, actorID string, rkaRepo Rk
 	}
 
 	// 1. Validasi Status
-	if t.Status != model.TripStatusDilaporkan && t.Status != model.TripStatusDisetujui && t.Status != model.TripStatusDisetujuiKaprodi {
+	if t.Status != model.TripStatusDilaporkan {
 		return nil, fmt.Errorf("perjalanan dinas tidak dapat diselesaikan pada status %s", t.Status)
 	}
 
@@ -693,18 +768,14 @@ func (r *memoryTripRepository) ConfirmTrip(id string, actorID string, rkaRepo Rk
 		}
 	}
 
+	if evaluateTripCompleteness(t)["is_complete"] != true {
+		return nil, errors.New("bukti atau laporan belum lengkap")
+	}
 	now := time.Now()
-	t.Status = model.TripStatusSelesai
-	t.DikonfirmasiOleh = actorID
-	t.DikonfirmasiAt = &now
-	t.UpdatedAt = now
 
 	// 3. Auto-Realisasi Anggaran ke RKA
-	if t.RkaBudgetItemID != "" && rkaRepo != nil {
+	if (t.SumberDana == "RKA_PRODI" || t.SumberDana == "RKA" || t.SumberDana == "RKAT_PRODI") && t.RkaBudgetItemID != "" && rkaRepo != nil {
 		realisasiNominal := t.TotalRealisasiBiaya
-		if realisasiNominal <= 0 {
-			realisasiNominal = t.TotalEstimasiBiaya
-		}
 		realization := &model.RkaRealization{
 			ID:                uuid.New().String(),
 			BudgetItemId:      t.RkaBudgetItemID,
@@ -715,8 +786,14 @@ func (r *memoryTripRepository) ConfirmTrip(id string, actorID string, rkaRepo Rk
 			TanggalRealisasi:  now.Format("2006-01-02"),
 			BuktiTransaksiURL: "/uploads/trips/bukti_" + t.ID + ".pdf",
 		}
-		_ = rkaRepo.AddRealization(realization)
+		if err := rkaRepo.AddRealization(realization); err != nil {
+			return nil, err
+		}
 	}
+	t.Status = model.TripStatusSelesai
+	t.DikonfirmasiOleh = actorID
+	t.DikonfirmasiAt = &now
+	t.UpdatedAt = now
 
 	return t, nil
 }
@@ -772,8 +849,17 @@ func computeTripRecap(trips []*model.TravelOrder) *model.TripRecap {
 			recap.TotalSelesai++
 		}
 
-		if t.DiajukanOleh != "" {
-			recap.PerPeserta[t.DiajukanOleh]++
+		participants := map[string]bool{}
+		for _, member := range t.Members {
+			if member.UserID != "" {
+				participants[member.UserID] = true
+			}
+		}
+		if len(participants) == 0 && t.DiajukanOleh != "" {
+			participants[t.DiajukanOleh] = true
+		}
+		for id := range participants {
+			recap.PerPeserta[id]++
 		}
 
 		for _, c := range t.Costs {
@@ -812,7 +898,21 @@ func evaluateTripCompleteness(t *model.TravelOrder) map[string]interface{} {
 	hasReceipt := proofCategories["KUITANSI"]
 	hasPhoto := proofCategories["FOTO_KEGIATAN"]
 
-	isComplete := hasReport && (hasTicket || hasReceipt)
+	completeCosts := len(t.Costs) > 0
+	for _, cost := range t.Costs {
+		if !cost.RealisasiDiisi {
+			completeCosts = false
+			break
+		}
+		if cost.NominalRealisasi == 0 {
+			continue
+		}
+		if !hasReceipt && !(cost.Komponen == "TRANSPORTASI" && hasTicket) && !(cost.Komponen == "AKOMODASI" && hasLodging) {
+			completeCosts = false
+			break
+		}
+	}
+	isComplete := hasReport && hasPhoto && completeCosts
 
 	return map[string]interface{}{
 		"trip_id":             t.ID,
@@ -870,4 +970,19 @@ func evaluateTripFlags(trips []*model.TravelOrder) []map[string]interface{} {
 		}
 	}
 	return flags
+}
+
+func (r *memoryTripRepository) MarkIncomplete(id, note string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	t := r.trips[id]
+	if t == nil || t.Status != model.TripStatusDilaporkan {
+		return errors.New("laporan tidak tersedia")
+	}
+	t.CatatanKelengkapan = note
+	t.Status = model.TripStatusDisetujuiKaprodi
+	return nil
+}
+func (r *supabaseTripRepository) MarkIncomplete(id, note string) error {
+	return r.client.Update("travel_orders", map[string]string{"id": "eq." + id, "status": "eq.DILAPORKAN"}, map[string]any{"catatan_kelengkapan": note, "status": model.TripStatusDisetujuiKaprodi}, nil)
 }

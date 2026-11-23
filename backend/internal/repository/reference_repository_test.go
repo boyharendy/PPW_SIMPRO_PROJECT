@@ -40,5 +40,13 @@ func TestMemoryReferenceRepository(t *testing.T) {
 	if len(partners) == 0 {
 		t.Errorf("expected at least 1 partner")
 	}
+
+	lecturers, err := repo.Lecturers()
+	if err != nil {
+		t.Fatalf("Lecturers failed: %v", err)
+	}
+	if len(lecturers) < 2 {
+		t.Errorf("expected at least 2 dummy lecturers so current user is not the only verifier candidate, got %d", len(lecturers))
+	}
 }
 

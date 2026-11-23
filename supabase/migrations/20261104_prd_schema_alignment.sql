@@ -8,6 +8,7 @@
 -- 1. Skema app & Fungsi Pembantu Kontekstual & Keamanan (Bab 10.2)
 -- ------------------------------------------------------------
 CREATE SCHEMA IF NOT EXISTS app;
+ALTER TABLE user_roles ADD COLUMN IF NOT EXISTS penanganan_kekerasan BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- Identitas pengguna dari GUC yang diset Go per transaksi
 CREATE OR REPLACE FUNCTION app.uid() RETURNS UUID
@@ -89,7 +90,7 @@ $$;
 -- ------------------------------------------------------------
 
 -- Tambah flag penanganan_kekerasan pada user_roles (Bab 6 & 10)
-ALTER TABLE user_roles ADD COLUMN IF NOT EXISTS penanganan_kekerasan BOOLEAN NOT NULL DEFAULT FALSE;
+
 
 -- Update akun petugas kekerasan awal agar memiliki flag true
 UPDATE user_roles

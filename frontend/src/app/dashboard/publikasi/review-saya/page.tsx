@@ -7,6 +7,7 @@ import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import Modal from '@/components/ui/Modal';
 import { formatDateShort } from '@/lib/utils';
+import MotionCard from '@/components/motion/MotionCard';
 
 interface ReviewTask {
   id: string;
@@ -137,12 +138,12 @@ export default function Page() {
     <div className="space-y-6">
       <PageHeader
         title="Review Internal Publikasi"
-        description="Daftar penugasan penelaahan internal manuskrip publikasi dosen (FR-31)."
+        description="Daftar penugasan penelaahan internal manuskrip publikasi dosen."
       />
 
-      <div className="card">
+      <MotionCard index={0} interactive={false} className="card">
         <DataTable columns={columns} data={tasks} emptyMessage="Tidak ada tugas review saat ini." />
-      </div>
+      </MotionCard>
 
       <Modal
         open={Boolean(activeTask)}

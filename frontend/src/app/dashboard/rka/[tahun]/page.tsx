@@ -252,7 +252,7 @@ export default function Page() {
 
       <PageHeader
         title={`${doc.judul}`}
-        description={`Tahun Anggaran ${doc.tahun_anggaran} • Total pagu dihitung otomatis dari seluruh pos anggaran kegiatan (NF-07).`}
+        description={`Tahun Anggaran ${doc.tahun_anggaran} • Total pagu dihitung otomatis dari seluruh pos anggaran kegiatan.`}
         badge={
           <div className="flex items-center gap-2">
             <StatusBadge status={doc.status} size="sm" />

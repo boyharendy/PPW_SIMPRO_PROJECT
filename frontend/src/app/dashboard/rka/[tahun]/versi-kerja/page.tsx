@@ -21,6 +21,7 @@ import type {
   RkaDocument,
 } from '@/lib/types';
 import { formatRupiah } from '@/lib/utils';
+import MotionCard from '@/components/motion/MotionCard';
 
 export default function Page() {
   const { tahun } = useParams<{ tahun: string }>();
@@ -206,7 +207,7 @@ export default function Page() {
         </div>
       )}
 
-      <div className="card space-y-2">
+      <MotionCard index={0} interactive={false} className="card space-y-2">
         <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
           Alasan Revisi / Catatan Versi
         </label>
@@ -217,13 +218,13 @@ export default function Page() {
           placeholder="Tuliskan justifikasi perubahan kegiatan atau pos anggaran..."
           className="input-field text-xs resize-none"
         />
-      </div>
+      </MotionCard>
 
       <div className="space-y-4">
-        {kegiatan.map((k) => {
+        {kegiatan.map((k, idx) => {
           const subtotal = computeActivityTotal(k);
           return (
-            <div key={k.id} className="card p-5 space-y-4">
+            <MotionCard key={k.id} index={idx} interactive={false} className="card p-5 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
                 <div className="flex items-center gap-2.5">
                   <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-blue-50 text-blue-700 border border-blue-100">
@@ -366,12 +367,12 @@ export default function Page() {
               >
                 <Plus size={13} /> Tambah Pos Anggaran
               </button>
-            </div>
+            </MotionCard>
           );
         })}
       </div>
 
-      <div className="card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50">
+      <MotionCard index={1} interactive={false} className="card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50">
         <div>
           <div className="text-xs text-slate-500">Total Akumulasi Pagu RKA (Otomatis):</div>
           <div className="text-xl font-bold text-blue-700 font-mono">
@@ -394,7 +395,7 @@ export default function Page() {
             <CheckCircle2 size={14} /> Sahkan &amp; Aktifkan Versi
           </button>
         </div>
-      </div>
+      </MotionCard>
     </div>
   );
 }

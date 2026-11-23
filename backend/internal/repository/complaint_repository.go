@@ -12,6 +12,9 @@ import (
 )
 
 type ComplaintRepository interface {
+	RunDeadlines(closeCompleted bool) (int, error)
+	MessageByID(string) (*model.ComplaintMessage, error)
+	CreatePermitted(*model.Complaint, string, time.Time) (*model.Complaint, error)
 	FindAll(kategori string, status string, isSensitif *bool, limit, offset int) ([]*model.Complaint, int, error)
 	FindByID(id string) (*model.Complaint, error)
 	FindByTicket(ticket string) (*model.Complaint, error)
@@ -34,11 +37,18 @@ type ComplaintRepository interface {
 // ============================================================
 
 type supabaseComplaintRepository struct {
-	client *database.SupabaseClient
+	client database.Store
 }
 
-func NewSupabaseComplaintRepository(client *database.SupabaseClient) ComplaintRepository {
+func NewSupabaseComplaintRepository(client database.Store) ComplaintRepository {
 	return &supabaseComplaintRepository{client: client}
+}
+
+func (r *supabaseComplaintRepository) visibleTable() string {
+	if store, ok := r.client.(*database.TxStore); ok && store.InternalRequest {
+		return "simpro_visible_complaints"
+	}
+	return "complaints"
 }
 
 func (r *supabaseComplaintRepository) FindAll(kategori string, status string, isSensitif *bool, limit, offset int) ([]*model.Complaint, int, error) {
@@ -66,12 +76,12 @@ func (r *supabaseComplaintRepository) FindAll(kategori string, status string, is
 	}
 
 	var complaints []*model.Complaint
-	err := r.client.Select("complaints", params, &complaints)
+	err := r.client.Select(r.visibleTable(), params, &complaints)
 	if err != nil {
 		return nil, 0, fmt.Errorf("gagal query complaints: %w", err)
 	}
 
-	total, _ := r.client.Count("complaints", countParams)
+	total, _ := r.client.Count(r.visibleTable(), countParams)
 	if total == 0 {
 		total = len(complaints)
 	}
@@ -81,7 +91,7 @@ func (r *supabaseComplaintRepository) FindAll(kategori string, status string, is
 
 func (r *supabaseComplaintRepository) FindByID(id string) (*model.Complaint, error) {
 	var list []*model.Complaint
-	err := r.client.Select("complaints", map[string]string{
+	err := r.client.Select(r.visibleTable(), map[string]string{
 		"id":    fmt.Sprintf("eq.%s", id),
 		"limit": "1",
 	}, &list)
@@ -90,6 +100,7 @@ func (r *supabaseComplaintRepository) FindByID(id string) (*model.Complaint, err
 	}
 
 	c := list[0]
+	c.KodeTiket = ""
 	var msgs []*model.ComplaintMessage
 	_ = r.client.Select("complaint_messages", map[string]string{
 		"complaint_id": fmt.Sprintf("eq.%s", id),
@@ -115,27 +126,46 @@ func (r *supabaseComplaintRepository) FindByID(id string) (*model.Complaint, err
 	return c, nil
 }
 
+func (r *supabaseComplaintRepository) scopeTicket(hash string) error {
+	if s, ok := r.client.(*database.TxStore); ok {
+		_, err := s.Tx.Exec(s.Ctx, "select set_config('app.ticket_hash',$1,true)", hash)
+		return err
+	}
+	return nil
+}
+func (r *supabaseComplaintRepository) CreatePermitted(c *model.Complaint, key string, exp time.Time) (*model.Complaint, error) {
+	s, ok := r.client.(*database.TxStore)
+	if !ok {
+		return nil, errors.New("transaksi aduan diperlukan")
+	}
+	if _, err := s.Tx.Exec(s.Ctx, "select app.spend_permit($1,$2,$3)", key, exp, c.KodeTiketHash); err != nil {
+		return nil, errors.New("permit telah digunakan atau kedaluwarsa")
+	}
+	return r.Create(c)
+}
 func (r *supabaseComplaintRepository) FindByTicket(ticket string) (*model.Complaint, error) {
+	if err := r.scopeTicket(ticket); err != nil {
+		return nil, err
+	}
 	var list []*model.Complaint
 	err := r.client.Select("complaints", map[string]string{
-		"kode_tiket": fmt.Sprintf("eq.%s", ticket),
-		"limit":      "1",
+		"kode_tiket_hash": fmt.Sprintf("eq.%s", ticket),
+		"limit":           "1",
 	}, &list)
 	if err != nil || len(list) == 0 {
 		return nil, errors.New("aduan dengan kode tiket tersebut tidak ditemukan")
 	}
-	return r.FindByID(list[0].ID)
+	c := list[0]
+	err = r.client.Select("complaint_messages", map[string]string{"complaint_id": "eq." + c.ID, "is_catatan_internal": "eq.false", "order": "created_at.asc,message_order.asc"}, &c.Messages)
+	return c, err
 }
 
 func (r *supabaseComplaintRepository) Create(c *model.Complaint) (*model.Complaint, error) {
 	if c.ID == "" {
 		c.ID = uuid.New().String()
 	}
-	if c.KodeTiket == "" {
-		c.KodeTiket = fmt.Sprintf("ADU-%s", uuid.New().String()[:8])
-	}
 	if c.NomorAduan == "" {
-		c.NomorAduan = c.KodeTiket
+		c.NomorAduan = "LAP-" + uuid.NewString()
 	}
 	if c.Status == "" {
 		c.Status = model.ComplaintStatusDiterima
@@ -145,7 +175,7 @@ func (r *supabaseComplaintRepository) Create(c *model.Complaint) (*model.Complai
 	// NF-04: Do not store reporter user_id or IP address
 	payload := map[string]interface{}{
 		"id":                c.ID,
-		"kode_tiket":        c.KodeTiket,
+		"kode_tiket_hash":   c.KodeTiketHash,
 		"nomor_aduan":       c.NomorAduan,
 		"kategori":          string(c.Kategori),
 		"judul":             c.Judul,
@@ -162,8 +192,8 @@ func (r *supabaseComplaintRepository) Create(c *model.Complaint) (*model.Complai
 		return nil, fmt.Errorf("gagal membuat aduan: %w", err)
 	}
 
-	c.CreatedAt = time.Now()
-	c.UpdatedAt = time.Now()
+	c.CreatedAt = time.Now().UTC().Truncate(24 * time.Hour)
+	c.UpdatedAt = c.CreatedAt
 	return c, nil
 }
 
@@ -229,7 +259,7 @@ func (r *supabaseComplaintRepository) Close(id string, petugasID, alasan string)
 
 func (r *supabaseComplaintRepository) GetEscalations() ([]*model.ComplaintMetadata, error) {
 	var list []*model.ComplaintMetadata
-	err := r.client.Select("v_complaint_metadata", map[string]string{
+	err := r.client.Select("simpro_case_metadata", map[string]string{
 		"order": "umur_hari.desc",
 	}, &list)
 	if err != nil {
@@ -241,12 +271,12 @@ func (r *supabaseComplaintRepository) GetEscalations() ([]*model.ComplaintMetada
 func (r *supabaseComplaintRepository) FindMyDispositions(userID string) ([]*model.Complaint, error) {
 	var disps []*model.ComplaintDisposition
 	err := r.client.Select("complaint_dispositions", map[string]string{
-		"kepada_petugas_id": fmt.Sprintf("eq.%s", userID),
+		"kepada_petugas_id": fmt.Sprintf("eq.%s", userID), "status": "eq.AKTIF",
 	}, &disps)
 	if err != nil {
 		return nil, err
 	}
-	var results []*model.Complaint
+	results := make([]*model.Complaint, 0)
 	for _, d := range disps {
 		if c, err := r.FindByID(d.ComplaintID); err == nil {
 			results = append(results, c)
@@ -262,7 +292,7 @@ func (r *supabaseComplaintRepository) AddMessage(msg *model.ComplaintMessage) er
 	payload := map[string]interface{}{
 		"id":           msg.ID,
 		"complaint_id": msg.ComplaintID,
-		"sender_type":  msg.SenderType,
+		"sender_type":  msg.SenderType, "is_catatan_internal": msg.IsCatatanInternal,
 		"pesan":        msg.Pesan,
 		"lampiran_url": msg.LampiranURL,
 	}
@@ -303,18 +333,23 @@ func (r *supabaseComplaintRepository) ForwardToSatgas(id, tanggal, nomorReferens
 }
 
 func (r *supabaseComplaintRepository) SubmitRating(ticket string, rating int, komentar string) error {
+	if err := r.scopeTicket(ticket); err != nil {
+		return err
+	}
 	payload := map[string]interface{}{
 		"rating_kepuasan":   rating,
 		"komentar_kepuasan": komentar,
 	}
 	return r.client.Update("complaints", map[string]string{
-		"kode_tiket": fmt.Sprintf("eq.%s", ticket),
+		"kode_tiket_hash": fmt.Sprintf("eq.%s", ticket),
 	}, payload, nil)
 }
 
 func (r *supabaseComplaintRepository) GetRecap() (*model.ComplaintRecap, error) {
 	var list []*model.Complaint
-	_ = r.client.Select("complaints", map[string]string{}, &list)
+	if err := r.client.Select(r.visibleTable(), map[string]string{}, &list); err != nil {
+		return nil, err
+	}
 
 	recap := &model.ComplaintRecap{
 		TotalAduan:       len(list),
@@ -373,12 +408,13 @@ type memoryComplaintRepository struct {
 	mu           sync.RWMutex
 	complaints   map[string]*model.Complaint
 	messages     map[string][]*model.ComplaintMessage
+	spent        map[string]time.Time
 	dispositions map[string][]*model.ComplaintDisposition
 }
 
 func NewMemoryComplaintRepository() ComplaintRepository {
 	return &memoryComplaintRepository{
-		complaints:   make(map[string]*model.Complaint),
+		spent: make(map[string]time.Time), complaints: make(map[string]*model.Complaint),
 		messages:     make(map[string][]*model.ComplaintMessage),
 		dispositions: make(map[string][]*model.ComplaintDisposition),
 	}
@@ -398,8 +434,8 @@ func (r *memoryComplaintRepository) checkEscalation(c *model.Complaint) {
 }
 
 func (r *memoryComplaintRepository) FindAll(kategori string, status string, isSensitif *bool, limit, offset int) ([]*model.Complaint, int, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
 	var filtered []*model.Complaint
 	for _, c := range r.complaints {
@@ -430,8 +466,8 @@ func (r *memoryComplaintRepository) FindAll(kategori string, status string, isSe
 }
 
 func (r *memoryComplaintRepository) FindByID(id string) (*model.Complaint, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	c, ok := r.complaints[id]
 	if !ok {
 		return nil, errors.New("aduan tidak ditemukan")
@@ -444,10 +480,10 @@ func (r *memoryComplaintRepository) FindByID(id string) (*model.Complaint, error
 }
 
 func (r *memoryComplaintRepository) FindByTicket(ticket string) (*model.Complaint, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	for _, c := range r.complaints {
-		if c.KodeTiket == ticket || c.NomorAduan == ticket {
+		if ticket != "" && c.KodeTiketHash == ticket {
 			r.checkEscalation(c)
 			res := *c
 			res.Messages = r.messages[c.ID]
@@ -458,24 +494,38 @@ func (r *memoryComplaintRepository) FindByTicket(ticket string) (*model.Complain
 	return nil, errors.New("aduan tidak ditemukan")
 }
 
+func (r *memoryComplaintRepository) CreatePermitted(c *model.Complaint, key string, exp time.Time) (*model.Complaint, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for k, v := range r.spent {
+		if time.Now().After(v) {
+			delete(r.spent, k)
+		}
+	}
+	if _, ok := r.spent[key]; ok || !time.Now().Before(exp) {
+		return nil, errors.New("permit telah digunakan atau kedaluwarsa")
+	}
+	r.spent[key] = exp
+	return r.create(c)
+}
 func (r *memoryComplaintRepository) Create(c *model.Complaint) (*model.Complaint, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	return r.create(c)
+}
+func (r *memoryComplaintRepository) create(c *model.Complaint) (*model.Complaint, error) {
 	if c.ID == "" {
 		c.ID = uuid.New().String()
 	}
-	if c.KodeTiket == "" {
-		c.KodeTiket = fmt.Sprintf("ADU-%s", uuid.New().String()[:8])
-	}
 	if c.NomorAduan == "" {
-		c.NomorAduan = c.KodeTiket
+		c.NomorAduan = "LAP-" + uuid.NewString()
 	}
 	if c.Status == "" {
 		c.Status = model.ComplaintStatusDiterima
 	}
 	c.TanggalPengaduan = time.Now().Format("2006-01-02")
-	c.CreatedAt = time.Now()
-	c.UpdatedAt = time.Now()
+	c.CreatedAt = time.Now().UTC().Truncate(24 * time.Hour)
+	c.UpdatedAt = c.CreatedAt
 	r.complaints[c.ID] = c
 	return c, nil
 }
@@ -584,11 +634,11 @@ func (r *memoryComplaintRepository) FindMyDispositions(userID string) ([]*model.
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	var result []*model.Complaint
+	result := make([]*model.Complaint, 0)
 	for cid, disps := range r.dispositions {
 		for _, d := range disps {
-			if d.KepadaPetugasID == userID {
-				if c, ok := r.complaints[cid]; ok {
+			if d.KepadaPetugasID == userID && d.Status == "AKTIF" {
+				if c, ok := r.complaints[cid]; ok && !c.IsSensitif {
 					result = append(result, c)
 					break
 				}
@@ -605,6 +655,9 @@ func (r *memoryComplaintRepository) AddMessage(msg *model.ComplaintMessage) erro
 		msg.ID = uuid.New().String()
 	}
 	msg.CreatedAt = time.Now()
+	if msg.SenderType == "PELAPOR" {
+		msg.CreatedAt = msg.CreatedAt.UTC().Truncate(24 * time.Hour)
+	}
 	r.messages[msg.ComplaintID] = append(r.messages[msg.ComplaintID], msg)
 	return nil
 }
@@ -616,6 +669,9 @@ func (r *memoryComplaintRepository) AddDisposition(disp *model.ComplaintDisposit
 		disp.ID = uuid.New().String()
 	}
 	disp.CreatedAt = time.Now()
+	if disp.Status == "" {
+		disp.Status = "AKTIF"
+	}
 	r.dispositions[disp.ComplaintID] = append(r.dispositions[disp.ComplaintID], disp)
 	if c, ok := r.complaints[disp.ComplaintID]; ok {
 		r.checkEscalation(c)
@@ -642,7 +698,7 @@ func (r *memoryComplaintRepository) SubmitRating(ticket string, rating int, kome
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for _, c := range r.complaints {
-		if c.KodeTiket == ticket || c.NomorAduan == ticket {
+		if ticket != "" && c.KodeTiketHash == ticket {
 			c.RatingKepuasan = &rating
 			c.KomentarKepuasan = komentar
 			c.UpdatedAt = time.Now()
@@ -704,4 +760,80 @@ func (r *memoryComplaintRepository) GetRecap() (*model.ComplaintRecap, error) {
 	}
 
 	return recap, nil
+}
+
+func (r *supabaseComplaintRepository) MessageByID(id string) (*model.ComplaintMessage, error) {
+	var list []*model.ComplaintMessage
+	err := r.client.Select("complaint_messages", map[string]string{"id": "eq." + id}, &list)
+	if err != nil || len(list) != 1 {
+		return nil, errors.New("pesan tidak ditemukan")
+	}
+	return list[0], nil
+}
+func (r *memoryComplaintRepository) MessageByID(id string) (*model.ComplaintMessage, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	for _, messages := range r.messages {
+		for _, m := range messages {
+			if m.ID == id {
+				return m, nil
+			}
+		}
+	}
+	return nil, errors.New("pesan tidak ditemukan")
+}
+
+func (r *supabaseComplaintRepository) RunDeadlines(closeCompleted bool) (int, error) {
+	s, ok := r.client.(*database.TxStore)
+	if !ok {
+		return 0, errors.New("koneksi penjadwal diperlukan")
+	}
+	var count int
+	err := s.Tx.QueryRow(s.Ctx, "SELECT app.process_complaint_deadlines($1)", closeCompleted).Scan(&count)
+	return count, err
+}
+func (r *memoryComplaintRepository) RunDeadlines(closeCompleted bool) (int, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	now := time.Now()
+	count := 0
+	for _, c := range r.complaints {
+		if closeCompleted {
+			if c.Status != model.ComplaintStatusSelesai {
+				continue
+			}
+			date := c.TanggalSelesai
+			if date == "" && c.TanggalPenyelesaian != nil {
+				date = *c.TanggalPenyelesaian
+			}
+			if d, err := time.Parse("2006-01-02", date); err == nil && now.Sub(d) >= 14*24*time.Hour {
+				c.Status = model.ComplaintStatusDitutup
+				c.AlasanPenutupan = "Penutupan otomatis"
+				count++
+			}
+			continue
+		}
+		if c.IsEscalatedKaprodi || c.Status == model.ComplaintStatusSelesai || c.Status == model.ComplaintStatusDitutup {
+			continue
+		}
+		r.checkEscalation(c)
+		if c.Status == model.ComplaintStatusDiterima {
+			date := c.TanggalDiterima
+			if date == "" {
+				date = c.TanggalPengaduan
+			}
+			days := 3
+			if c.IsSensitif {
+				days = 1
+			}
+			if d, err := time.Parse("2006-01-02", date); err == nil && now.Sub(d) >= time.Duration(days)*24*time.Hour {
+				c.IsEscalatedKaprodi = true
+				c.EscalatedAt = &now
+			}
+		}
+		if c.IsEscalatedKaprodi {
+			count++
+		}
+	}
+	return count, nil
 }

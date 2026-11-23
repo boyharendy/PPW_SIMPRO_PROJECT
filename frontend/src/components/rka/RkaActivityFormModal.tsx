@@ -150,7 +150,7 @@ export default function RkaActivityFormModal({
     setErrorMsg(null);
 
     if (!kodeKegiatan.trim() || !namaKegiatan.trim() || !indikatorKinerja.trim()) {
-      setErrorMsg('Kode kegiatan, nama kegiatan, dan indikator kinerja wajib diisi (FR-36).');
+      setErrorMsg('Kode kegiatan, nama kegiatan, dan indikator kinerja wajib diisi.');
       return;
     }
 
@@ -347,7 +347,7 @@ export default function RkaActivityFormModal({
           <div className="flex items-center justify-between">
             <div>
               <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">
-                Rincian Pos Anggaran (FR-36)
+                Rincian Pos Anggaran
               </h4>
               <p className="text-[11px] text-slate-400">
                 Total pagu kegiatan &amp; RKA dihitung otomatis dari seluruh nominal pos di bawah.

@@ -12,6 +12,7 @@ import (
 )
 
 type RpsRepository interface {
+	AssignedReview(id, user string) bool
 	FindAll(courseID string, status string) ([]*model.RpsSubmission, error)
 	FindByID(id string) (*model.RpsSubmission, error)
 	Create(sub *model.RpsSubmission) (*model.RpsSubmission, error)
@@ -34,10 +35,10 @@ type RpsRepository interface {
 // ============================================================
 
 type supabaseRpsRepository struct {
-	client *database.SupabaseClient
+	client database.Store
 }
 
-func NewSupabaseRpsRepository(client *database.SupabaseClient) RpsRepository {
+func NewSupabaseRpsRepository(client database.Store) RpsRepository {
 	return &supabaseRpsRepository{client: client}
 }
 
@@ -218,7 +219,9 @@ func (r *supabaseRpsRepository) AssignReviewers(id string, reviewerIDs []string)
 			"rekomendasi":       "SEDANG_DIREVIEW",
 		}
 		var inserted []*model.RpsReview
-		_ = r.client.Insert("rps_reviews", revPayload, &inserted)
+		if err := r.client.Insert("rps_reviews", revPayload, &inserted); err != nil {
+			return err
+		}
 
 		// Auto seed 5 komponen instrumen SPMI
 		if len(inserted) > 0 {
@@ -230,11 +233,13 @@ func (r *supabaseRpsRepository) AssignReviewers(id string, reviewerIDs []string)
 				model.RpsKomponenReferensi,
 			}
 			for _, k := range komponens {
-				_ = r.client.Insert("rps_review_items", map[string]interface{}{
+				if err := r.client.Insert("rps_review_items", map[string]interface{}{
 					"rps_review_id": inserted[0].ID,
 					"komponen":      k,
 					"hasil":         "SESUAI",
-				}, nil)
+				}, nil); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -293,13 +298,18 @@ func (r *supabaseRpsRepository) AddReview(review *model.RpsReview) error {
 
 func (r *supabaseRpsRepository) UpdateReviewItems(reviewID string, items []*model.RpsReviewItem) error {
 	for _, it := range items {
-		_ = r.client.Update("rps_review_items", map[string]string{
+		if it == nil {
+			return errors.New("item review tidak valid")
+		}
+		if err := r.client.Update("rps_review_items", map[string]string{
 			"rps_review_id": fmt.Sprintf("eq.%s", reviewID),
 			"komponen":      fmt.Sprintf("eq.%s", it.Komponen),
 		}, map[string]interface{}{
 			"hasil":   it.Hasil,
 			"catatan": it.Catatan,
-		}, nil)
+		}, nil); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -667,4 +677,22 @@ func computeRpsRecap(subs []*model.RpsSubmission) *model.RpsRecap {
 		recap.PersentaseKepatuhan = (float64(recap.TotalDisetujui) / float64(recap.TotalPengajuan)) * 100
 	}
 	return recap
+}
+
+func (r *supabaseRpsRepository) AssignedReview(id, user string) bool {
+	var rows []model.RpsReview
+	err := r.client.Select("rps_reviews", map[string]string{"id": "eq." + id, "reviewer_id": "eq." + user}, &rows)
+	return err == nil && len(rows) == 1 && rows[0].Status == "DITUGASKAN"
+}
+func (r *memoryRpsRepository) AssignedReview(id, user string) bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	for _, reviews := range r.reviews {
+		for _, row := range reviews {
+			if row.ID == id {
+				return row.ReviewerID == user && row.Status == "DITUGASKAN"
+			}
+		}
+	}
+	return false
 }

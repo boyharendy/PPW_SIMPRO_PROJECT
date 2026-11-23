@@ -55,12 +55,23 @@ func (h *UserHandler) GetUserByID(c *gin.Context) {
 
 func (h *UserHandler) UpdateUser(c *gin.Context) {
 	id := c.Param("id")
-	var req model.User
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "Data update tidak valid", err.Error())
+	var patch struct {
+		NamaLengkap string `json:"nama_lengkap"`
+		IsActive    *bool  `json:"is_active"`
+	}
+	if err := c.ShouldBindJSON(&patch); err != nil {
+		response.BadRequest(c, "Data update tidak valid", nil)
 		return
 	}
-
+	current, err := h.userUsecase.GetUserByID(id)
+	if err != nil {
+		response.NotFound(c, "Pengguna tidak ditemukan")
+		return
+	}
+	req := model.User{NamaLengkap: patch.NamaLengkap, IsActive: current.IsActive}
+	if patch.IsActive != nil {
+		req.IsActive = *patch.IsActive
+	}
 	updated, err := h.userUsecase.UpdateUser(id, &req)
 	if err != nil {
 		response.NotFound(c, err.Error())

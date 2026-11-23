@@ -1,12 +1,12 @@
 package model
 
 type AcademicPeriod struct {
-	ID            string `json:"id"`
-	TahunAkademik string `json:"tahun_akademik"`
-	Semester      string `json:"semester"`
-	TanggalMulai  string `json:"tanggal_mulai"`
+	ID             string `json:"id"`
+	TahunAkademik  string `json:"tahun_akademik"`
+	Semester       string `json:"semester"`
+	TanggalMulai   string `json:"tanggal_mulai"`
 	TanggalSelesai string `json:"tanggal_selesai"`
-	IsActive      bool   `json:"is_active"`
+	IsActive       bool   `json:"is_active"`
 }
 
 type Course struct {
@@ -35,3 +35,7 @@ type PartnerInstitution struct {
 	Alamat       string `json:"alamat,omitempty"`
 }
 
+type Lecturer struct {
+	ID   string `json:"id"`
+	Nama string `json:"nama_lengkap"`
+}

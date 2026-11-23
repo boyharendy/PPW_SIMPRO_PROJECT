@@ -42,6 +42,7 @@ export default function TripRoleStats({
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
+          animationIndex={0}
           title="Menunggu Persetujuan"
           value={roleStats.pendingCount}
           subtitle="Perlu keputusan Kaprodi"
@@ -49,6 +50,7 @@ export default function TripRoleStats({
           icon={<Clock size={16} />}
         />
         <StatCard
+          animationIndex={1}
           title="Disetujui / Berjalan"
           value={roleStats.approvedCount + roleStats.reportedCount}
           subtitle="Sedang berjalan & dilaporkan"
@@ -56,6 +58,7 @@ export default function TripRoleStats({
           icon={<Plane size={16} />}
         />
         <StatCard
+          animationIndex={2}
           title="Revisi / Ditolak"
           value={roleStats.revisionCount + roleStats.rejectedCount}
           subtitle="Perlu perbaikan atau ditolak"
@@ -63,6 +66,7 @@ export default function TripRoleStats({
           icon={<RotateCcw size={16} />}
         />
         <StatCard
+          animationIndex={3}
           title="Estimasi Antrean"
           value={formatRupiah(roleStats.pendingBudget)}
           subtitle="Total usulan berstatus Diajukan"
@@ -77,6 +81,7 @@ export default function TripRoleStats({
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
+          animationIndex={0}
           title="Perlu Verifikasi Berkas"
           value={roleStats.reportedCount}
           subtitle="Menunggu konfirmasi Admin Prodi"
@@ -84,6 +89,7 @@ export default function TripRoleStats({
           icon={<FileCheck size={16} />}
         />
         <StatCard
+          animationIndex={1}
           title="Berjalan / Belum Lapor"
           value={roleStats.approvedCount}
           subtitle="Disetujui, menanti laporan hasil"
@@ -91,6 +97,7 @@ export default function TripRoleStats({
           icon={<Plane size={16} />}
         />
         <StatCard
+          animationIndex={2}
           title="Menunggu Kaprodi"
           value={roleStats.pendingCount}
           subtitle="Sedang dalam antrean persetujuan"
@@ -98,6 +105,7 @@ export default function TripRoleStats({
           icon={<Clock size={16} />}
         />
         <StatCard
+          animationIndex={3}
           title="Selesai"
           value={roleStats.completedCount}
           subtitle="Berkas lengkap & terverifikasi"
@@ -112,6 +120,7 @@ export default function TripRoleStats({
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
+          animationIndex={0}
           title="Draf & Perlu Revisi"
           value={roleStats.draftCount + roleStats.revisionCount}
           subtitle="Perlu dilengkapi atau diajukan"
@@ -119,6 +128,7 @@ export default function TripRoleStats({
           icon={<Edit3 size={16} />}
         />
         <StatCard
+          animationIndex={1}
           title="Menunggu Kaprodi"
           value={roleStats.pendingCount}
           subtitle="Usulan sedang ditinjau"
@@ -126,6 +136,7 @@ export default function TripRoleStats({
           icon={<Clock size={16} />}
         />
         <StatCard
+          animationIndex={2}
           title="Perlu Laporan Hasil"
           value={roleStats.approvedCount}
           subtitle="Siap unggah bukti & realisasi"
@@ -133,6 +144,7 @@ export default function TripRoleStats({
           icon={<UploadCloud size={16} />}
         />
         <StatCard
+          animationIndex={3}
           title="Dilaporkan & Selesai"
           value={roleStats.reportedCount + roleStats.completedCount}
           subtitle="Telah dilaporkan / tuntas"

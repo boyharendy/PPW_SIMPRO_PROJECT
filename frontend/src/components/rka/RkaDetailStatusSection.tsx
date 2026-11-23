@@ -111,7 +111,7 @@ export default function RkaDetailStatusSection({
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-900 space-y-1">
           <div className="font-bold flex items-center gap-1.5">
             <AlertCircle size={14} className="text-amber-600" />
-            Syarat Pengesahan RKA (NF-01 &amp; NF-07) Belum Terpenuhi:
+            Syarat Pengesahan RKA Belum Terpenuhi:
           </div>
           <ul className="list-disc pl-5 space-y-0.5 text-[11px]">
             {validation.errors.map((err, i) => (
@@ -123,6 +123,7 @@ export default function RkaDetailStatusSection({
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
+          animationIndex={0}
           title="Total Pagu (Otomatis)"
           value={formatRupiah(displayedTotalPagu)}
           subtitle={`Dari ${displayedActivityCount} butir kegiatan`}
@@ -130,6 +131,7 @@ export default function RkaDetailStatusSection({
           color="blue"
         />
         <StatCard
+          animationIndex={1}
           title="Total Realisasi Berjalan"
           value={formatRupiah(totalRealisasi)}
           subtitle={
@@ -141,6 +143,7 @@ export default function RkaDetailStatusSection({
           color={totalRealisasi > displayedTotalPagu ? 'rose' : 'emerald'}
         />
         <StatCard
+          animationIndex={2}
           title="Persentase Serapan"
           value={`${serapanPct}%`}
           subtitle={`Versi ditampilkan: v${selectedVersion?.nomor_versi ?? 1}`}

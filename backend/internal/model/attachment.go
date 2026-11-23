@@ -14,6 +14,7 @@ const (
 )
 
 type Attachment struct {
+	ObjectKey  string               `json:"object_key,omitempty"`
 	ID         string               `json:"id"`
 	EntityType AttachmentEntityType `json:"entity_type"`
 	EntityID   string               `json:"entity_id,omitempty"`
@@ -33,4 +34,3 @@ type AttachmentUploadResponse struct {
 	MimeType  string    `json:"mime_type"`
 	CreatedAt time.Time `json:"created_at"`
 }
-

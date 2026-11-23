@@ -13,6 +13,11 @@ import { mockSurveyTemplates, mockSurveyInvitations } from '@/lib/mock-data';
 import type { PartnerSurveyTemplate, PartnerSurveyInvitation, PartnerSurveyResponse, SurveyProgram } from '@/lib/types';
 import CreateInvitationModal from './CreateInvitationModal';
 import ManualInputModal from './ManualInputModal';
+import MotionCard from '@/components/motion/MotionCard';
+import MorphingTabBar from '@/components/motion/MorphingTabBar';
+import MorphingTabContent from '@/components/motion/MorphingTabContent';
+
+const PROGRAM_KEYS = ['ALL', 'KP', 'PSI', 'PDLK'] as const;
 
 function PengirimanMitraContent() {
   const searchParams = useSearchParams();
@@ -265,24 +270,20 @@ function PengirimanMitraContent() {
         }
       />
 
-      <div className="card">
+      <MotionCard index={0} interactive={false} className="card">
         {/* Filter Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-slate-500">Program:</span>
-            <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50">
-              {(['ALL', 'KP', 'PSI', 'PDLK'] as const).map((prog) => (
-                <button
-                  key={prog}
-                  onClick={() => setFilterProgram(prog)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                    filterProgram === prog ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  {prog === 'ALL' ? 'Semua Program' : prog}
-                </button>
-              ))}
-            </div>
+            <MorphingTabBar
+              layoutId="kepuasan-pengiriman-program"
+              value={filterProgram}
+              onChange={setFilterProgram}
+              options={PROGRAM_KEYS.map((prog) => ({
+                value: prog,
+                label: prog === 'ALL' ? 'Semua Program' : prog,
+              }))}
+            />
           </div>
 
           <span className="text-xs text-slate-500 font-medium">
@@ -290,12 +291,14 @@ function PengirimanMitraContent() {
           </span>
         </div>
 
-        <DataTable
-          columns={columns}
-          data={filtered}
-          emptyMessage="Tidak ada penempatan mitra untuk filter ini."
-        />
-      </div>
+        <MorphingTabContent activeKey={filterProgram} orderedKeys={PROGRAM_KEYS}>
+          <DataTable
+            columns={columns}
+            data={filtered}
+            emptyMessage="Tidak ada penempatan mitra untuk filter ini."
+          />
+        </MorphingTabContent>
+      </MotionCard>
 
       {/* Modal Buat Undangan Baru */}
       <CreateInvitationModal

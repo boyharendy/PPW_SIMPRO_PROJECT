@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"github.com/google/uuid"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -29,6 +30,7 @@ func GenerateTokens(user *model.User, secretKey string, expHours int, refreshDay
 		ActiveRole:          user.ActiveRole,
 		PenangananKekerasan: user.PenangananKekerasan,
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        uuid.NewString(),
 			ExpiresAt: jwt.NewNumericDate(accessExpiry),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Subject:   user.ID,
@@ -46,6 +48,7 @@ func GenerateTokens(user *model.User, secretKey string, expHours int, refreshDay
 	refreshExpiry := time.Now().Add(refreshDuration)
 
 	refreshClaims := jwt.RegisteredClaims{
+		ID:        uuid.NewString(),
 		ExpiresAt: jwt.NewNumericDate(refreshExpiry),
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
 		Subject:   user.ID,
@@ -67,11 +70,11 @@ func GenerateTokens(user *model.User, secretKey string, expHours int, refreshDay
 
 func ValidateToken(tokenString string, secretKey string) (*JWTClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(t *jwt.Token) (interface{}, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+		if t.Method != jwt.SigningMethodHS256 {
 			return nil, errors.New("unexpected signing method")
 		}
 		return []byte(secretKey), nil
-	})
+	}, jwt.WithExpirationRequired())
 
 	if err != nil {
 		return nil, err

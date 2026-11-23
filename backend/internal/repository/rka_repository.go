@@ -14,6 +14,7 @@ import (
 )
 
 type RkaRepository interface {
+	TripBudgetOptions() ([]model.TripBudgetOption, error)
 	FindAll() ([]*model.RkaDocument, error)
 	FindByYear(tahun string) (*model.RkaDocument, error)
 	FindByID(id string) (*model.RkaDocument, error)
@@ -36,10 +37,10 @@ type RkaRepository interface {
 // ============================================================
 
 type supabaseRkaRepository struct {
-	client *database.SupabaseClient
+	client database.Store
 }
 
-func NewSupabaseRkaRepository(client *database.SupabaseClient) RkaRepository {
+func NewSupabaseRkaRepository(client database.Store) RkaRepository {
 	return &supabaseRkaRepository{client: client}
 }
 
@@ -707,12 +708,12 @@ func (r *memoryRkaRepository) UpdateWorkingVersion(rkaIDOrYear string, ifMatchVe
 	if working == nil {
 		nextVer := len(doc.Versions) + 1
 		working = &model.RkaVersion{
-			ID:          uuid.New().String(),
-			RkaID:       doc.ID,
-			NomorVersi:  nextVer,
-			Status:      "DRAFT",
-			RowVersion:  1,
-			CreatedAt:   time.Now(),
+			ID:         uuid.New().String(),
+			RkaID:      doc.ID,
+			NomorVersi: nextVer,
+			Status:     "DRAFT",
+			RowVersion: 1,
+			CreatedAt:  time.Now(),
 		}
 		doc.Versions = append(doc.Versions, working)
 	}
@@ -957,12 +958,12 @@ func computeVersionDiff(activeDoc *model.RkaDocument, targetVer *model.RkaVersio
 			delta := vItem.AnggaranAlokasi - aItem.AnggaranAlokasi
 			totalDelta += delta
 			diffItems = append(diffItems, map[string]interface{}{
-				"kode_pos":          vItem.KodeMataAnggaran,
-				"nama_kegiatan":     vItem.NamaKegiatan,
-				"tipe_perubahan":    "MODIFIKASI",
-				"alokasi_sebelum":   aItem.AnggaranAlokasi,
-				"alokasi_sesudah":   vItem.AnggaranAlokasi,
-				"selisih":           delta,
+				"kode_pos":        vItem.KodeMataAnggaran,
+				"nama_kegiatan":   vItem.NamaKegiatan,
+				"tipe_perubahan":  "MODIFIKASI",
+				"alokasi_sebelum": aItem.AnggaranAlokasi,
+				"alokasi_sesudah": vItem.AnggaranAlokasi,
+				"selisih":         delta,
 			})
 			delete(activeMap, vItem.KodeMataAnggaran)
 		} else {
@@ -991,12 +992,12 @@ func computeVersionDiff(activeDoc *model.RkaDocument, targetVer *model.RkaVersio
 	}
 
 	return map[string]interface{}{
-		"rka_id":           activeDoc.ID,
-		"nomor_versi":      targetVer.NomorVersi,
-		"status":           targetVer.Status,
-		"total_perubahan":  len(diffItems),
-		"selisih_total":    totalDelta,
-		"rincian_diff":     diffItems,
+		"rka_id":          activeDoc.ID,
+		"nomor_versi":     targetVer.NomorVersi,
+		"status":          targetVer.Status,
+		"total_perubahan": len(diffItems),
+		"selisih_total":   totalDelta,
+		"rincian_diff":    diffItems,
 	}
 }
 
@@ -1013,4 +1014,28 @@ func ParseIfMatch(headerVal string) int {
 		return 0
 	}
 	return ver
+}
+
+func (r *supabaseRkaRepository) TripBudgetOptions() ([]model.TripBudgetOption, error) {
+	var options []model.TripBudgetOption
+	err := r.client.Select("simpro_trip_budget_options", map[string]string{"order": "kode_pos.asc"}, &options)
+	return options, err
+}
+func (r *memoryRkaRepository) TripBudgetOptions() ([]model.TripBudgetOption, error) {
+	docs, err := r.FindAll()
+	if err != nil {
+		return nil, err
+	}
+	options := []model.TripBudgetOption{}
+	for _, doc := range docs {
+		if doc.Status != model.BudgetStatusAktif {
+			continue
+		}
+		for _, item := range doc.BudgetItems {
+			if item.IsActive {
+				options = append(options, model.TripBudgetOption{ID: item.ID, KodePos: item.KodeMataAnggaran, NamaPos: item.NamaKegiatan, SisaAnggaran: item.AnggaranAlokasi - item.AnggaranTerpakai})
+			}
+		}
+	}
+	return options, nil
 }

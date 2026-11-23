@@ -3,8 +3,9 @@
 // ============================================================
 
 import type { ApiResponse, ApiErrorResponse } from '@/lib/types/api';
+import { isLocalDevPreview } from '@/lib/dev-preview';
 
-const DEFAULT_BASE_URL = 'http://localhost:8080/api/v1';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
 const TOKEN_KEY = 'simpro_auth_token';
 const REFRESH_TOKEN_KEY = 'simpro_refresh_token';
 
@@ -30,7 +31,7 @@ export class ApiError extends Error {
  */
 export const tokenStorage = {
   getAccessToken: (): string | null => {
-    if (typeof window === 'undefined') return null;
+    if (typeof window === 'undefined' || isLocalDevPreview()) return null;
     return localStorage.getItem(TOKEN_KEY);
   },
   setAccessToken: (token: string): void => {
@@ -38,7 +39,7 @@ export const tokenStorage = {
     localStorage.setItem(TOKEN_KEY, token);
   },
   getRefreshToken: (): string | null => {
-    if (typeof window === 'undefined') return null;
+    if (typeof window === 'undefined' || isLocalDevPreview()) return null;
     return localStorage.getItem(REFRESH_TOKEN_KEY);
   },
   setRefreshToken: (token: string): void => {
@@ -86,14 +87,13 @@ export async function apiRequest<T = unknown>(
   endpoint: string,
   options: RequestOptions = {}
 ): Promise<ApiResponse<T>> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || DEFAULT_BASE_URL;
   const timeoutMs = options.timeout || Number(process.env.NEXT_PUBLIC_API_TIMEOUT) || 15000;
   const requiresAuth = options.requiresAuth !== false;
 
   // Format URL
   const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const queryString = buildQueryString(options.params);
-  const url = `${baseUrl}${normalizedEndpoint}${queryString}`;
+  const url = `${API_BASE_URL}${normalizedEndpoint}${queryString}`;
 
   // Headers
   const headers = new Headers(options.headers || {});

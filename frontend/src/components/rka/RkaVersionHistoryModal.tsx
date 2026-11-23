@@ -8,6 +8,10 @@ import { mockProfiles } from '@/lib/mock-data';
 import { computeRkaVersionDiff, getVersionSnapshot } from '@/lib/rka-utils';
 import type { RkaDocument } from '@/lib/types';
 import { formatDateTime, formatRupiah } from '@/lib/utils';
+import MorphingTabBar from '@/components/motion/MorphingTabBar';
+import MorphingTabContent from '@/components/motion/MorphingTabContent';
+
+const HISTORY_TABS = ['VERSIONS', 'AUDIT'] as const;
 
 interface RkaVersionHistoryModalProps {
   open: boolean;
@@ -59,31 +63,35 @@ export default function RkaVersionHistoryModal({
     >
       <div className="space-y-4 text-xs">
         {/* Tabs */}
-        <div className="inline-flex rounded-xl border border-slate-200 p-1 bg-slate-50">
-          <button
-            type="button"
-            onClick={() => setTab('VERSIONS')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
-              tab === 'VERSIONS'
-                ? 'bg-white text-blue-700 shadow-xs border border-slate-200/60'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <GitBranch size={13} /> Riwayat &amp; Perbandingan Versi ({versions.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('AUDIT')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
-              tab === 'AUDIT'
-                ? 'bg-white text-blue-700 shadow-xs border border-slate-200/60'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <History size={13} /> Audit Log (NF-09) ({(doc.audit_logs || []).length})
-          </button>
-        </div>
+        <MorphingTabBar
+          layoutId="rka-history-modal-tabs"
+          value={tab}
+          onChange={setTab}
+          containerClassName="inline-flex rounded-xl border border-slate-200 p-1 bg-slate-50"
+          buttonClassName="px-3.5 py-1.5 rounded-lg text-xs font-semibold"
+          activePillClassName="bg-white shadow-xs border border-slate-200/60 rounded-lg"
+          activeTextClassName="text-blue-700"
+          options={[
+            {
+              value: 'VERSIONS',
+              label: (
+                <>
+                  <GitBranch size={13} /> Riwayat &amp; Perbandingan Versi ({versions.length})
+                </>
+              ),
+            },
+            {
+              value: 'AUDIT',
+              label: (
+                <>
+                  <History size={13} /> Audit Log ({(doc.audit_logs || []).length})
+                </>
+              ),
+            },
+          ]}
+        />
 
+        <MorphingTabContent activeKey={tab} orderedKeys={HISTORY_TABS}>
         {tab === 'VERSIONS' ? (
           <div className="space-y-5">
             {/* Daftar Snapshot Versi */}
@@ -302,6 +310,7 @@ export default function RkaVersionHistoryModal({
             )}
           </div>
         )}
+        </MorphingTabContent>
       </div>
     </Modal>
   );

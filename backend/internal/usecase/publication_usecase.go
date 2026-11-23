@@ -11,7 +11,7 @@ import (
 )
 
 type PublicationUsecase interface {
-	GetPublications(status, tipe string, tahun, page, limit int) ([]*model.Publication, int, error)
+	GetPublications(status, tipe string, tahun, page, limit int, viewer ...string) ([]*model.Publication, int, error)
 	GetPublicationByID(id string) (*model.Publication, error)
 	CreatePublication(userID string, pub *model.Publication) (*model.Publication, error)
 	UpdatePublication(id string, pub *model.Publication) (*model.Publication, error)
@@ -28,7 +28,7 @@ type PublicationUsecase interface {
 	// PRD Milestone 5 Methods
 	UpdateAuthors(id string, authors []*model.PublicationAuthor) error
 	GetVerificationQueue(verifierID string) ([]*model.Publication, error)
-	AssignVerifier(id string, verifierID string) error
+	AssignVerifier(id string, verifierID string, kaprodi ...bool) error
 	VerifyStage(stageID string, verifierID string, status string, catatan string) error
 	CompleteReview(reviewID string, rekomendasi string, catatan string) error
 }
@@ -56,7 +56,7 @@ func isPublisher(pub *model.Publication, userID string) bool {
 	return false
 }
 
-func (u *publicationUsecase) GetPublications(status, tipe string, tahun, page, limit int) ([]*model.Publication, int, error) {
+func (u *publicationUsecase) GetPublications(status, tipe string, tahun, page, limit int, viewer ...string) ([]*model.Publication, int, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -64,11 +64,26 @@ func (u *publicationUsecase) GetPublications(status, tipe string, tahun, page, l
 		limit = 20
 	}
 	offset := (page - 1) * limit
-	return u.repo.FindAll(status, tipe, tahun, limit, offset)
+	return u.repo.FindAll(status, tipe, tahun, limit, offset, viewer...)
 }
 
 func (u *publicationUsecase) GetPublicationByID(id string) (*model.Publication, error) {
 	return u.repo.FindByID(id)
+}
+
+func hasMahasiswaAuthorOrUploader(pub *model.Publication) bool {
+	if pub == nil {
+		return false
+	}
+	if strings.EqualFold(pub.TipePencatat, "MAHASISWA") || pub.VerifikatorID != "" {
+		return true
+	}
+	for _, a := range pub.Authors {
+		if strings.EqualFold(a.TipePenulis, "MAHASISWA") {
+			return true
+		}
+	}
+	return false
 }
 
 func (u *publicationUsecase) CreatePublication(userID string, pub *model.Publication) (*model.Publication, error) {
@@ -76,6 +91,37 @@ func (u *publicationUsecase) CreatePublication(userID string, pub *model.Publica
 		return nil, errors.New("judul publikasi wajib diisi")
 	}
 	pub.CreatedBy = userID
+	for _, a := range pub.Authors {
+		if a == nil {
+			return nil, errors.New("data penulis wajib diisi")
+		}
+		a.ID = ""
+	}
+	if pub.VerifikatorID != "" && (pub.VerifikatorID == userID || !pub.Supervisor(pub.VerifikatorID)) {
+		return nil, errors.New("verifikator bukan dosen pendamping")
+	}
+
+	needsVerif := hasMahasiswaAuthorOrUploader(pub)
+	if needsVerif {
+		if (pub.Status == model.PubStatusDiajukan || pub.Status == model.PubStatusMenungguVerifikasi) && pub.VerifikatorID == "" {
+			return nil, errors.New("publikasi yang dicatat oleh atau melibatkan mahasiswa wajib memiliki dosen verifikator")
+		}
+		if pub.Status == model.PubStatusDiajukan {
+			pub.Status = model.PubStatusMenungguVerifikasi
+		}
+		if pub.StatusVerifikasi == "" {
+			pub.StatusVerifikasi = "MENUNGGU"
+		}
+	} else {
+		// Jika murni dosen, verifikator tidak dibutuhkan
+		if pub.StatusVerifikasi == "" {
+			pub.StatusVerifikasi = "TIDAK_PERLU"
+		}
+		if pub.Status == model.PubStatusMenungguVerifikasi {
+			pub.Status = model.PubStatusDiajukan
+		}
+	}
+
 	if pub.Status == "" {
 		pub.Status = model.PubStatusDraf
 	}
@@ -103,7 +149,7 @@ func (u *publicationUsecase) UpdatePublicationStatus(id string, userID string, s
 	if err := u.repo.UpdateStatus(id, status); err != nil {
 		return nil, err
 	}
-	_ = u.repo.AddStageLog(&model.PublicationStageLog{
+	err = u.repo.AddStageLog(&model.PublicationStageLog{
 		PublicationID:    id,
 		Tahap:            status,
 		TautanBukti:      bukti,
@@ -111,6 +157,9 @@ func (u *publicationUsecase) UpdatePublicationStatus(id string, userID string, s
 		DicatatOleh:      userID,
 		StatusVerifikasi: existing.StatusVerifikasi,
 	})
+	if err != nil {
+		return nil, err
+	}
 	return u.repo.FindByID(id)
 }
 
@@ -132,10 +181,21 @@ func (u *publicationUsecase) SubmitPublication(id string) error {
 	}
 	switch existing.Status {
 	case model.PubStatusDraft, model.PubStatusDraf, model.PubStatusReviewInternal, model.PubStatusRevisi, model.PubStatusDitolak:
-		return u.repo.UpdateStatus(id, model.PubStatusDiajukan)
+		// Status valid untuk diajukan
 	default:
 		return errors.New("hanya publikasi berstatus DRAF, REVIEW_INTERNAL, REVISI, atau DITOLAK yang dapat diajukan")
 	}
+
+	// Publikasi yang dicatat mahasiswa atau melibatkan mahasiswa membutuhkan verifikator
+	if hasMahasiswaAuthorOrUploader(existing) {
+		if existing.VerifikatorID == "" {
+			return errors.New("publikasi yang dicatat oleh atau melibatkan mahasiswa wajib memiliki dosen verifikator")
+		}
+		return u.repo.UpdateStatus(id, model.PubStatusMenungguVerifikasi)
+	}
+
+	// Jika murni dosen, langsung berstatus DIAJUKAN tanpa antrean verifikasi mahasiswa
+	return u.repo.UpdateStatus(id, model.PubStatusDiajukan)
 }
 
 func (u *publicationUsecase) AddStageLog(id string, userID string, log *model.PublicationStageLog) error {
@@ -151,12 +211,10 @@ func (u *publicationUsecase) AddStageLog(id string, userID string, log *model.Pu
 	}
 	log.PublicationID = id
 	log.DicatatOleh = userID
-	if log.StatusVerifikasi == "" {
-		if existing.StatusVerifikasi == "MENUNGGU" {
-			log.StatusVerifikasi = "MENUNGGU"
-		} else {
-			log.StatusVerifikasi = "TIDAK_PERLU"
-		}
+	log.ID = ""
+	log.StatusVerifikasi = "TIDAK_PERLU"
+	if existing.StatusVerifikasi == "MENUNGGU" {
+		log.StatusVerifikasi = "MENUNGGU"
 	}
 	return u.repo.AddStageLog(log)
 }
@@ -167,6 +225,10 @@ func (u *publicationUsecase) VerifyPublication(id string, status model.Publicati
 	}
 	if status == model.PubStatusDitolak && strings.TrimSpace(catatan) == "" {
 		return errors.New("catatan penolakan verifikasi wajib diisi")
+	}
+	p, err := u.repo.FindByID(id)
+	if err != nil || p.CreatedBy == reviewerID || p.VerifikatorID != reviewerID {
+		return errors.New("verifikator tidak ditugaskan")
 	}
 	return u.repo.VerifyPublicationRecord(id, reviewerID, string(status), catatan)
 }
@@ -200,13 +262,17 @@ func (u *publicationUsecase) AssignReviewer(id string, assignedBy string, review
 }
 
 func (u *publicationUsecase) AddReview(id string, reviewerID, catatan, rekomendasi string) error {
-	return u.AssignReviewer(id, reviewerID, &model.PublicationReview{
-		PublicationID: id,
-		ReviewerID:    reviewerID,
-		Catatan:       catatan,
-		Rekomendasi:   rekomendasi,
-		Status:        "SELESAI_REVIEW",
-	})
+	reviews, err := u.repo.GetReviews(reviewerID)
+	if err != nil {
+		return err
+	}
+	for _, review := range reviews {
+		if review.PublicationID == id && review.ReviewerID == reviewerID && review.Status == "DITUGASKAN" {
+			return u.CompleteReview(review.ID, rekomendasi, catatan)
+		}
+	}
+	return errors.New("review aktif tidak ditemukan")
+
 }
 
 func (u *publicationUsecase) GetReviews(reviewerID string) ([]*model.PublicationReview, error) {
@@ -220,6 +286,10 @@ func (u *publicationUsecase) UpdateAuthors(id string, authors []*model.Publicati
 
 	var totalPercentage float64
 	for i, a := range authors {
+		if a == nil {
+			return errors.New("data penulis wajib diisi")
+		}
+		a.ID = ""
 		if a.Urutan == 0 {
 			a.Urutan = i + 1
 		}
@@ -241,19 +311,15 @@ func (u *publicationUsecase) GetVerificationQueue(verifierID string) ([]*model.P
 	return u.repo.GetVerificationQueue(verifierID)
 }
 
-func (u *publicationUsecase) AssignVerifier(id string, verifierID string) error {
+func (u *publicationUsecase) AssignVerifier(id string, verifierID string, kaprodi ...bool) error {
 	pub, err := u.repo.FindByID(id)
 	if err != nil {
 		return err
 	}
 
-	// FR-31: Verifikator mahasiswa adalah dosen pembimbing atau dosen penulis pendamping (bukan mahasiswa)
-	for _, a := range pub.Authors {
-		if a.UserID == verifierID && strings.EqualFold(a.TipePenulis, "MAHASISWA") {
-			return errors.New("verifikator publikasi tidak boleh mahasiswa; harus dosen pembimbing atau dosen penulis pendamping")
-		}
+	if pub.CreatedBy == verifierID || (!(len(kaprodi) > 0 && kaprodi[0]) && !pub.Supervisor(verifierID)) {
+		return errors.New("pilih dosen pembimbing atau penulis pendamping")
 	}
-
 	return u.repo.AssignVerifier(id, verifierID)
 }
 

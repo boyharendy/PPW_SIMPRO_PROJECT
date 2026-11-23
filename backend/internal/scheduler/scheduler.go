@@ -226,53 +226,18 @@ func (s *simproScheduler) jobRemindVerifications() int {
 
 // 7. escalate_complaints: Eskalasi aduan melewati SLA 5 hari kerja ke Kaprodi
 func (s *simproScheduler) jobEscalateComplaints() int {
-	complaints, _, err := s.complaintRepo.FindAll("", "", nil, 1000, 0)
+	n, err := s.complaintRepo.RunDeadlines(false)
 	if err != nil {
+		log.Print("Eskalasi aduan gagal")
 		return 0
 	}
-	count := 0
-	now := time.Now()
-	for _, c := range complaints {
-		if (c.Status == model.ComplaintStatusDiterima || c.Status == model.ComplaintStatusDidisposisikan) && !c.IsEscalatedKaprodi {
-			tgl := c.TanggalDiterima
-			if tgl == "" {
-				tgl = c.TanggalPengaduan
-			}
-			if t, err := time.Parse("2006-01-02", tgl); err == nil {
-				if now.Sub(t) >= 5*24*time.Hour {
-					c.IsEscalatedKaprodi = true
-					tNow := time.Now()
-					c.EscalatedAt = &tNow
-					count++
-				}
-			}
-		}
-	}
-	return count
+	return n
 }
-
-// 8. autoclose_complaints: Penutupan tiket aduan SELESAI tanpa respon setelah 14 hari
 func (s *simproScheduler) jobAutocloseComplaints() int {
-	complaints, _, err := s.complaintRepo.FindAll("", string(model.ComplaintStatusSelesai), nil, 1000, 0)
+	n, err := s.complaintRepo.RunDeadlines(true)
 	if err != nil {
+		log.Print("Penutupan aduan otomatis gagal")
 		return 0
 	}
-	count := 0
-	now := time.Now()
-	for _, c := range complaints {
-		tgl := c.TanggalSelesai
-		if tgl == "" && c.TanggalPenyelesaian != nil {
-			tgl = *c.TanggalPenyelesaian
-		}
-		if tgl != "" {
-			if t, err := time.Parse("2006-01-02", tgl); err == nil {
-				if now.Sub(t) >= 14*24*time.Hour {
-					_ = s.complaintRepo.Close(c.ID, "SISTEM_CRON", "Ditutup otomatis oleh sistem setelah 14 hari status SELESAI tanpa sanggahan pelapor")
-					count++
-				}
-			}
-		}
-	}
-	return count
+	return n
 }
-

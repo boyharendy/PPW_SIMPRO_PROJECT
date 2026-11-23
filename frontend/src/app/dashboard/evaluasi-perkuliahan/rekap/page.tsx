@@ -7,6 +7,7 @@ import { StatCard } from '@/components/ui/StatCard';
 import { ExportMenu } from '@/components/ui/ExportMenu';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import MotionCard from '@/components/motion/MotionCard';
 
 interface RecapEvalRow {
   id: string;
@@ -130,13 +131,14 @@ export default function Page() {
     <div className="space-y-6">
       <PageHeader
         title="Rekap CPMK & Evaluasi"
-        description="Rekapitulasi pencapaian CPMK dan catatan tindak lanjut perbaikan mutu mata kuliah (FR-45, FR-46)."
+        description="Rekapitulasi pencapaian CPMK dan catatan tindak lanjut perbaikan mutu mata kuliah."
         actions={<ExportMenu filename="rekap-cpmk-evaluasi-prodi" />}
       />
 
       {/* 3 StatCards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
+          animationIndex={0}
           title="Total Kelas Dibuka"
           value="42 Kelas"
           subtitle="Semester Ganjil 2024/2025"
@@ -144,6 +146,7 @@ export default function Page() {
           icon={<Users size={16} />}
         />
         <StatCard
+          animationIndex={1}
           title="Ketercapaian CPMK Rata-rata"
           value="84.5%"
           subtitle="Target minimal prodi 70%"
@@ -152,6 +155,7 @@ export default function Page() {
           icon={<Award size={16} />}
         />
         <StatCard
+          animationIndex={2}
           title="Evaluasi Ditinjau GKM"
           value="36 / 42 Kelas"
           subtitle="85.7% kepatuhan pengisian"
@@ -160,9 +164,9 @@ export default function Page() {
         />
       </div>
 
-      <div className="card">
+      <MotionCard index={0} interactive={false} className="card">
         <DataTable columns={columns} data={MOCK_RECAP_EVAL} />
-      </div>
+      </MotionCard>
     </div>
   );
 }

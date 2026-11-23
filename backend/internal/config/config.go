@@ -1,30 +1,39 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
+	"net/url"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	ServerPort          string
-	ServerEnv           string
-	APIPrefix           string
-	FrontendURL         string
-	JWTSecret           string
-	JWTExpirationHours  int
-	JWTRefreshDays      int
-	DatabaseURL         string
-	DBHost              string
-	DBPort              string
-	DBUser              string
-	DBPassword          string
-	DBName              string
-	DBSSLMode           string
-	SupabaseURL         string
-	SupabaseAnonKey     string
-	SupabaseServiceKey  string
+	RedisURL           string
+	PermitSecret       string
+	TicketPepper       string
+	ServerHost         string
+	ServerPort         string
+	ServerEnv          string
+	APIPrefix          string
+	FrontendURL        string
+	JWTSecret          string
+	JWTExpirationHours int
+	JWTRefreshDays     int
+	DatabaseURL        string
+	DBHost             string
+	DBPort             string
+	DBUser             string
+	DBPassword         string
+	DBName             string
+	DBSSLMode          string
+	SupabaseURL        string
+	SupabaseAnonKey    string
+	SupabaseServiceKey string
 }
 
 func LoadConfig() *Config {
@@ -33,10 +42,10 @@ func LoadConfig() *Config {
 	_ = godotenv.Load("backend/.env")
 
 	port := getEnv("SERVER_PORT", "8080")
-	env := getEnv("SERVER_ENV", "development")
+	env := getEnv("SERVER_ENV", "production")
 	prefix := getEnv("API_PREFIX", "/api/v1")
 	frontendURL := getEnv("FRONTEND_URL", "http://localhost:3000")
-	jwtSecret := getEnv("JWT_SECRET", "simpro_secret_jwt_key_default_2026")
+	jwtSecret := getEnv("JWT_SECRET", "")
 
 	jwtExpHours, _ := strconv.Atoi(getEnv("JWT_EXPIRATION_HOURS", "24"))
 	if jwtExpHours <= 0 {
@@ -56,12 +65,15 @@ func LoadConfig() *Config {
 	dbName := getEnv("DB_NAME", "postgres")
 	dbSSL := getEnv("DB_SSLMODE", "require")
 
-	supabaseURL := getEnv("NEXT_PUBLIC_SUPABASE_URL", getEnv("SUPABASE_URL", ""))
-	supabaseAnonKey := getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", getEnv("SUPABASE_ANON_KEY", ""))
+	supabaseURL := getEnv("SUPABASE_URL", "")
+	supabaseAnonKey := getEnv("SUPABASE_ANON_KEY", "")
 	supabaseServiceKey := getEnv("SUPABASE_SERVICE_ROLE_KEY", "")
 
 	return &Config{
-		ServerPort:         port,
+		ServerHost: os.Getenv("SERVER_HOST"),
+		ServerPort: port,
+		RedisURL:   os.Getenv("REDIS_URL"), PermitSecret: os.Getenv("PERMIT_SECRET"),
+		TicketPepper:       os.Getenv("TICKET_PEPPER"),
 		ServerEnv:          env,
 		APIPrefix:          prefix,
 		FrontendURL:        frontendURL,
@@ -86,4 +98,35 @@ func getEnv(key, fallback string) string {
 		return val
 	}
 	return fallback
+}
+
+func (c *Config) Local() bool { return c.ServerEnv == "development" || c.ServerEnv == "test" }
+
+func (c *Config) Validate() error {
+	if c.Local() {
+		for _, value := range []*string{&c.JWTSecret, &c.PermitSecret, &c.TicketPepper} {
+			if *value == "" {
+				var key [32]byte
+				if _, err := rand.Read(key[:]); err != nil {
+					return err
+				}
+				*value = hex.EncodeToString(key[:])
+			}
+		}
+		return nil
+	}
+	if c.ServerEnv != "production" && c.ServerEnv != "staging" {
+		return errors.New("SERVER_ENV tidak dikenal")
+	}
+	u, err := url.Parse(c.SupabaseURL)
+	if err != nil || u.Scheme != "https" || u.Host == "" || c.RedisURL == "" || c.DatabaseURL == "" || c.SupabaseAnonKey == "" || c.SupabaseServiceKey == "" {
+		return errors.New("konfigurasi Supabase Auth, Storage dan PostgreSQL wajib diisi")
+	}
+	if c.SupabaseAnonKey == c.SupabaseServiceKey || strings.Contains(c.SupabaseServiceKey, "your-service-role") || strings.Contains(c.DatabaseURL, "[YOUR-PASSWORD]") {
+		return errors.New("isi kredensial layanan yang sebenarnya")
+	}
+	if len(c.PermitSecret) < 32 || len(c.TicketPepper) < 32 || c.PermitSecret == c.TicketPepper || strings.Contains(c.PermitSecret, "change-me") || strings.Contains(c.TicketPepper, "change-me") {
+		return errors.New("PERMIT_SECRET dan TICKET_PEPPER wajib berupa dua kunci acak terpisah minimal 32 byte")
+	}
+	return nil
 }

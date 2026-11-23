@@ -94,7 +94,7 @@ export function AssignReviewerModal({
   onSubmit,
 }: AssignReviewerModalProps) {
   return (
-    <Modal open={open} onClose={onClose} title="Tetapkan Dosen Reviewer Internal (FR-31)" size="md">
+    <Modal open={open} onClose={onClose} title="Tetapkan Dosen Reviewer Internal" size="md">
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
           <label className="text-xs font-semibold text-slate-700 block mb-1">Dosen Reviewer (Bukan Penulis Naskah)</label>

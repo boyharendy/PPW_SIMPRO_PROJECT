@@ -50,9 +50,9 @@ func NewMemoryUserRepository() UserRepository {
 			model.RoleMahasiswa,
 		},
 		ActiveRole: model.RoleKaprodi,
-		IsActive:   true,
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
+		IsActive:   true, AcademicStatus: "AKTIF",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 	repo.users[defaultUser.ID] = defaultUser
 
@@ -103,7 +103,8 @@ func (r *memoryUserRepository) FindByID(id string) (*model.User, error) {
 	if !exists {
 		return nil, errors.New("user not found")
 	}
-	return u, nil
+	copy := *u
+	return &copy, nil
 }
 
 func (r *memoryUserRepository) FindByEmail(email string) (*model.User, error) {
@@ -112,7 +113,8 @@ func (r *memoryUserRepository) FindByEmail(email string) (*model.User, error) {
 
 	for _, u := range r.users {
 		if strings.EqualFold(u.Email, email) {
-			return u, nil
+			copy := *u
+			return &copy, nil
 		}
 	}
 	return nil, errors.New("user not found")
@@ -150,6 +152,7 @@ func (r *memoryUserRepository) Update(id string, user *model.User) (*model.User,
 	if len(user.Roles) > 0 {
 		existing.Roles = user.Roles
 	}
+	existing.IsActive = user.IsActive
 	existing.UpdatedAt = time.Now()
 
 	return existing, nil

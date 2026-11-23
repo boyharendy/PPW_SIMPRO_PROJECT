@@ -30,10 +30,10 @@ type EvaluationRepository interface {
 // ============================================================
 
 type supabaseEvaluationRepository struct {
-	client *database.SupabaseClient
+	client database.Store
 }
 
-func NewSupabaseEvaluationRepository(client *database.SupabaseClient) EvaluationRepository {
+func NewSupabaseEvaluationRepository(client database.Store) EvaluationRepository {
 	return &supabaseEvaluationRepository{client: client}
 }
 

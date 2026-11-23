@@ -2,6 +2,7 @@ package usecase_test
 
 import (
 	"bytes"
+	"errors"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -69,3 +70,17 @@ func TestAttachmentUsecase(t *testing.T) {
 	}
 }
 
+func TestAttachmentContentAndLimit(t *testing.T) {
+	uc := usecase.NewAttachmentUsecase(repository.NewMemoryAttachmentRepository())
+	pdf := []byte("%PDF-1.4 fixture")
+	if _, err := uc.Prepare(bytes.NewReader(pdf), "fixture.jpg", int64(len(pdf))); !errors.Is(err, usecase.ErrMedia) {
+		t.Fatal("mismatched content accepted")
+	}
+	limit, err := uc.Limit()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = uc.Prepare(bytes.NewReader(pdf), "fixture.pdf", limit+1); !errors.Is(err, usecase.ErrTooLarge) {
+		t.Fatal("oversized file accepted")
+	}
+}

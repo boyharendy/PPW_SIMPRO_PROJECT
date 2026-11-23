@@ -9,6 +9,10 @@ import { ExportMenu } from '@/components/ui/ExportMenu';
 import Modal from '@/components/ui/Modal';
 import { formatDateShort } from '@/lib/utils';
 import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
+import MorphingTabBar from '@/components/motion/MorphingTabBar';
+import MorphingTabContent from '@/components/motion/MorphingTabContent';
 import { mockSurveyResponses, mockSurveyInvitations, mockSurveyTemplates } from '@/lib/mock-data';
 import type {
   PartnerSurveyResponse,
@@ -29,6 +33,8 @@ interface ResponseViewItem {
   catatan?: string;
   sumber: string;
 }
+
+const PROGRAM_KEYS = ['ALL', 'KP', 'PSI', 'PDLK'] as const;
 
 export default function Page() {
   const [responses, setResponses] = useState<PartnerSurveyResponse[]>([]);
@@ -207,7 +213,7 @@ export default function Page() {
 
       {/* 3 Ringkasan Metrik Akreditasi (Komposisi Seragam & Selaras) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="card p-4 sm:p-5 flex flex-col justify-between bg-white shadow-xs">
+        <MotionCard index={0} interactive className="card p-4 sm:p-5 flex flex-col justify-between bg-white shadow-xs">
           <div className="flex items-start justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Indeks Kepuasan</span>
             <div className="p-1.5 rounded-lg border border-amber-200 bg-amber-50 text-amber-600">
@@ -221,9 +227,9 @@ export default function Page() {
             </div>
             <div className="text-xs font-medium text-emerald-600 mt-1">Sangat Baik (90% Skala Maksimum)</div>
           </div>
-        </div>
+        </MotionCard>
 
-        <div className="card p-4 sm:p-5 flex flex-col justify-between bg-white shadow-xs">
+        <MotionCard index={1} interactive className="card p-4 sm:p-5 flex flex-col justify-between bg-white shadow-xs">
           <div className="flex items-start justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tingkat Respons</span>
             <div className="p-1.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-600">
@@ -236,9 +242,9 @@ export default function Page() {
             </div>
             <div className="text-xs font-medium text-slate-500 mt-1">{diisiTotal} dari {invitations.length || 4} survei terisi</div>
           </div>
-        </div>
+        </MotionCard>
 
-        <div className="card p-4 sm:p-5 flex flex-col justify-between bg-white shadow-xs">
+        <MotionCard index={2} interactive className="card p-4 sm:p-5 flex flex-col justify-between bg-white shadow-xs">
           <div className="flex items-start justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Mitra Responden</span>
             <div className="p-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-600">
@@ -252,42 +258,39 @@ export default function Page() {
             </div>
             <div className="text-xs font-medium text-slate-500 mt-1">Program KP, PSI, dan PDLK</div>
           </div>
-        </div>
+        </MotionCard>
       </div>
 
       {/* Tabel Respons Mitra */}
-      <div className="card">
+      <MotionCard index={3} interactive={false} className="card">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
-            <h2 className="text-base font-bold text-slate-900">Daftar Respons Evaluasi Mitra</h2>
+            <WordRevealHeading as="h2" text="Daftar Respons Evaluasi Mitra" className="text-base font-bold text-slate-900" />
             <p className="text-xs text-slate-500 mt-0.5">
               Ulasan dan nilai objektif kinerja mahasiswa dari pembimbing lapangan
             </p>
           </div>
 
-          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 self-start sm:self-auto">
-            {(['ALL', 'KP', 'PSI', 'PDLK'] as const).map((prog) => (
-              <button
-                key={prog}
-                onClick={() => setSelectedProgram(prog)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                  selectedProgram === prog
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                {prog === 'ALL' ? 'Semua Program' : prog}
-              </button>
-            ))}
-          </div>
+          <MorphingTabBar
+            layoutId="kepuasan-mitra-program"
+            value={selectedProgram}
+            onChange={setSelectedProgram}
+            containerClassName="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 self-start sm:self-auto"
+            options={PROGRAM_KEYS.map((prog) => ({
+              value: prog,
+              label: prog === 'ALL' ? 'Semua Program' : prog,
+            }))}
+          />
         </div>
 
-        <DataTable
-          columns={columns}
-          data={filteredResponses}
-          emptyMessage="Belum ada data evaluasi untuk program ini"
-        />
-      </div>
+        <MorphingTabContent activeKey={selectedProgram} orderedKeys={PROGRAM_KEYS}>
+          <DataTable
+            columns={columns}
+            data={filteredResponses}
+            emptyMessage="Belum ada data evaluasi untuk program ini"
+          />
+        </MorphingTabContent>
+      </MotionCard>
 
       {/* Modal Detail Respons */}
       <Modal

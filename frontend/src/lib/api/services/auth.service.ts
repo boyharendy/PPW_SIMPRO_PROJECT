@@ -18,8 +18,9 @@ export const authService = {
   /**
    * Login user with email and password
    */
-  async login(payload: LoginPayload): Promise<ApiResponse<AuthResponse>> {
+  async login(payload: LoginPayload, options?: Pick<RequestInit, 'redirect'>): Promise<ApiResponse<AuthResponse>> {
     const res = await apiClient.post<AuthResponse>(API_ENDPOINTS.AUTH.LOGIN, payload, {
+      ...options,
       requiresAuth: false,
     });
 
@@ -85,6 +86,7 @@ export const authService = {
 
     if (res.data?.access_token) {
       tokenStorage.setAccessToken(res.data.access_token);
+      if (res.data.refresh_token) tokenStorage.setRefreshToken(res.data.refresh_token);
     }
 
     return res;

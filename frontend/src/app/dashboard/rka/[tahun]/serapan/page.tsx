@@ -4,12 +4,9 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  AlertCircle,
   AlertTriangle,
   ArrowLeft,
   CalendarClock,
-  CheckCircle2,
-  Clock,
   Layers,
   ListChecks,
   PieChart,
@@ -19,26 +16,26 @@ import {
 import PageHeader from '@/components/ui/PageHeader';
 import { StatCard } from '@/components/ui/StatCard';
 import { ExportMenu } from '@/components/ui/ExportMenu';
-import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import RkaSerapanTable, {
+  type CategoryAggregation,
+  type QuarterAggregation,
+  type SerapanViewDimension,
+} from '@/components/rka/RkaSerapanViews';
 import { rkaService } from '@/lib/api';
 import { useUser } from '@/lib/context';
 import {
   computeActivityTotal,
   downloadSerapanExcel,
   evaluateActivityMonitoring,
-  formatActivityQuarters,
   getActivityQuarters,
   getCurrentQuarterInfo,
   getQuarterFromDate,
-  resolveActivityPicName,
   RKA_CATEGORY_OPTIONS,
   RKA_QUARTERS,
 } from '@/lib/rka-utils';
 import type {
-  RkaActivity,
   RkaBudgetCategory,
-  RkaBudgetItem,
   RkaDocument,
   RkaQuarter,
   RkaRealization,
@@ -48,29 +45,13 @@ import {
   formatRupiah,
   getStatusLabel,
 } from '@/lib/utils';
+import MotionCard from '@/components/motion/MotionCard';
+import MorphingTabBar from '@/components/motion/MorphingTabBar';
+import MorphingTabContent from '@/components/motion/MorphingTabContent';
+import { getTabSwitchDirection } from '@/lib/animation-scope';
 
-type ViewDimension = 'KEGIATAN' | 'POS_ANGGARAN' | 'TRIWULAN';
-
-interface CategoryAggregation {
-  kategori: RkaBudgetCategory;
-  label: string;
-  jumlahPos: number;
-  pagu: number;
-  realisasi: number;
-  sisa: number;
-  pct: number;
-  items: Array<RkaBudgetItem & { kodeKegiatan: string; namaKegiatan: string }>;
-}
-
-interface QuarterAggregation {
-  tw: RkaQuarter;
-  jumlahKegiatan: number;
-  kegiatanTerlambat: number;
-  pagu: number;
-  realisasi: number;
-  pct: number;
-  kegiatanList: string[];
-}
+const DIMENSION_KEYS: readonly SerapanViewDimension[] = ['KEGIATAN', 'POS_ANGGARAN', 'TRIWULAN'];
+const QUARTER_KEYS = ['ALL', 'TW1', 'TW2', 'TW3', 'TW4'] as const;
 
 export default function Page() {
   const { tahun } = useParams<{ tahun: string }>();
@@ -83,8 +64,18 @@ export default function Page() {
   const [realizations, setRealizations] = useState<RkaRealization[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [viewDimension, setViewDimension] = useState<ViewDimension>('KEGIATAN');
+  const [viewDimension, setViewDimension] = useState<SerapanViewDimension>('KEGIATAN');
   const [filterTW, setFilterTW] = useState<'ALL' | RkaQuarter>('ALL');
+  const [contentDirection, setContentDirection] = useState<-1 | 0 | 1>(0);
+
+  const handleDimensionChange = (nextDim: SerapanViewDimension) => {
+    setContentDirection(getTabSwitchDirection(DIMENSION_KEYS, viewDimension, nextDim));
+    setViewDimension(nextDim);
+  };
+  const handleQuarterChange = (nextTw: 'ALL' | RkaQuarter) => {
+    setContentDirection(getTabSwitchDirection(QUARTER_KEYS, filterTW, nextTw));
+    setFilterTW(nextTw);
+  };
 
   const systemQuarter = useMemo(() => getCurrentQuarterInfo(), []);
   const [simQuarter, setSimQuarter] = useState<'AUTO' | RkaQuarter>('AUTO');
@@ -263,248 +254,6 @@ export default function Page() {
     }
   };
 
-  const kegiatanColumns: DataTableColumn<RkaActivity>[] = [
-    {
-      key: 'kode_kegiatan',
-      header: 'Kode & Kegiatan RKA',
-      render: (r) => (
-        <div className="space-y-0.5">
-          <div>
-            <span className="font-mono text-xs font-bold text-blue-600 mr-2">
-              {r.kode_kegiatan}
-            </span>
-            <span className="font-semibold text-slate-800 text-sm">{r.nama_kegiatan}</span>
-          </div>
-          <div className="text-[11px] text-slate-400">
-            Jadwal: <strong>{formatActivityQuarters(r)}</strong> • PIC: {resolveActivityPicName(r)}
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: 'pagu',
-      header: 'Alokasi Pagu',
-      render: (r) => (
-        <span className="text-xs text-slate-700 font-mono">
-          {formatRupiah(computeActivityTotal(r))}
-        </span>
-      ),
-    },
-    {
-      key: 'realisasi',
-      header: 'Realisasi Berjalan',
-      render: (r) => (
-        <span className="text-xs text-slate-800 font-mono font-semibold">
-          {formatRupiah(r.total_realisasi || 0)}
-        </span>
-      ),
-    },
-    {
-      key: 'serapan',
-      header: 'Persentase Serapan',
-      render: (r) => {
-        const pagu = computeActivityTotal(r);
-        const real = r.total_realisasi || 0;
-        const pct = calculateAbsorptionPercentage(real, pagu);
-        const isOver = real > pagu;
-        return (
-          <div className="w-40 space-y-1">
-            <div className="flex justify-between text-xs gap-2">
-              <span className={`font-bold ${isOver ? 'text-rose-600' : 'text-slate-800'}`}>
-                {pct}%
-              </span>
-              <span className={`text-[10px] ${isOver ? 'text-rose-600 font-semibold' : 'text-slate-400'}`}>
-                {isOver
-                  ? `Over ${formatRupiah(real - pagu)}`
-                  : `Sisa ${formatRupiah(Math.max(0, pagu - real))}`}
-              </span>
-            </div>
-            <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full ${
-                  isOver ? 'bg-rose-500' : pct >= 75 ? 'bg-emerald-500' : 'bg-blue-600'
-                }`}
-                style={{ width: `${Math.min(pct, 100)}%` }}
-              />
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      key: 'status',
-      header: 'Status & Penanda Jadwal (FR-38)',
-      render: (r) => {
-        const rkaYear = doc?.tahun_anggaran || Number(tahun || 2025);
-        const m = evaluateActivityMonitoring(
-          r,
-          rkaYear,
-          effectiveReference.year,
-          effectiveReference.quarter
-        );
-
-        return (
-          <div className="flex flex-col items-start gap-1">
-            <span
-              className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                m.scheduleBadgeTone === 'rose'
-                  ? 'bg-rose-50 text-rose-700 border-rose-200'
-                  : m.scheduleBadgeTone === 'amber'
-                  ? 'bg-amber-50 text-amber-700 border-amber-200'
-                  : m.scheduleBadgeTone === 'emerald'
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-slate-100 text-slate-600 border-slate-200'
-              }`}
-            >
-              {m.scheduleBadgeTone === 'rose' || m.scheduleBadgeTone === 'amber' ? (
-                <Clock size={10} />
-              ) : (
-                <CheckCircle2 size={10} />
-              )}
-              {m.scheduleBadgeText}
-            </span>
-
-            {m.isOverBudget && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200">
-                <AlertCircle size={10} /> Over-Pagu ({m.percentage}%)
-              </span>
-            )}
-          </div>
-        );
-      },
-    },
-  ];
-
-  const categoryColumns: DataTableColumn<CategoryAggregation>[] = [
-    {
-      key: 'label',
-      header: 'Kategori Pos Anggaran',
-      render: (c) => (
-        <div>
-          <span className="font-semibold text-sm text-slate-800 block">{c.label}</span>
-          <span className="text-[11px] text-slate-400">{c.jumlahPos} pos anggaran aktif</span>
-        </div>
-      ),
-    },
-    {
-      key: 'pagu',
-      header: 'Alokasi Pagu',
-      render: (c) => <span className="text-xs font-mono text-slate-700">{formatRupiah(c.pagu)}</span>,
-    },
-    {
-      key: 'realisasi',
-      header: 'Realisasi Berjalan',
-      render: (c) => (
-        <span className="text-xs font-mono font-semibold text-slate-800">
-          {formatRupiah(c.realisasi)}
-        </span>
-      ),
-    },
-    {
-      key: 'sisa',
-      header: 'Sisa / Selisih',
-      render: (c) => (
-        <span
-          className={`text-xs font-mono font-semibold ${
-            c.sisa < 0 ? 'text-rose-600' : 'text-slate-600'
-          }`}
-        >
-          {c.sisa < 0 ? `-${formatRupiah(Math.abs(c.sisa))}` : formatRupiah(c.sisa)}
-        </span>
-      ),
-    },
-    {
-      key: 'pct',
-      header: 'Persentase Serapan',
-      render: (c) => {
-        const isOver = c.realisasi > c.pagu;
-        return (
-          <div className="w-40 space-y-1">
-            <div className="flex justify-between text-xs">
-              <span className={`font-bold ${isOver ? 'text-rose-600' : 'text-slate-800'}`}>
-                {c.pct}%
-              </span>
-              {isOver && <span className="text-[10px] font-bold text-rose-600">Over-Pagu</span>}
-            </div>
-            <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full ${
-                  isOver ? 'bg-rose-500' : c.pct >= 75 ? 'bg-emerald-500' : 'bg-blue-600'
-                }`}
-                style={{ width: `${Math.min(c.pct, 100)}%` }}
-              />
-            </div>
-          </div>
-        );
-      },
-    },
-  ];
-
-  const quarterColumns: DataTableColumn<QuarterAggregation>[] = [
-    {
-      key: 'tw',
-      header: 'Triwulan',
-      render: (q) => (
-        <div>
-          <span className="font-bold text-sm text-blue-700">{q.tw}</span>
-          <span className="text-[11px] text-slate-400 block">
-            {q.kegiatanList.length > 0 ? q.kegiatanList.join(', ') : 'Tidak ada jadwal'}
-          </span>
-        </div>
-      ),
-    },
-    {
-      key: 'jumlahKegiatan',
-      header: 'Kegiatan Terjadwal',
-      render: (q) => (
-        <div className="text-xs">
-          <span className="font-semibold text-slate-800">{q.jumlahKegiatan} kegiatan</span>
-          {q.kegiatanTerlambat > 0 && (
-            <span className="block text-[11px] text-rose-600 font-semibold">
-              {q.kegiatanTerlambat} melewati jadwal
-            </span>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'pagu',
-      header: 'Pagu Terjadwal (Proporsional)',
-      render: (q) => <span className="text-xs font-mono text-slate-700">{formatRupiah(q.pagu)}</span>,
-    },
-    {
-      key: 'realisasi',
-      header: 'Realisasi Tercatat di TW',
-      render: (q) => (
-        <span className="text-xs font-mono font-semibold text-slate-800">
-          {formatRupiah(q.realisasi)}
-        </span>
-      ),
-    },
-    {
-      key: 'pct',
-      header: 'Serapan Triwulan',
-      render: (q) => {
-        const isOver = q.realisasi > q.pagu && q.pagu > 0;
-        return (
-          <div className="w-36 space-y-1">
-            <span className={`text-xs font-bold block ${isOver ? 'text-rose-600' : 'text-slate-800'}`}>
-              {q.pct}%
-            </span>
-            <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full ${
-                  isOver ? 'bg-rose-500' : q.pct >= 75 ? 'bg-emerald-500' : 'bg-blue-600'
-                }`}
-                style={{ width: `${Math.min(q.pct, 100)}%` }}
-              />
-            </div>
-          </div>
-        );
-      },
-    },
-  ];
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -569,12 +318,12 @@ export default function Page() {
         }
       />
 
-      {/* Alert Ringkasan Over-Pagu & Belum Terlaksana (FR-38) */}
+      {/* Alert Ringkasan Over-Pagu & Belum Terlaksana */}
       {(alertCounts.overBudget > 0 || alertCounts.unexecutedOverdue > 0) && (
         <div className="rounded-xl border border-rose-200 bg-rose-50/80 p-3.5 text-xs text-rose-900 flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2 font-bold">
             <AlertTriangle size={15} className="text-rose-600 shrink-0" />
-            <span>Peringatan Serapan &amp; Jadwal (FR-38):</span>
+            <span>Peringatan Serapan &amp; Jadwal:</span>
           </div>
           {alertCounts.overBudget > 0 && (
             <span className="px-2.5 py-0.5 rounded-full bg-white border border-rose-200 font-semibold text-rose-700">
@@ -592,6 +341,7 @@ export default function Page() {
       {/* 3 StatCards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
+          animationIndex={0}
           title={filterTW === 'ALL' ? 'Total Pagu Aktif' : `Pagu Terjadwal (${filterTW})`}
           value={formatRupiah(totalPagu)}
           subtitle={`${filteredActivities.length} kegiatan ditampilkan`}
@@ -599,6 +349,7 @@ export default function Page() {
           icon={<Wallet size={16} />}
         />
         <StatCard
+          animationIndex={1}
           title="Total Realisasi Belanja"
           value={formatRupiah(totalRealisasi)}
           subtitle={
@@ -610,6 +361,7 @@ export default function Page() {
           icon={<PieChart size={16} />}
         />
         <StatCard
+          animationIndex={2}
           title="Persentase Serapan Pagu"
           value={`${pctTotal}%`}
           subtitle="Kalkulasi aktual tanpa clamping"
@@ -620,147 +372,54 @@ export default function Page() {
       </div>
 
       {/* View Switcher (3 Dimensi FR-38) + Filter Triwulan + Tabel */}
-      <div className="card space-y-4">
+      <MotionCard index={0} interactive={false} className="card space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          {/* View Switcher 3 Dimensi */}
-          <div className="inline-flex rounded-xl border border-slate-200 p-1 bg-slate-50 flex-wrap">
-            <button
-              type="button"
-              onClick={() => setViewDimension('KEGIATAN')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg inline-flex items-center gap-1.5 transition-colors ${
-                viewDimension === 'KEGIATAN'
-                  ? 'bg-white text-blue-700 shadow-xs border border-slate-200/70'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <ListChecks size={13} /> Per Kegiatan
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewDimension('POS_ANGGARAN')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg inline-flex items-center gap-1.5 transition-colors ${
-                viewDimension === 'POS_ANGGARAN'
-                  ? 'bg-white text-blue-700 shadow-xs border border-slate-200/70'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Layers size={13} /> Per Pos Anggaran
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewDimension('TRIWULAN')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg inline-flex items-center gap-1.5 transition-colors ${
-                viewDimension === 'TRIWULAN'
-                  ? 'bg-white text-blue-700 shadow-xs border border-slate-200/70'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <CalendarClock size={13} /> Per Triwulan
-            </button>
-          </div>
+          <MorphingTabBar
+            layoutId="rka-serapan-dimension"
+            value={viewDimension}
+            onChange={handleDimensionChange}
+            containerClassName="inline-flex rounded-xl border border-slate-200 p-1 bg-slate-50 flex-wrap"
+            buttonClassName="px-3 py-1.5 text-xs font-semibold rounded-lg"
+            activePillClassName="bg-white shadow-xs border border-slate-200/70 rounded-lg"
+            activeTextClassName="text-blue-700"
+            options={[
+              { value: 'KEGIATAN', label: <><ListChecks size={13} /> Per Kegiatan</> },
+              { value: 'POS_ANGGARAN', label: <><Layers size={13} /> Per Pos Anggaran</> },
+              { value: 'TRIWULAN', label: <><CalendarClock size={13} /> Per Triwulan</> },
+            ]}
+          />
 
-          {/* Filter Triwulan (untuk Per Kegiatan & Per Pos Anggaran) */}
           {viewDimension !== 'TRIWULAN' && (
-            <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 self-start lg:self-auto">
-              {(['ALL', 'TW1', 'TW2', 'TW3', 'TW4'] as const).map((tw) => (
-                <button
-                  key={tw}
-                  type="button"
-                  onClick={() => setFilterTW(tw)}
-                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
-                    filterTW === tw
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  {tw === 'ALL' ? 'Semua Triwulan' : tw}
-                </button>
-              ))}
-            </div>
+            <MorphingTabBar
+              layoutId="rka-serapan-quarter"
+              value={filterTW}
+              onChange={handleQuarterChange}
+              containerClassName="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 self-start lg:self-auto"
+              buttonClassName="px-3 py-1 text-xs font-semibold rounded-md"
+              options={QUARTER_KEYS.map((tw) => ({
+                value: tw,
+                label: tw === 'ALL' ? 'Semua Triwulan' : tw,
+              }))}
+            />
           )}
         </div>
 
-        {isLoading ? (
-          <div className="p-8 text-center text-sm text-slate-400">Memuat data monitoring...</div>
-        ) : viewDimension === 'KEGIATAN' ? (
-          <DataTable
-            columns={kegiatanColumns}
-            data={filteredActivities}
-            emptyMessage="Tidak ada kegiatan terjadwal pada triwulan ini."
+        <MorphingTabContent
+          activeKey={`${viewDimension}:${viewDimension === 'TRIWULAN' ? 'ALL' : filterTW}`}
+          direction={contentDirection}
+        >
+          <RkaSerapanTable
+            isLoading={isLoading}
+            viewDimension={viewDimension}
+            filteredActivities={filteredActivities}
+            byCategory={byCategory}
+            byQuarter={byQuarter}
+            rkaYear={doc?.tahun_anggaran || Number(tahun || 2025)}
+            referenceYear={effectiveReference.year}
+            referenceQuarter={effectiveReference.quarter}
           />
-        ) : viewDimension === 'POS_ANGGARAN' ? (
-          <div className="space-y-4">
-            <DataTable
-              columns={categoryColumns}
-              data={byCategory}
-              emptyMessage="Belum ada pos anggaran pada filter ini."
-            />
-
-            {/* Rincian tiap pos di dalam kategori */}
-            {byCategory.length > 0 && (
-              <div className="pt-2 border-t border-slate-100 space-y-2">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Rincian Pos Anggaran Per Kategori
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {byCategory.map((cat) => (
-                    <div
-                      key={cat.kategori}
-                      className="rounded-xl border border-slate-200 p-3.5 bg-slate-50/50 space-y-2"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-800">{cat.label}</span>
-                        <span
-                          className={`text-xs font-bold ${
-                            cat.realisasi > cat.pagu ? 'text-rose-600' : 'text-blue-700'
-                          }`}
-                        >
-                          {cat.pct}%
-                        </span>
-                      </div>
-                      <div className="space-y-1.5">
-                        {cat.items.map((item) => {
-                          const real = item.realisasi_total || 0;
-                          const pct = calculateAbsorptionPercentage(real, item.nominal_anggaran);
-                          const isOver = real > item.nominal_anggaran;
-                          return (
-                            <div
-                              key={item.id}
-                              className="bg-white rounded-lg border border-slate-200/80 p-2 text-[11px] flex items-center justify-between gap-2"
-                            >
-                              <div className="min-w-0">
-                                <span className="font-mono font-bold text-slate-500 mr-1.5">
-                                  {item.kode_pos}
-                                </span>
-                                <span className="font-medium text-slate-800 truncate">
-                                  {item.nama_pos}
-                                </span>
-                                <span className="block text-[10px] text-slate-400">
-                                  {item.kodeKegiatan} • {getStatusLabel(item.sumber_dana)}
-                                </span>
-                              </div>
-                              <div className="text-right shrink-0 font-mono">
-                                <span className={`font-bold block ${isOver ? 'text-rose-600' : 'text-slate-800'}`}>
-                                  {formatRupiah(real)} ({pct}%)
-                                </span>
-                                <span className="text-[10px] text-slate-400">
-                                  Pagu {formatRupiah(item.nominal_anggaran)}
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <DataTable columns={quarterColumns} data={byQuarter} />
-        )}
-      </div>
+        </MorphingTabContent>
+      </MotionCard>
     </div>
   );
 }

@@ -7,6 +7,8 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import Modal from '@/components/ui/Modal';
 import type { RkaVersion } from '@/lib/types';
 import { formatDateShort, formatRupiah, getStatusLabel } from '@/lib/utils';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
 export function RkaNotFoundState({ tahun }: { tahun: string }) {
   return (
@@ -119,11 +121,11 @@ export default function RkaVersionSummarySection({
 
   return (
     <>
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+      <MotionCard index={1} interactive={false} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <GitBranch size={18} className="text-slate-400" />
-            <h2 className="text-base font-semibold text-slate-800">Riwayat Versi Dokumen</h2>
+            <WordRevealHeading as="h2" text="Riwayat Versi Dokumen" className="text-base font-semibold text-slate-800" />
           </div>
           <button
             type="button"
@@ -164,7 +166,7 @@ export default function RkaVersionSummarySection({
             );
           })}
         </div>
-      </div>
+      </MotionCard>
 
       {isKaprodi && (
         <Modal

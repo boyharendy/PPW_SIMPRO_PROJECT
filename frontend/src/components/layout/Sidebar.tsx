@@ -185,6 +185,10 @@ export default function Sidebar() {
       return rps.filter((r) => r.status === 'DIAJUKAN' || r.status === 'DIREVIEW').length;
     }
     if (item.href === '/dashboard/publikasi/verifikasi') {
+      const verifs = storageSync.get<any[]>(STORAGE_KEYS.PUBLICATION_VERIFICATIONS, []);
+      if (verifs && verifs.length > 0) {
+        return verifs.filter((v) => v.status === 'MENUNGGU').length;
+      }
       const pubs = storageSync.get<Publication[]>(STORAGE_KEYS.PUBLICATIONS, mockPublications);
       return pubs.filter((p) => p.status_verifikasi === 'MENUNGGU').length;
     }

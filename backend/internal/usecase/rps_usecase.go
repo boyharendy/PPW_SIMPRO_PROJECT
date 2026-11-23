@@ -8,6 +8,7 @@ import (
 )
 
 type RpsUsecase interface {
+	AssignedReview(id, user string) bool
 	GetSubmissions(courseID, status string) ([]*model.RpsSubmission, error)
 	GetSubmissionByID(id string) (*model.RpsSubmission, error)
 	CreateSubmission(userID string, sub *model.RpsSubmission) (*model.RpsSubmission, error)
@@ -95,20 +96,25 @@ func (u *rpsUsecase) ReviewSubmission(id string, reviewerID string, komentar, re
 }
 
 func (u *rpsUsecase) ReviewSubmissionWithChecklist(id string, reviewerID string, komentar, rekomendasi string, items []*model.RpsReviewItem) error {
-	status := model.RpsStatusDisetujuiGKM
-	if rekomendasi == "REVISI" || rekomendasi == "PERLU_REVISI" {
-		status = model.RpsStatusPerluRevisi
-	}
-	if err := u.repo.UpdateStatus(id, status); err != nil {
+	sub, err := u.repo.FindByID(id)
+	if err != nil {
 		return err
 	}
-	return u.repo.AddReview(&model.RpsReview{
-		RpsSubmissionID: id,
-		ReviewerID:      reviewerID,
-		Komentar:        komentar,
-		Rekomendasi:     rekomendasi,
-		Items:           items,
-	})
+	if sub.DosenPenyusunID == reviewerID {
+		return errors.New("penyusun tidak dapat menilai RPS sendiri")
+	}
+	for _, review := range sub.Reviews {
+		if review.ReviewerID != reviewerID || review.Status != "DITUGASKAN" {
+			continue
+		}
+		if len(items) > 0 {
+			if err = u.UpdateReviewItems(review.ID, items); err != nil {
+				return err
+			}
+		}
+		return u.CompleteReview(review.ID, rekomendasi, komentar)
+	}
+	return errors.New("penugasan review aktif tidak ditemukan")
 }
 
 func (u *rpsUsecase) UpdateReviewItems(reviewID string, items []*model.RpsReviewItem) error {
@@ -119,7 +125,7 @@ func (u *rpsUsecase) UpdateReviewItems(reviewID string, items []*model.RpsReview
 }
 
 func (u *rpsUsecase) CompleteReview(reviewID string, rekomendasi, komentar string) error {
-	if rekomendasi == "" {
+	if rekomendasi != "PERLU_REVISI" && rekomendasi != "DISETUJUI" && rekomendasi != "DISETUJUI_GKM" {
 		return errors.New("rekomendasi review (DISETUJUI / PERLU_REVISI) wajib dipilih")
 	}
 	return u.repo.CompleteReview(reviewID, rekomendasi, komentar)
@@ -143,3 +149,5 @@ func (u *rpsUsecase) RatifySubmission(id string) error {
 func (u *rpsUsecase) GetRecap() (*model.RpsRecap, error) {
 	return u.repo.GetRecap()
 }
+
+func (u *rpsUsecase) AssignedReview(id, user string) bool { return u.repo.AssignedReview(id, user) }

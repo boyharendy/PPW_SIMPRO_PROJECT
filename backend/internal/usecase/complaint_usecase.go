@@ -2,8 +2,11 @@ package usecase
 
 import (
 	"errors"
-	"fmt"
-	"math/rand"
+
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"github.com/google/uuid"
 	"strings"
 	"time"
 
@@ -13,12 +16,13 @@ import (
 )
 
 type ComplaintUsecase interface {
-	GetComplaints(userRole model.Role, isViolenceHandler bool, kategori string, status string, page, limit int) ([]*model.Complaint, int, error)
+	CanHandle(id string, u *model.User, allowAssignee bool) bool
+	GetComplaints(userRole model.Role, isViolenceHandler bool, kategori string, status string, page, limit int, sensitiveOnly ...bool) ([]*model.Complaint, int, error)
 	GetComplaintByID(id string, userRole model.Role, isViolenceHandler bool) (*model.Complaint, error)
 	GetPublicComplaint(ticket string) (*model.Complaint, error)
 	CreatePublicComplaint(req *model.PublicComplaintRequest) (*model.Complaint, error)
-	IssuePermit(userID string) (string, time.Time, error)
-	AddPublicMessage(ticket string, pesan string) error
+	IssuePermit(ctx context.Context, userID string) (string, time.Time, error)
+	AddPublicMessage(ticket, pesan, attachment string) (string, error)
 	SubmitPublicRating(ticket string, rating int, komentar string) error
 	UpdateComplaintStatus(id string, status model.ComplaintStatus, petugasID string) error
 	VerifyComplaint(id string, petugasID string) error
@@ -26,7 +30,7 @@ type ComplaintUsecase interface {
 	CloseComplaint(id string, petugasID, alasan string) error
 	GetEscalations() ([]*model.ComplaintMetadata, error)
 	GetMyDispositions(userID string) ([]*model.Complaint, error)
-	AddInternalMessage(id string, senderID string, senderRole model.Role, pesan string) error
+	AddInternalMessage(id string, senderID string, senderRole model.Role, pesan string, internal bool) error
 	AddDisposition(id string, dariPetugasID, kepadaPetugasID, catatan string, deadline *time.Time) error
 	ForwardToSatgas(id, tanggal, nomorReferensi, petugasSatgas string) error
 	GetRecap() (*model.ComplaintRecap, error)
@@ -34,24 +38,29 @@ type ComplaintUsecase interface {
 
 type complaintUsecase struct {
 	repo          repository.ComplaintRepository
+	pepper        []byte
 	permitManager *permit.PermitManager
 }
 
 func NewComplaintUsecase(repo repository.ComplaintRepository) ComplaintUsecase {
-	return &complaintUsecase{
-		repo:          repo,
-		permitManager: permit.NewPermitManager(""),
+	var key [32]byte
+	if _, err := rand.Read(key[:]); err != nil {
+		panic(err)
 	}
+	return NewSecureComplaints(repo, permit.NewPermitManager(""), key[:])
+}
+func NewSecureComplaints(repo repository.ComplaintRepository, manager *permit.PermitManager, pepper []byte) ComplaintUsecase {
+	return &complaintUsecase{repo: repo, permitManager: manager, pepper: pepper}
 }
 
-func (u *complaintUsecase) IssuePermit(userID string) (string, time.Time, error) {
+func (u *complaintUsecase) IssuePermit(ctx context.Context, userID string) (string, time.Time, error) {
 	if userID == "" {
 		return "", time.Time{}, errors.New("identitas mahasiswa wajib diverifikasi untuk penerbitan permit")
 	}
-	return u.permitManager.IssuePermit(userID)
+	return u.permitManager.Issue(ctx, userID, 3)
 }
 
-func (u *complaintUsecase) GetComplaints(userRole model.Role, isViolenceHandler bool, kategori string, status string, page, limit int) ([]*model.Complaint, int, error) {
+func (u *complaintUsecase) GetComplaints(userRole model.Role, isViolenceHandler bool, kategori string, status string, page, limit int, sensitiveOnly ...bool) ([]*model.Complaint, int, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -61,8 +70,14 @@ func (u *complaintUsecase) GetComplaints(userRole model.Role, isViolenceHandler 
 	offset := (page - 1) * limit
 
 	var isSensitifFilter *bool
+	if len(sensitiveOnly) > 0 && sensitiveOnly[0] {
+		if userRole != model.RolePetugasKekerasan && userRole != model.RoleKaprodi && !isViolenceHandler {
+			return []*model.Complaint{}, 0, nil
+		}
+		isSensitifFilter = &sensitiveOnly[0]
+	}
 	// Mahasiswa / Dosen / Staff without special complaint role should not see sensitive complaints
-	if userRole != model.RolePetugasKekerasan && userRole != model.RolePengelolaAduan && userRole != model.RoleKaprodi && !isViolenceHandler {
+	if userRole != model.RolePetugasKekerasan && userRole != model.RoleKaprodi && !isViolenceHandler {
 		f := false
 		isSensitifFilter = &f
 	}
@@ -73,10 +88,9 @@ func (u *complaintUsecase) GetComplaints(userRole model.Role, isViolenceHandler 
 	}
 
 	// Mask sensitive details for roles that are not Petugas Kekerasan / PGL-K
-	for _, c := range complaints {
+	for i, c := range complaints {
 		if c.IsSensitif && !isViolenceHandler && userRole != model.RolePetugasKekerasan {
-			c.IsiAduan = "[KONTEN DIRAHASIAKAN / KHUSUS SATGAS & PETUGAS KEKERASAN]"
-			c.LampiranURL = ""
+			complaints[i] = metadataOnly(c)
 		}
 	}
 
@@ -90,16 +104,17 @@ func (u *complaintUsecase) GetComplaintByID(id string, userRole model.Role, isVi
 	}
 
 	if c.IsSensitif && !isViolenceHandler && userRole != model.RolePetugasKekerasan {
-		c.IsiAduan = "[KONTEN DIRAHASIAKAN / KHUSUS SATGAS & PETUGAS KEKERASAN]"
-		c.LampiranURL = ""
-		c.Messages = []*model.ComplaintMessage{}
+		if userRole != model.RoleKaprodi {
+			return nil, errors.New("aduan tidak ditemukan")
+		}
+		return metadataOnly(c), nil
 	}
 
 	return c, nil
 }
 
 func (u *complaintUsecase) GetPublicComplaint(ticket string) (*model.Complaint, error) {
-	return u.repo.FindByTicket(ticket)
+	return u.repo.FindByTicket(permit.TicketHash(u.pepper, ticket))
 }
 
 func (u *complaintUsecase) CreatePublicComplaint(req *model.PublicComplaintRequest) (*model.Complaint, error) {
@@ -107,19 +122,16 @@ func (u *complaintUsecase) CreatePublicComplaint(req *model.PublicComplaintReque
 		return nil, errors.New("judul dan isi aduan wajib diisi")
 	}
 
-	// Validasi token permit jika dikirimkan (FR-48)
-	if req.PermitToken != "" {
-		if err := u.permitManager.ValidatePermit(req.PermitToken); err != nil {
-			return nil, err
-		}
+	key, exp, err := u.permitManager.Verify(req.PermitToken)
+	if err != nil {
+		return nil, err
 	}
-
-	// Buat kode tiket format ADU-XXXX-XXXX-XXXX (±80 bit entropy)
-	kodeTiket := fmt.Sprintf("ADU-%04X-%04X-%04X", rand.Intn(0x10000), rand.Intn(0x10000), rand.Intn(0x10000))
-
-	c := &model.Complaint{
-		KodeTiket:        kodeTiket,
-		NomorAduan:       kodeTiket,
+	var nonce [16]byte
+	if _, err = rand.Read(nonce[:]); err != nil {
+		return nil, err
+	}
+	ticket := "ADU-" + strings.ToUpper(hex.EncodeToString(nonce[:]))
+	c := &model.Complaint{KodeTiketHash: permit.TicketHash(u.pepper, ticket), NomorAduan: "LAP-" + uuid.NewString(),
 		Kategori:         req.Kategori,
 		Judul:            req.Judul,
 		IsiAduan:         req.IsiAduan,
@@ -131,37 +143,54 @@ func (u *complaintUsecase) CreatePublicComplaint(req *model.PublicComplaintReque
 		TanggalDiterima:  time.Now().Format("2006-01-02"),
 	}
 
-	return u.repo.Create(c)
+	created, err := u.repo.CreatePermitted(c, key, exp)
+	if err != nil {
+		return nil, err
+	}
+	receipt := *created
+	receipt.KodeTiket = ticket
+	receipt.KodeTiketHash = ""
+	return &receipt, nil
 }
 
-func (u *complaintUsecase) AddPublicMessage(ticket string, pesan string) error {
-	c, err := u.repo.FindByTicket(ticket)
+func (u *complaintUsecase) AddPublicMessage(ticket, pesan, attachment string) (string, error) {
+	c, err := u.repo.FindByTicket(permit.TicketHash(u.pepper, ticket))
 	if err != nil {
-		return err
+		return "", err
 	}
 
+	if c.Status == model.ComplaintStatusDitutup {
+		return "", errors.New("aduan sudah ditutup")
+	}
 	msg := &model.ComplaintMessage{
-		ComplaintID: c.ID,
-		SenderType:  "PELAPOR",
-		Pesan:       pesan,
+		ID: uuid.NewString(), ComplaintID: c.ID, LampiranURL: attachment,
+		SenderType: "PELAPOR",
+		Pesan:      pesan,
 	}
 	if err := u.repo.AddMessage(msg); err != nil {
-		return err
+		return "", err
 	}
 
 	// Balasan pelapor setelah SELESAI membuka kembali aduan (FR-48)
 	if c.Status == model.ComplaintStatusSelesai {
-		return u.repo.UpdateStatus(c.ID, model.ComplaintStatusDitindaklanjuti, "")
+		return msg.ID, u.repo.UpdateStatus(c.ID, model.ComplaintStatusDitindaklanjuti, "")
 	}
 
-	return nil
+	return msg.ID, nil
 }
 
 func (u *complaintUsecase) SubmitPublicRating(ticket string, rating int, komentar string) error {
 	if rating < 1 || rating > 5 {
 		return errors.New("rating kepuasan harus bernilai antara 1 hingga 5")
 	}
-	return u.repo.SubmitRating(ticket, rating, komentar)
+	c, err := u.GetPublicComplaint(ticket)
+	if err != nil {
+		return err
+	}
+	if c.Status != model.ComplaintStatusSelesai && c.Status != model.ComplaintStatusDitutup {
+		return errors.New("aduan belum selesai")
+	}
+	return u.repo.SubmitRating(permit.TicketHash(u.pepper, ticket), rating, komentar)
 }
 
 func (u *complaintUsecase) UpdateComplaintStatus(id string, status model.ComplaintStatus, petugasID string) error {
@@ -194,12 +223,12 @@ func (u *complaintUsecase) GetMyDispositions(userID string) ([]*model.Complaint,
 	return u.repo.FindMyDispositions(userID)
 }
 
-func (u *complaintUsecase) AddInternalMessage(id string, senderID string, senderRole model.Role, pesan string) error {
+func (u *complaintUsecase) AddInternalMessage(id string, senderID string, senderRole model.Role, pesan string, internal bool) error {
 	msg := &model.ComplaintMessage{
 		ComplaintID: id,
 		SenderType:  "PETUGAS",
-		SenderID:    senderID,
-		Pesan:       pesan,
+		SenderID:    senderID, IsCatatanInternal: internal,
+		Pesan: pesan,
 	}
 	return u.repo.AddMessage(msg)
 }
@@ -227,4 +256,27 @@ func (u *complaintUsecase) ForwardToSatgas(id, tanggal, nomorReferensi, petugasS
 
 func (u *complaintUsecase) GetRecap() (*model.ComplaintRecap, error) {
 	return u.repo.GetRecap()
+}
+
+func metadataOnly(c *model.Complaint) *model.Complaint {
+	return &model.Complaint{ID: c.ID, NomorAduan: c.NomorAduan, Kategori: c.Kategori, IsSensitif: true, Status: c.Status, TanggalDiterima: c.TanggalDiterima, IsEscalatedKaprodi: c.IsEscalatedKaprodi}
+}
+
+func (u *complaintUsecase) CanHandle(id string, actor *model.User, allowAssignee bool) bool {
+	c, err := u.repo.FindByID(id)
+	if err != nil || actor == nil {
+		return false
+	}
+	if allowAssignee && !c.IsSensitif && c.Assigned(actor.ID) {
+		return true
+	}
+	switch actor.ActiveRole {
+	case model.RolePetugasKekerasan:
+		return true
+	case model.RolePengelolaAduan:
+		return !c.IsSensitif || actor.PenangananKekerasan
+	case model.RoleKaprodi:
+		return !c.IsSensitif
+	}
+	return false
 }

@@ -34,6 +34,8 @@ import {
 import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import type { BusinessTrip, Publication, RpsSubmission, Complaint } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
 export default function DashboardPage() {
   const { user, currentRole } = useUser();
@@ -64,7 +66,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-4 lg:space-y-3.5 min-w-0">
       {/* 1. LoopAI Top Welcome & Context Bar */}
-      <div className="rounded-[20px] border border-slate-200/80 bg-white p-4 sm:p-4.5 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)]">
+      <MotionCard index={0} interactive={false} className="rounded-[20px] border border-slate-200/80 bg-white p-4 sm:p-4.5 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)]">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 lg:gap-3">
           <div className="space-y-1.5 sm:space-y-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -76,9 +78,11 @@ export default function DashboardPage() {
                 Peran: {currentRole.replace('_', ' ')}
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 leading-snug lg:truncate">
-              Selamat Datang, {user?.name || 'Civitas Akademika'}!
-            </h1>
+            <WordRevealHeading
+              as="h1"
+              text={`Selamat Datang, ${user?.name || 'Civitas Akademika'}!`}
+              className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 leading-snug"
+            />
             <p className="text-xs sm:text-sm text-slate-500 leading-relaxed line-clamp-2 sm:line-clamp-1">
               Sistem Informasi Manajemen Program Studi (SIMPRO) mengintegrasikan layanan kemahasiswaan serta tata kelola, mutu &amp; akreditasi.
             </p>
@@ -130,14 +134,15 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
-      </div>
+      </MotionCard>
 
       {/* 2. KPI Metric Cards (1 Kolom Mobile, 2 Kolom Tablet md:, 3 Kolom Desktop lg:) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
         {/* Metric 1: Kepuasan Mitra */}
+        <MotionCard index={0} interactive className="min-w-0 h-full rounded-[20px]">
         <Link
           href="/dashboard/kepuasan-mitra"
-          className="min-w-0 rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] hover:border-indigo-300 transition-all flex flex-col justify-between"
+          className="min-w-0 h-full rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] hover:border-indigo-300 transition-colors flex flex-col justify-between"
         >
           <div className="flex items-center justify-between gap-2 min-w-0">
             <span className="text-sm sm:text-base font-semibold text-slate-800 truncate">Kepuasan Mitra</span>
@@ -155,11 +160,13 @@ export default function DashboardPage() {
             </span>
           </div>
         </Link>
+        </MotionCard>
 
         {/* Metric 2: Publikasi */}
+        <MotionCard index={1} interactive className="min-w-0 h-full rounded-[20px]">
         <Link
           href="/dashboard/publikasi"
-          className="min-w-0 rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] hover:border-indigo-300 transition-all flex flex-col justify-between"
+          className="min-w-0 h-full rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] hover:border-indigo-300 transition-colors flex flex-col justify-between"
         >
           <div className="flex items-center justify-between gap-2 min-w-0">
             <span className="text-sm sm:text-base font-semibold text-slate-800 truncate">Publikasi 2025</span>
@@ -177,11 +184,13 @@ export default function DashboardPage() {
             </span>
           </div>
         </Link>
+        </MotionCard>
 
         {/* Metric 3: Perjalanan Dinas */}
+        <MotionCard index={2} interactive className="min-w-0 h-full rounded-[20px]">
         <Link
           href="/dashboard/perjalanan-dinas"
-          className="min-w-0 rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] hover:border-indigo-300 transition-all flex flex-col justify-between"
+          className="min-w-0 h-full rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] hover:border-indigo-300 transition-colors flex flex-col justify-between"
         >
           <div className="flex items-center justify-between gap-2 min-w-0">
             <span className="text-sm sm:text-base font-semibold text-slate-800 truncate">Perjalanan Dinas</span>
@@ -199,11 +208,13 @@ export default function DashboardPage() {
             </span>
           </div>
         </Link>
+        </MotionCard>
 
         {/* Metric 4: Serapan RKA */}
+        <MotionCard index={3} interactive className="min-w-0 h-full rounded-[20px]">
         <Link
           href="/dashboard/rka/2025/serapan"
-          className="min-w-0 rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] hover:border-indigo-300 transition-all flex flex-col justify-between"
+          className="min-w-0 h-full rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] hover:border-indigo-300 transition-colors flex flex-col justify-between"
         >
           <div className="flex items-center justify-between gap-2 min-w-0">
             <span className="text-sm sm:text-base font-semibold text-slate-800 truncate">Serapan Anggaran RKA</span>
@@ -220,11 +231,13 @@ export default function DashboardPage() {
             </span>
           </div>
         </Link>
+        </MotionCard>
 
         {/* Metric 5: RPS Tuntas */}
+        <MotionCard index={4} interactive className="min-w-0 h-full rounded-[20px]">
         <Link
           href="/dashboard/rps/rekap"
-          className="min-w-0 rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] hover:border-indigo-300 transition-all flex flex-col justify-between"
+          className="min-w-0 h-full rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] hover:border-indigo-300 transition-colors flex flex-col justify-between"
         >
           <div className="flex items-center justify-between gap-2 min-w-0">
             <span className="text-sm sm:text-base font-semibold text-slate-800 truncate">RPS &amp; Kurikulum</span>
@@ -242,11 +255,13 @@ export default function DashboardPage() {
             </span>
           </div>
         </Link>
+        </MotionCard>
 
         {/* Metric 6: Aduan Terbuka */}
+        <MotionCard index={5} interactive className="min-w-0 h-full rounded-[20px]">
         <Link
           href="/dashboard/kelola/aduan"
-          className="min-w-0 rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] hover:border-indigo-300 transition-all flex flex-col justify-between"
+          className="min-w-0 h-full rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] hover:border-indigo-300 transition-colors flex flex-col justify-between"
         >
           <div className="flex items-center justify-between gap-2 min-w-0">
             <span className="text-sm sm:text-base font-semibold text-slate-800 truncate">Aduan Mahasiswa</span>
@@ -264,15 +279,16 @@ export default function DashboardPage() {
             </span>
           </div>
         </Link>
+        </MotionCard>
       </div>
 
       {/* 3. Operational 3-Column LoopAI Bento Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 items-stretch">
         {/* Kolom 1: Priority Tasks Style (Antrean Tindak Lanjut) */}
-        <div className="min-w-0 rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] flex flex-col justify-between">
+        <MotionCard index={0} interactive={false} className="min-w-0 rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between gap-2 pb-2.5 mb-2">
-              <h3 className="text-base sm:text-lg font-bold text-slate-900 truncate">Tugas Prioritas</h3>
+              <WordRevealHeading as="h3" text="Tugas Prioritas" className="text-base sm:text-lg font-bold text-slate-900" />
               <span className="shrink-0 whitespace-nowrap rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-bold text-indigo-700 border border-indigo-200">
                 {currentRole === 'MAHASISWA' ? '0 Tugas' : '4 Menunggu'}
               </span>
@@ -382,13 +398,13 @@ export default function DashboardPage() {
             </div>
             )}
           </div>
-        </div>
+        </MotionCard>
 
         {/* Kolom 2: Notifikasi Sistem & Portal Publik */}
-        <div className="min-w-0 rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] flex flex-col justify-between space-y-3">
+        <MotionCard index={1} interactive={false} className="min-w-0 rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] flex flex-col justify-between space-y-3">
           <div>
             <div className="flex items-center justify-between gap-2 pb-2.5 mb-2">
-              <h3 className="text-base sm:text-lg font-bold text-slate-900 truncate">Notifikasi &amp; Pembaruan</h3>
+              <WordRevealHeading as="h3" text="Notifikasi & Pembaruan" className="text-base sm:text-lg font-bold text-slate-900" />
               <span className="shrink-0 whitespace-nowrap rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700 border border-slate-200">
                 {mockNotifications.length} Aktivitas
               </span>
@@ -417,16 +433,21 @@ export default function DashboardPage() {
 
           {/* Bagian Bawah: Portal Publik */}
           <div className="pt-2.5 border-t border-slate-100">
-            <h4 className="text-xs sm:text-sm font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center justify-between gap-2">
-              <span className="min-w-0 truncate">Portal Publik Terintegrasi</span>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <WordRevealHeading
+                as="h4"
+                text="Portal Publik Terintegrasi"
+                className="text-xs sm:text-sm font-bold text-slate-700 uppercase tracking-wider min-w-0"
+              />
               <span className="text-xs text-indigo-600 font-semibold shrink-0 whitespace-nowrap">Tanpa Login</span>
-            </h4>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-2">
+              <MotionCard index={0} interactive className="min-w-0 rounded-2xl">
               <Link
                 href="/mitra/isi/tok-telkom-2025"
                 target="_blank"
-                className="min-w-0 flex items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3 sm:p-2.5 text-xs sm:text-sm hover:border-indigo-300 hover:bg-indigo-50/40 transition-all"
+                className="min-w-0 flex items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3 sm:p-2.5 text-xs sm:text-sm hover:border-indigo-300 hover:bg-indigo-50/40 transition-colors"
               >
                 <div className="min-w-0 pr-2">
                   <p className="font-bold text-slate-800 text-sm truncate">Kuesioner Mitra</p>
@@ -434,11 +455,13 @@ export default function DashboardPage() {
                 </div>
                 <ExternalLink className="h-4 w-4 text-slate-400 shrink-0" />
               </Link>
+              </MotionCard>
 
+              <MotionCard index={1} interactive className="min-w-0 rounded-2xl">
               <Link
                 href="/aduan/lacak"
                 target="_blank"
-                className="min-w-0 flex items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3 sm:p-2.5 text-xs sm:text-sm hover:border-indigo-300 hover:bg-indigo-50/40 transition-all"
+                className="min-w-0 flex items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3 sm:p-2.5 text-xs sm:text-sm hover:border-indigo-300 hover:bg-indigo-50/40 transition-colors"
               >
                 <div className="min-w-0 pr-2">
                   <p className="font-bold text-slate-800 text-sm truncate">Lacak Tiket Aduan</p>
@@ -446,18 +469,19 @@ export default function DashboardPage() {
                 </div>
                 <ExternalLink className="h-4 w-4 text-slate-400 shrink-0" />
               </Link>
+              </MotionCard>
             </div>
           </div>
-        </div>
+        </MotionCard>
 
         {/* Kolom 3: LoopAI Pastel Hub (Direktori Modul 1-6 & 7-13) */}
-        <div className="min-w-0 rounded-[20px] bg-gradient-to-b from-indigo-100/60 via-blue-50/50 to-slate-50/90 border border-indigo-100/90 p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] flex flex-col justify-between space-y-3 lg:space-y-2.5">
+        <MotionCard index={2} interactive={false} className="min-w-0 rounded-[20px] bg-gradient-to-b from-indigo-100/60 via-blue-50/50 to-slate-50/90 border border-indigo-100/90 p-4 shadow-[0_2px_14px_-4px_rgba(15,23,42,0.05)] flex flex-col justify-between space-y-3 lg:space-y-2.5">
           {/* Sub-header Kemahasiswaan (Modul 1-6) */}
           <div>
             <div className="flex items-center justify-between gap-2 pb-1.5 mb-2 lg:mb-1.5">
               <div className="flex items-center gap-2 min-w-0">
                 <Users className="h-4 w-4 text-indigo-600 shrink-0" />
-                <h3 className="text-sm sm:text-base font-bold text-slate-900 truncate">Kemahasiswaan</h3>
+                <WordRevealHeading as="h3" text="Kemahasiswaan" className="text-sm sm:text-base font-bold text-slate-900" />
               </div>
               <span className="shrink-0 whitespace-nowrap rounded-full bg-white px-2.5 py-0.5 text-xs font-bold text-indigo-700 border border-indigo-100">
                 Modul 1–6
@@ -538,7 +562,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between gap-2 pb-1.5 mb-2 lg:mb-1.5">
               <div className="flex items-center gap-2 min-w-0">
                 <Sparkles className="h-4 w-4 text-indigo-600 shrink-0" />
-                <h3 className="text-sm sm:text-base font-bold text-slate-900 truncate">Tata Kelola &amp; Mutu</h3>
+                <WordRevealHeading as="h3" text="Tata Kelola & Mutu" className="text-sm sm:text-base font-bold text-slate-900" />
               </div>
               <span className="shrink-0 whitespace-nowrap rounded-full bg-white px-2.5 py-0.5 text-xs font-bold text-indigo-700 border border-indigo-100">
                 Modul 7–13
@@ -546,9 +570,10 @@ export default function DashboardPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-2 lg:gap-1.5">
+              <MotionCard index={0} interactive className="min-w-0 rounded-xl">
               <Link
                 href="/dashboard/kepuasan-mitra"
-                className="min-w-0 flex items-center gap-2 p-2.5 lg:p-2 rounded-xl border border-slate-100 bg-white hover:border-indigo-300 transition-all shadow-2xs"
+                className="min-w-0 flex items-center gap-2 p-2.5 lg:p-2 rounded-xl border border-slate-100 bg-white hover:border-indigo-300 transition-colors shadow-2xs"
               >
                 <Building2 className="h-4 w-4 text-emerald-600 shrink-0" />
                 <div className="min-w-0 flex-1">
@@ -556,10 +581,12 @@ export default function DashboardPage() {
                   <p className="text-[11px] sm:text-xs text-slate-400 leading-tight mt-0.5 truncate">KP, PSI, PDLK</p>
                 </div>
               </Link>
+              </MotionCard>
 
+              <MotionCard index={1} interactive className="min-w-0 rounded-xl">
               <Link
                 href="/dashboard/publikasi/rekap"
-                className="min-w-0 flex items-center gap-2 p-2.5 lg:p-2 rounded-xl border border-slate-100 bg-white hover:border-indigo-300 transition-all shadow-2xs"
+                className="min-w-0 flex items-center gap-2 p-2.5 lg:p-2 rounded-xl border border-slate-100 bg-white hover:border-indigo-300 transition-colors shadow-2xs"
               >
                 <BookOpen className="h-4 w-4 text-indigo-600 shrink-0" />
                 <div className="min-w-0 flex-1">
@@ -567,10 +594,12 @@ export default function DashboardPage() {
                   <p className="text-[11px] sm:text-xs text-slate-400 leading-tight mt-0.5 truncate">Karya &amp; Sitasi</p>
                 </div>
               </Link>
+              </MotionCard>
 
+              <MotionCard index={2} interactive className="min-w-0 rounded-xl">
               <Link
                 href="/dashboard/perjalanan-dinas/rekap"
-                className="min-w-0 flex items-center gap-2 p-2.5 lg:p-2 rounded-xl border border-slate-100 bg-white hover:border-indigo-300 transition-all shadow-2xs"
+                className="min-w-0 flex items-center gap-2 p-2.5 lg:p-2 rounded-xl border border-slate-100 bg-white hover:border-indigo-300 transition-colors shadow-2xs"
               >
                 <Plane className="h-4 w-4 text-sky-600 shrink-0" />
                 <div className="min-w-0 flex-1">
@@ -578,10 +607,12 @@ export default function DashboardPage() {
                   <p className="text-[11px] sm:text-xs text-slate-400 leading-tight mt-0.5 truncate">Estimasi &amp; Riil</p>
                 </div>
               </Link>
+              </MotionCard>
 
+              <MotionCard index={3} interactive className="min-w-0 rounded-xl">
               <Link
                 href="/dashboard/rka"
-                className="min-w-0 flex items-center gap-2 p-2.5 lg:p-2 rounded-xl border border-slate-100 bg-white hover:border-indigo-300 transition-all shadow-2xs"
+                className="min-w-0 flex items-center gap-2 p-2.5 lg:p-2 rounded-xl border border-slate-100 bg-white hover:border-indigo-300 transition-colors shadow-2xs"
               >
                 <Coins className="h-4 w-4 text-amber-600 shrink-0" />
                 <div className="min-w-0 flex-1">
@@ -589,10 +620,12 @@ export default function DashboardPage() {
                   <p className="text-[11px] sm:text-xs text-slate-400 leading-tight mt-0.5 truncate">Pagu &amp; Serapan</p>
                 </div>
               </Link>
+              </MotionCard>
 
+              <MotionCard index={4} interactive className="min-w-0 rounded-xl">
               <Link
                 href="/dashboard/rps"
-                className="min-w-0 flex items-center gap-2 p-2.5 lg:p-2 rounded-xl border border-slate-100 bg-white hover:border-indigo-300 transition-all shadow-2xs"
+                className="min-w-0 flex items-center gap-2 p-2.5 lg:p-2 rounded-xl border border-slate-100 bg-white hover:border-indigo-300 transition-colors shadow-2xs"
               >
                 <BookCheck className="h-4 w-4 text-rose-600 shrink-0" />
                 <div className="min-w-0 flex-1">
@@ -600,10 +633,12 @@ export default function DashboardPage() {
                   <p className="text-[11px] sm:text-xs text-slate-400 leading-tight mt-0.5 truncate">Standar SPMI</p>
                 </div>
               </Link>
+              </MotionCard>
 
+              <MotionCard index={5} interactive className="min-w-0 rounded-xl">
               <Link
                 href="/dashboard/evaluasi-perkuliahan"
-                className="min-w-0 flex items-center gap-2 p-2.5 lg:p-2 rounded-xl border border-slate-100 bg-white hover:border-indigo-300 transition-all shadow-2xs"
+                className="min-w-0 flex items-center gap-2 p-2.5 lg:p-2 rounded-xl border border-slate-100 bg-white hover:border-indigo-300 transition-colors shadow-2xs"
               >
                 <FileText className="h-4 w-4 text-purple-600 shrink-0" />
                 <div className="min-w-0 flex-1">
@@ -611,9 +646,10 @@ export default function DashboardPage() {
                   <p className="text-[11px] sm:text-xs text-slate-400 leading-tight mt-0.5 truncate">Ketercapaian CPMK</p>
                 </div>
               </Link>
+              </MotionCard>
             </div>
           </div>
-        </div>
+        </MotionCard>
       </div>
     </div>
   );

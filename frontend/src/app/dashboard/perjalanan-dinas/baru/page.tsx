@@ -4,30 +4,17 @@ import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
-import CurrencyInput from '@/components/ui/CurrencyInput';
+import TripInfoSection from '@/components/perjalanan-dinas/TripInfoSection';
+import TripCostEstimateSection, { TRIP_COST_LABELS } from '@/components/perjalanan-dinas/TripCostEstimateSection';
 import { tripService } from '@/lib/api';
 import { useUser } from '@/lib/context';
-import { mockProfiles } from '@/lib/mock-data';
-import { getAllRkaBudgetItems } from '@/lib/trip-utils';
+import { useLecturers } from '@/lib/hooks/useLecturers';
+import { apiClient } from '@/lib/api/client';
 import { useBusinessTrips } from '@/lib/use-business-trips';
 import type { BusinessTripCost, BusinessTripParticipant, TripCostComponent, TripFundingSource } from '@/lib/types';
-import { formatRupiah } from '@/lib/utils';
-import { AlertCircle, AlertTriangle, ArrowLeft, CheckCircle2, Save, Send } from 'lucide-react';
+import { AlertCircle, AlertTriangle, ArrowLeft, Save, Send } from 'lucide-react';
 
-const SUMBER_DANA: Array<{ value: TripFundingSource; label: string }> = [
-  { value: 'RKA_PRODI', label: 'RKA Prodi' },
-  { value: 'FAKULTAS', label: 'Fakultas' },
-  { value: 'HIBAH', label: 'Hibah' },
-  { value: 'MANDIRI', label: 'Mandiri' },
-  { value: 'LAINNYA', label: 'Lainnya' },
-];
-
-const COST_LABELS: Array<{ key: TripCostComponent; label: string }> = [
-  { key: 'TRANSPORTASI', label: 'Transportasi' },
-  { key: 'AKOMODASI', label: 'Akomodasi' },
-  { key: 'UANG_HARIAN', label: 'Uang Harian' },
-  { key: 'LAINNYA', label: 'Lain-lain' },
-];
+const COST_LABELS = TRIP_COST_LABELS;
 
 function TripFormContent() {
   const router = useRouter();
@@ -35,13 +22,17 @@ function TripFormContent() {
   const editId = searchParams.get('edit');
 
   const { user, currentRole } = useUser();
-  const { trips, rkaDocs } = useBusinessTrips();
+  const { trips } = useBusinessTrips(editId);
 
-  const dosenProfiles = useMemo(
-    () => mockProfiles.filter((p) => p.tipe_pengguna === 'DOSEN' && p.is_active),
-    []
-  );
-  const rkaBudgetItems = useMemo(() => getAllRkaBudgetItems(rkaDocs), [rkaDocs]);
+  const dosenProfiles = useLecturers();
+  const [rkaBudgetItems, setRkaBudgetItems] = useState<{ id: string; kode_pos: string; nama_pos: string; sisa_anggaran: number }[]>([]);
+  useEffect(() => {
+    let active = true;
+    apiClient.get<typeof rkaBudgetItems>('/trips/budget-options')
+      .then(res => { if (active) setRkaBudgetItems(res.data ?? []); })
+      .catch(() => { if (active) setErrorMsg('Daftar pos RKA belum tersedia.'); });
+    return () => { active = false; };
+  }, []);
 
   const editingTrip = useMemo(
     () => (editId ? trips.find((t) => t.id === editId) : undefined),
@@ -56,12 +47,7 @@ function TripFormContent() {
   const [tglKembali, setTglKembali] = useState('');
   const [sumberDana, setSumberDana] = useState<TripFundingSource | ''>('');
   const [posRkaId, setPosRkaId] = useState('');
-  const [biaya, setBiaya] = useState<Record<TripCostComponent, number>>({
-    TRANSPORTASI: 0,
-    AKOMODASI: 0,
-    UANG_HARIAN: 0,
-    LAINNYA: 0,
-  });
+  const [biaya, setBiaya] = useState<Partial<Record<TripCostComponent, number>>>({});
   const [keteranganBiaya, setKeteranganBiaya] = useState<Record<TripCostComponent, string>>({
     TRANSPORTASI: '',
     AKOMODASI: '',
@@ -100,12 +86,7 @@ function TripFormContent() {
     setSumberDana(editingTrip.sumber_dana || '');
     setPosRkaId(editingTrip.rka_budget_item_id || '');
 
-    const nextBiaya: Record<TripCostComponent, number> = {
-      TRANSPORTASI: 0,
-      AKOMODASI: 0,
-      UANG_HARIAN: 0,
-      LAINNYA: 0,
-    };
+    const nextBiaya: Partial<Record<TripCostComponent, number>> = {};
     const nextKet: Record<TripCostComponent, string> = {
       TRANSPORTASI: '',
       AKOMODASI: '',
@@ -122,11 +103,7 @@ function TripFormContent() {
   }, [editingTrip, initializedEditId]);
 
   const totalBiaya = useMemo(
-    () =>
-      biaya.TRANSPORTASI +
-      biaya.AKOMODASI +
-      biaya.UANG_HARIAN +
-      biaya.LAINNYA,
+    () => Object.values(biaya).reduce<number>((sum, value) => sum + (value ?? 0), 0),
     [biaya]
   );
 
@@ -183,15 +160,14 @@ function TripFormContent() {
         setErrorMsg('Pos RKA wajib dipilih jika sumber dana berasal dari RKA Prodi.');
         return;
       }
-      if (totalBiaya <= 0) {
-        setErrorMsg('Sesuai NF-07, rincian estimasi biaya wajib diisi (total > Rp 0).');
+      if (COST_LABELS.some(({ key }) => key !== 'LAINNYA' && biaya[key] === undefined)) {
+        setErrorMsg('Isi setiap komponen biaya wajib. Masukkan 0 bila tidak ada biaya.');
         return;
       }
     }
 
     const tripId = editingTrip?.id || `trip-${Date.now()}`;
-    const leadId = pelaksanaId || user.id || 'u-dosen1';
-    const leadProfile = mockProfiles.find((p) => p.id === leadId);
+    const leadId = pelaksanaId || user.id;
 
     const participants: BusinessTripParticipant[] = [
       {
@@ -199,7 +175,6 @@ function TripFormContent() {
         trip_id: tripId,
         user_id: leadId,
         peran: 'KETUA_ROMBONGAN',
-        user: leadProfile,
       },
       ...anggotaIds
         .filter((aid) => aid !== leadId)
@@ -208,11 +183,10 @@ function TripFormContent() {
           trip_id: tripId,
           user_id: aid,
           peran: 'ANGGOTA' as const,
-          user: mockProfiles.find((p) => p.id === aid),
         })),
     ];
 
-    const costs: BusinessTripCost[] = COST_LABELS.map((item, idx) => ({
+    const costs: BusinessTripCost[] = COST_LABELS.filter(({ key }) => biaya[key] !== undefined).map((item, idx) => ({
       id: `tc-${Date.now()}-${idx}`,
       trip_id: tripId,
       komponen: item.key,
@@ -224,7 +198,6 @@ function TripFormContent() {
     try {
       const payload = {
         diajukan_oleh: leadId,
-        pengaju: leadProfile,
         tujuan: tujuan.trim(),
         maksud_kegiatan: maksud.trim(),
         tanggal_berangkat: tglBerangkat,
@@ -270,7 +243,7 @@ function TripFormContent() {
         description={
           currentRole === 'ADMIN_PRODI'
             ? 'Buat atau lengkapi pengajuan perjalanan dinas dosen untuk diajukan ke Kaprodi.'
-            : 'Isi formulir rencana perjalanan dinas dan rincian estimasi biaya (FR-33).'
+            : 'Isi formulir rencana perjalanan dinas dan rincian estimasi biaya.'
         }
       />
 
@@ -291,219 +264,43 @@ function TripFormContent() {
         </div>
       )}
 
-      {/* Informasi Perjalanan */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-5">
-        <h2 className="text-lg font-semibold text-slate-800">Informasi Perjalanan</h2>
+      <TripInfoSection
+        inputCls={inputCls}
+        dosenProfiles={dosenProfiles}
+        pelaksanaId={pelaksanaId}
+        anggotaIds={anggotaIds}
+        tujuan={tujuan}
+        maksud={maksud}
+        tglBerangkat={tglBerangkat}
+        tglKembali={tglKembali}
+        sumberDana={sumberDana}
+        showPosRka={showPosRka}
+        posRkaId={posRkaId}
+        rkaBudgetItems={rkaBudgetItems}
+        onChangePelaksana={setPelaksanaId}
+        onToggleAnggota={toggleAnggota}
+        onChangeTujuan={setTujuan}
+        onChangeMaksud={setMaksud}
+        onChangeTglBerangkat={setTglBerangkat}
+        onChangeTglKembali={setTglKembali}
+        onChangeSumberDana={setSumberDana}
+        onChangePosRka={setPosRkaId}
+      />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5 sm:col-span-2">
-            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-              Pelaksana Utama (Ketua Rombongan)
-            </label>
-            <select
-              value={pelaksanaId}
-              onChange={(e) => setPelaksanaId(e.target.value)}
-              className={inputCls}
-            >
-              <option value="">Pilih pelaksana utama</option>
-              {dosenProfiles.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.nama_lengkap}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-1.5 sm:col-span-2">
-            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-              Anggota Rombongan (Opsional)
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {dosenProfiles
-                .filter((d) => d.id !== pelaksanaId)
-                .map((d) => {
-                  const selected = anggotaIds.includes(d.id);
-                  return (
-                    <button
-                      key={d.id}
-                      type="button"
-                      onClick={() => toggleAnggota(d.id)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors inline-flex items-center gap-1.5 ${
-                        selected
-                          ? 'bg-blue-50 text-blue-700 border-blue-300 font-semibold'
-                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      {selected && <CheckCircle2 size={12} />}
-                      {d.nama_lengkap}
-                    </button>
-                  );
-                })}
-            </div>
-          </div>
-
-          <div className="space-y-1.5 sm:col-span-2">
-            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-              Tujuan
-            </label>
-            <input
-              value={tujuan}
-              onChange={(e) => setTujuan(e.target.value)}
-              placeholder="Kota / Instansi tujuan"
-              className={inputCls}
-            />
-          </div>
-
-          <div className="space-y-1.5 sm:col-span-2">
-            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-              Maksud Kegiatan
-            </label>
-            <textarea
-              value={maksud}
-              onChange={(e) => setMaksud(e.target.value)}
-              rows={3}
-              placeholder="Jelaskan maksud perjalanan dinas…"
-              className={inputCls + ' resize-none'}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-              Tanggal Berangkat
-            </label>
-            <input
-              type="date"
-              value={tglBerangkat}
-              onChange={(e) => setTglBerangkat(e.target.value)}
-              className={inputCls}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-              Tanggal Kembali
-            </label>
-            <input
-              type="date"
-              value={tglKembali}
-              onChange={(e) => setTglKembali(e.target.value)}
-              className={inputCls}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-              Sumber Dana
-            </label>
-            <select
-              value={sumberDana}
-              onChange={(e) => setSumberDana(e.target.value as TripFundingSource | '')}
-              className={inputCls}
-            >
-              <option value="">Pilih sumber dana</option>
-              {SUMBER_DANA.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {showPosRka && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-                Pos RKA
-              </label>
-              <select
-                value={posRkaId}
-                onChange={(e) => setPosRkaId(e.target.value)}
-                className={inputCls}
-              >
-                <option value="">Pilih pos RKA</option>
-                {rkaBudgetItems.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.kode_pos} — {p.nama_pos}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Estimasi Biaya */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <h2 className="text-lg font-semibold text-slate-800">Estimasi Biaya per Komponen</h2>
-          <span className="text-xs text-slate-400">Wajib diisi ≥ 0 (NF-07)</span>
-        </div>
-
-        <div className="space-y-3">
-          {COST_LABELS.map((item) => (
-            <div
-              key={item.key}
-              className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center"
-            >
-              <span className="text-sm font-medium text-slate-700 sm:col-span-3">
-                {item.label}
-              </span>
-              <div className="sm:col-span-5">
-                <CurrencyInput
-                  value={biaya[item.key]}
-                  onChange={(val) => setBiaya((prev) => ({ ...prev, [item.key]: val }))}
-                />
-              </div>
-              <div className="sm:col-span-4">
-                <input
-                  type="text"
-                  value={keteranganBiaya[item.key]}
-                  onChange={(e) =>
-                    setKeteranganBiaya((prev) => ({ ...prev, [item.key]: e.target.value }))
-                  }
-                  placeholder="Keterangan (opsional)"
-                  className="input-field text-xs py-2"
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-          <span className="text-sm font-semibold text-slate-800">Total Estimasi</span>
-          <span className="text-lg font-bold text-blue-700">{formatRupiah(totalBiaya)}</span>
-        </div>
-
-        {showPosRka && selectedBudgetItem && (
-          <p className="text-xs text-slate-500">
-            Sisa anggaran pos RKA ({selectedBudgetItem.kode_pos}):{' '}
-            <span className={`font-semibold ${overBudget ? 'text-rose-600' : 'text-emerald-700'}`}>
-              {formatRupiah(sisaAnggaran)}
-            </span>
-          </p>
-        )}
-      </div>
-
-      {/* Peringatan Kebijakan */}
-      {(overBudget || tooSoon) && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
-          {overBudget && (
-            <div className="flex items-start gap-2">
-              <AlertTriangle size={16} className="text-amber-600 mt-0.5 shrink-0" />
-              <p className="text-sm text-amber-800">
-                Total estimasi biaya <span className="font-semibold">melebihi sisa anggaran</span> pos RKA ({formatRupiah(sisaAnggaran)}).
-              </p>
-            </div>
-          )}
-          {tooSoon && (
-            <div className="flex items-start gap-2">
-              <AlertTriangle size={16} className="text-amber-600 mt-0.5 shrink-0" />
-              <p className="text-sm text-amber-800">
-                Tanggal keberangkatan <span className="font-semibold">kurang dari 3 hari</span> dari sekarang.
-              </p>
-            </div>
-          )}
-        </div>
-      )}
+      <TripCostEstimateSection
+        biaya={biaya}
+        keteranganBiaya={keteranganBiaya}
+        onChangeBiaya={(key, val) => setBiaya((prev) => ({ ...prev, [key]: val }))}
+        onChangeKeterangan={(key, val) =>
+          setKeteranganBiaya((prev) => ({ ...prev, [key]: val }))
+        }
+        totalBiaya={totalBiaya}
+        showPosRka={showPosRka}
+        selectedBudgetItem={selectedBudgetItem}
+        sisaAnggaran={sisaAnggaran}
+        overBudget={overBudget}
+        tooSoon={tooSoon}
+      />
 
       {/* Actions */}
       <div className="flex flex-wrap items-center gap-3">

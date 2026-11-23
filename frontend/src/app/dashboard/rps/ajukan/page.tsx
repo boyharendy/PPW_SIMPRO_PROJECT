@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, UploadCloud, CheckCircle2, Send, Save, AlertCircle } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
 interface RencanaPerbaikan {
   id: string;
@@ -67,15 +69,13 @@ export default function Page() {
 
       <PageHeader
         title="Formulir Pengajuan RPS"
-        description="Pengajuan berkas rancangan RPS baru atau revisi semester berjalan (FR-22)."
+        description="Pengajuan berkas rancangan RPS baru atau revisi semester berjalan."
       />
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Informasi Mata Kuliah */}
-        <div className="card space-y-4">
-          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-            1. Mata Kuliah & Periode Akademik
-          </h3>
+        <MotionCard index={0} interactive={false} className="card space-y-4">
+          <WordRevealHeading as="h3" text="1. Mata Kuliah & Periode Akademik" className="text-sm font-bold text-slate-800 uppercase tracking-wider" />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -118,13 +118,11 @@ export default function Page() {
               />
             </div>
           </div>
-        </div>
+        </MotionCard>
 
         {/* Berkas RPS */}
-        <div className="card space-y-3">
-          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-            2. Unggah Dokumen RPS (PDF)
-          </h3>
+        <MotionCard index={1} interactive={false} className="card space-y-3">
+          <WordRevealHeading as="h3" text="2. Unggah Dokumen RPS (PDF)" className="text-sm font-bold text-slate-800 uppercase tracking-wider" />
           <div className="p-4 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/60 flex flex-col items-center justify-center text-center">
             <UploadCloud size={24} className="text-blue-600 mb-1.5" />
             <div className="text-xs font-semibold text-slate-800">
@@ -132,15 +130,13 @@ export default function Page() {
             </div>
             <span className="text-[11px] text-slate-400 mt-0.5">Ukuran: 1.4 MB • Format: PDF</span>
           </div>
-        </div>
+        </MotionCard>
 
         {/* Tindak Lanjut Rencana Perbaikan Evaluasi Sebelumnya (PRD FR-45) */}
-        <div className="card space-y-4">
+        <MotionCard index={2} interactive={false} className="card space-y-4">
           <div className="flex items-start justify-between">
             <div>
-              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-                3. Tindak Lanjut Evaluasi Perkuliahan Sebelumnya (FR-45)
-              </h3>
+              <WordRevealHeading as="h3" text="3. Tindak Lanjut Evaluasi Perkuliahan Sebelumnya" className="text-sm font-bold text-slate-800 uppercase tracking-wider" />
               <p className="text-xs text-slate-500 mt-0.5">
                 Rencana perbaikan dari evaluasi semester lalu wajib ditandai status penerapan dan catatannya.
               </p>
@@ -199,7 +195,7 @@ export default function Page() {
               </div>
             ))}
           </div>
-        </div>
+        </MotionCard>
 
         {/* Submit */}
         <div className="flex justify-end gap-3 pt-2">

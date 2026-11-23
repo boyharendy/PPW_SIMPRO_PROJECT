@@ -19,6 +19,12 @@ import { useUser } from '@/lib/context';
 import { useBusinessTrips } from '@/lib/use-business-trips';
 import { getTripTotalEstimasi, isTripOwnedByUser } from '@/lib/trip-utils';
 import type { BusinessTrip } from '@/lib/types';
+import MotionCard from '@/components/motion/MotionCard';
+import MorphingTabBar from '@/components/motion/MorphingTabBar';
+import MorphingTabContent from '@/components/motion/MorphingTabContent';
+import { getTabSwitchDirection } from '@/lib/animation-scope';
+
+const DOSEN_SCOPE_KEYS = ['MINE', 'ALL'] as const;
 
 const TABS = [
   'Semua',
@@ -52,6 +58,17 @@ export default function PerjalananDinasPage() {
   const { trips, rkaDocs, reload } = useBusinessTrips();
   const [activeTab, setActiveTab] = useState<string>('Semua');
   const [dosenScope, setDosenScope] = useState<'MINE' | 'ALL'>('MINE');
+  const [contentDirection, setContentDirection] = useState<-1 | 0 | 1>(0);
+
+  const handleTabChange = (nextTab: string) => {
+    setContentDirection(getTabSwitchDirection(TABS as readonly string[], activeTab, nextTab));
+    setActiveTab(nextTab);
+  };
+
+  const handleScopeChange = (nextScope: 'MINE' | 'ALL') => {
+    setContentDirection(getTabSwitchDirection(DOSEN_SCOPE_KEYS, dosenScope, nextScope));
+    setDosenScope(nextScope);
+  };
   const [selectedTripForApproval, setSelectedTripForApproval] = useState<BusinessTrip | null>(null);
   const [selectedTripForCompleteness, setSelectedTripForCompleteness] = useState<BusinessTrip | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
@@ -251,76 +268,71 @@ export default function PerjalananDinasPage() {
 
       {/* Filter Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 w-fit flex-wrap">
-          {TABS.map((tab) => {
+        <MorphingTabBar
+          layoutId="trips-status-tabs"
+          value={activeTab}
+          onChange={handleTabChange}
+          containerClassName="flex items-center gap-1 bg-slate-100 rounded-xl p-1 w-fit flex-wrap"
+          buttonClassName="px-3.5 py-1.5 rounded-lg text-xs font-semibold"
+          activePillClassName="bg-white rounded-lg shadow-sm"
+          activeTextClassName="text-slate-800"
+          inactiveTextClassName="text-slate-500 hover:text-slate-700"
+          options={TABS.map((tab) => {
             const count = countsByStatus[tab] || 0;
             const highlightTab =
               (isKaprodi && tab === 'DIAJUKAN') ||
               (isAdminProdi && tab === 'DILAPORKAN') ||
               (isDosen && (tab === 'PERLU_REVISI' || tab === 'DISETUJUI'));
-            return (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors inline-flex items-center gap-1.5 ${
-                  activeTab === tab
-                    ? 'bg-white text-slate-800 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <span>{TAB_LABELS[tab]}</span>
-                {count > 0 && (
-                  <span
-                    className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                      highlightTab
-                        ? 'bg-amber-100 text-amber-800'
-                        : 'bg-slate-200/80 text-slate-600'
-                    }`}
-                  >
-                    {count}
-                  </span>
-                )}
-              </button>
-            );
+            return {
+              value: tab as string,
+              label: (
+                <>
+                  <span>{TAB_LABELS[tab]}</span>
+                  {count > 0 && (
+                    <span
+                      className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                        highlightTab
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-slate-200/80 text-slate-600'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </>
+              ),
+            };
           })}
-        </div>
+        />
 
         {isDosen && (
-          <div className="inline-flex items-center gap-1 bg-slate-100 rounded-xl p-1 w-fit shrink-0">
-            <button
-              type="button"
-              onClick={() => setDosenScope('MINE')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                dosenScope === 'MINE'
-                  ? 'bg-white text-blue-700 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              Perjalanan Saya
-            </button>
-            <button
-              type="button"
-              onClick={() => setDosenScope('ALL')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                dosenScope === 'ALL'
-                  ? 'bg-white text-blue-700 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              Semua Perjalanan Prodi
-            </button>
-          </div>
+          <MorphingTabBar
+            layoutId="trips-dosen-scope"
+            value={dosenScope}
+            onChange={handleScopeChange}
+            containerClassName="inline-flex items-center gap-1 bg-slate-100 rounded-xl p-1 w-fit shrink-0"
+            buttonClassName="px-3 py-1.5 rounded-lg text-xs font-semibold"
+            activePillClassName="bg-white rounded-lg shadow-sm"
+            activeTextClassName="text-blue-700"
+            inactiveTextClassName="text-slate-500 hover:text-slate-700"
+            options={[
+              { value: 'MINE', label: 'Perjalanan Saya' },
+              { value: 'ALL', label: 'Semua Perjalanan Prodi' },
+            ]}
+          />
         )}
       </div>
 
       {/* Data Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
-        <DataTable
-          columns={columns}
-          data={filtered}
-          emptyMessage="Belum ada data perjalanan dinas untuk filter ini"
-        />
-      </div>
+      <MotionCard index={0} interactive={false} className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+        <MorphingTabContent activeKey={`${dosenScope}:${activeTab}`} direction={contentDirection}>
+          <DataTable
+            columns={columns}
+            data={filtered}
+            emptyMessage="Belum ada data perjalanan dinas untuk filter ini"
+          />
+        </MorphingTabContent>
+      </MotionCard>
 
       <TripApprovalModal
         trip={selectedTripForApproval}

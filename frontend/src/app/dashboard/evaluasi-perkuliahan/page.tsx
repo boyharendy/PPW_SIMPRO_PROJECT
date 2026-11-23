@@ -6,6 +6,11 @@ import { Eye, Edit3, BarChart3, Users, CheckCircle2, FileText } from 'lucide-rea
 import PageHeader from '@/components/ui/PageHeader';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import MotionCard from '@/components/motion/MotionCard';
+import MorphingTabBar from '@/components/motion/MorphingTabBar';
+import MorphingTabContent from '@/components/motion/MorphingTabContent';
+
+const EVAL_STATUS_KEYS = ['ALL', 'BELUM', 'DRAF', 'TERKIRIM', 'DITINJAU'] as const;
 
 interface KelasEvaluasi {
   id: string;
@@ -127,7 +132,7 @@ export default function Page() {
     <div className="space-y-6">
       <PageHeader
         title="Evaluasi Perkuliahan"
-        description="Monitoring kepatuhan dan status evaluasi proses perkuliahan semester berjalan (FR-43)."
+        description="Monitoring kepatuhan dan status evaluasi proses perkuliahan semester berjalan."
         actions={
           <Link
             href="/dashboard/evaluasi-perkuliahan/rekap"
@@ -138,31 +143,28 @@ export default function Page() {
         }
       />
 
-      <div className="card">
+      <MotionCard index={0} interactive={false} className="card">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50">
-            {['ALL', 'BELUM', 'DRAF', 'TERKIRIM', 'DITINJAU'].map((st) => (
-              <button
-                key={st}
-                onClick={() => setFilterStatus(st)}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
-                  filterStatus === st
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                {st === 'ALL' ? 'Semua Kelas' : st.replace('_', ' ')}
-              </button>
-            ))}
-          </div>
+          <MorphingTabBar
+            layoutId="evaluasi-status-filter"
+            value={filterStatus}
+            onChange={setFilterStatus}
+            buttonClassName="px-3 py-1 text-xs font-semibold rounded-md"
+            options={EVAL_STATUS_KEYS.map((st) => ({
+              value: st,
+              label: st === 'ALL' ? 'Semua Kelas' : st.replace('_', ' '),
+            }))}
+          />
 
           <span className="text-xs text-slate-400">
             Semester Ganjil 2024/2025
           </span>
         </div>
 
-        <DataTable columns={columns} data={filtered} emptyMessage="Tidak ada kelas untuk filter ini." />
-      </div>
+        <MorphingTabContent activeKey={filterStatus} orderedKeys={EVAL_STATUS_KEYS}>
+          <DataTable columns={columns} data={filtered} emptyMessage="Tidak ada kelas untuk filter ini." />
+        </MorphingTabContent>
+      </MotionCard>
     </div>
   );
 }

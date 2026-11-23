@@ -1,6 +1,7 @@
 package usecase_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	"simpro-backend/internal/model"
@@ -35,7 +36,7 @@ func TestTripUsecase(t *testing.T) {
 		TotalEstimasiBiaya: 2500000,
 		Costs: []*model.TravelCost{
 			{Komponen: "TRANSPORTASI", NominalEstimasi: 1500000},
-			{Komponen: "AKOMODASI", NominalEstimasi: 1000000},
+			{Komponen: "AKOMODASI", NominalEstimasi: 1000000}, {Komponen: "UANG_HARIAN", NominalEstimasi: 0},
 		},
 	}
 	created, err := uc.CreateTrip("dosen-1", trip)
@@ -57,7 +58,7 @@ func TestTripUsecase(t *testing.T) {
 	}
 
 	// 3. Approve trip
-	err = uc.ApproveTrip(created.ID, "kaprodi-1", true)
+	err = uc.DecideTrip(created.ID, "kaprodi-1", model.TripDecision{Status: model.TripStatusDisetujuiKaprodi})
 	if err != nil {
 		t.Fatalf("ApproveTrip failed: %v", err)
 	}
@@ -74,9 +75,11 @@ func TestTripUsecase(t *testing.T) {
 	})
 	_ = uc.UpdateRealizationCosts(created.ID, []*model.TravelCost{
 		{Komponen: "TRANSPORTASI", NominalRealisasi: 1400000},
-		{Komponen: "AKOMODASI", NominalRealisasi: 1000000},
+		{Komponen: "AKOMODASI", NominalRealisasi: 1000000}, {Komponen: "UANG_HARIAN", NominalRealisasi: 0},
 	})
 
+	_ = uc.AddProof(created.ID, &model.TravelProof{Kategori: "FOTO_KEGIATAN", FileName: "foto.jpg"})
+	_ = uc.AddProof(created.ID, &model.TravelProof{Kategori: "BUKTI_PENGINAPAN", FileName: "hotel.pdf"})
 	// 5. Submit Report
 	err = uc.SubmitReport(created.ID, "dosen-1", "Kegiatan workshop sukses", "https://drive.google.com/doc", 2400000)
 	if err != nil {
@@ -122,5 +125,37 @@ func TestTripUsecase(t *testing.T) {
 	}
 	if len(flags) < 0 {
 		t.Errorf("expected flags slice")
+	}
+}
+
+func TestTripAmountsDistinguishMissingAndZero(t *testing.T) {
+	uc := usecase.NewTripUsecase(repository.NewMemoryTripRepository(), repository.NewMemoryRkaRepository())
+	var trip model.TravelOrder
+	if err := json.Unmarshal([]byte("{\"tujuan\":\"Fixture\",\"keperluan\":\"Fixture\",\"costs\":[{\"komponen\":\"TRANSPORTASI\"}]}"), &trip); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := uc.CreateTrip("owner", &trip); err == nil {
+		t.Fatal("missing estimate accepted")
+	}
+	var amount model.TravelCost
+	if err := json.Unmarshal([]byte("{\"komponen\":\"TRANSPORTASI\",\"nominal_estimasi\":0,\"estimasi_biaya\":100}"), &amount); err != nil {
+		t.Fatal(err)
+	}
+	trip.Costs = []*model.TravelCost{&amount}
+	created, err := uc.CreateTrip("owner", &trip)
+	if err != nil || created.TotalEstimasiBiaya != 0 {
+		t.Fatalf("explicit zero estimate: %v", err)
+	}
+	if err = uc.SubmitTrip(created.ID); err == nil {
+		t.Fatal("missing required components accepted")
+	}
+	if !amount.MissingAmount(true) {
+		t.Fatal("absent actual amount treated as zero")
+	}
+	if err = json.Unmarshal([]byte("{\"nominal_estimasi\":200,\"nominal_realisasi\":0,\"realisasi_biaya\":100}"), &amount); err != nil {
+		t.Fatal(err)
+	}
+	if amount.MissingAmount(true) || amount.NominalRealisasi != 0 || amount.RealisasiBiaya != 0 {
+		t.Fatal("explicit zero realization must be authoritative")
 	}
 }

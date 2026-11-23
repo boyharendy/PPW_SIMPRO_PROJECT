@@ -7,6 +7,11 @@ import { StatCard } from '@/components/ui/StatCard';
 import { ExportMenu } from '@/components/ui/ExportMenu';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import MotionCard from '@/components/motion/MotionCard';
+import MorphingTabBar from '@/components/motion/MorphingTabBar';
+import MorphingTabContent from '@/components/motion/MorphingTabContent';
+
+const RPS_RECAP_KEYS = ['ALL', 'DISAHKAN', 'PENDING'] as const;
 
 interface RpsRecapItem {
   id: string;
@@ -128,13 +133,14 @@ export default function Page() {
     <div className="space-y-6">
       <PageHeader
         title="Rekapitulasi Status RPS"
-        description="Monitoring kepatuhan pengumpulan dan persentase kelayakan RPS seluruh mata kuliah (FR-25)."
+        description="Monitoring kepatuhan pengumpulan dan persentase kelayakan RPS seluruh mata kuliah."
         actions={<ExportMenu filename="rekap-kepatuhan-rps-prodi" />}
       />
 
       {/* 4 StatCards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
+          animationIndex={0}
           title="Total Mata Kuliah"
           value="36 MK"
           subtitle="Semester Ganjil 2024/2025"
@@ -142,6 +148,7 @@ export default function Page() {
           icon={<BookOpen size={16} />}
         />
         <StatCard
+          animationIndex={1}
           title="RPS Disahkan"
           value="28 MK"
           subtitle="77.8% telah disahkan Kaprodi"
@@ -150,6 +157,7 @@ export default function Page() {
           icon={<CheckCircle2 size={16} />}
         />
         <StatCard
+          animationIndex={2}
           title="Dalam Telaah / Revisi"
           value="5 MK"
           subtitle="Menunggu perbaikan pengampu"
@@ -157,6 +165,7 @@ export default function Page() {
           icon={<Clock size={16} />}
         />
         <StatCard
+          animationIndex={3}
           title="Belum Mengajukan"
           value="3 MK"
           subtitle="Melewati batas tenggat"
@@ -166,31 +175,33 @@ export default function Page() {
         />
       </div>
 
-      <div className="card">
+      <MotionCard index={0} interactive={false} className="card">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50">
-            {['ALL', 'DISAHKAN', 'PENDING'].map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
-                  filter === f
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                {f === 'ALL' ? 'Semua Mata Kuliah' : f === 'DISAHKAN' ? 'Telah Disahkan (28)' : 'Belum / Revisi (8)'}
-              </button>
-            ))}
-          </div>
+          <MorphingTabBar
+            layoutId="rps-rekap-filter"
+            value={filter}
+            onChange={setFilter}
+            buttonClassName="px-3 py-1 text-xs font-semibold rounded-md"
+            options={RPS_RECAP_KEYS.map((f) => ({
+              value: f,
+              label:
+                f === 'ALL'
+                  ? 'Semua Mata Kuliah'
+                  : f === 'DISAHKAN'
+                  ? 'Telah Disahkan (28)'
+                  : 'Belum / Revisi (8)',
+            }))}
+          />
 
           <span className="text-xs text-slate-400">
             Monitoring kepatuhan RPS prodi
           </span>
         </div>
 
-        <DataTable columns={columns} data={filtered} />
-      </div>
+        <MorphingTabContent activeKey={filter} orderedKeys={RPS_RECAP_KEYS}>
+          <DataTable columns={columns} data={filtered} />
+        </MorphingTabContent>
+      </MotionCard>
     </div>
   );
 }

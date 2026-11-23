@@ -1,12 +1,21 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Save, Send, Plus, Trash2, Eye, ClipboardCheck } from 'lucide-react';
+import { ArrowLeft, Save, Send, Plus, Trash2, Eye } from 'lucide-react';
+import { useLecturers } from '@/lib/hooks/useLecturers';
+import {
+  DUMMY_VERIFIER_LECTURERS,
+  ensureVerifierAuthor,
+  resolveEligibleVerifiers,
+} from '@/lib/publication-verifiers';
 import PageHeader from '@/components/ui/PageHeader';
 import { useUser } from '@/lib/context';
 import { publicationService } from '@/lib/api/services/publication.service';
 import type { AuthorRole, AuthorType, PublicationRank, PublicationStatus, PublicationType } from '@/lib/types';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
 type Penulis = {
   user_id?: string;
@@ -16,12 +25,7 @@ type Penulis = {
   urutan: number;
 };
 
-const DOSEN_LIST = [
-  { id: 'u-dosen1', nama: 'Dr. Eng. Hendra Wijaya, M.Sc.' },
-  { id: 'u-dosen2', nama: 'Dewi Lestari, M.T.' },
-  { id: 'u-gkm', nama: 'Siti Rahmawati, M.Kom.' },
-  { id: 'u-koordinator', nama: 'Ir. Agus Pratama, M.Kom.' },
-];
+
 
 const PERINGKAT_OPTIONS: Record<string, { value: PublicationRank; label: string }[]> = {
   JURNAL: [
@@ -65,6 +69,7 @@ const TIPE_LABELS: Record<AuthorType, string> = {
 export default function Page() {
   const router = useRouter();
   const { user, currentRole } = useUser();
+  const lecturers = useLecturers();
   const isKaprodi = currentRole === 'KAPRODI';
   const isMahasiswaRole = currentRole === 'MAHASISWA';
 
@@ -72,7 +77,7 @@ export default function Page() {
   const [jenis, setJenis] = useState<PublicationType>('JURNAL');
   const [namaTarget, setNamaTarget] = useState('');
   const [peringkat, setPeringkat] = useState<PublicationRank>('SINTA_2');
-  const [tahun, setTahun] = useState('2025');
+  const [tahun, setTahun] = useState(String(new Date().getFullYear()));
   const [penulisList, setPenulisList] = useState<Penulis[]>([
     {
       user_id: user.id,
@@ -83,14 +88,11 @@ export default function Page() {
     },
   ]);
   const [verifikator, setVerifikator] = useState('');
-  const [reviewerId, setReviewerId] = useState('');
-  const [tenggatReview, setTenggatReview] = useState('2025-11-30');
   const [errorMsg, setErrorMsg] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   const hasMahasiswa = isMahasiswaRole || penulisList.some((p) => p.tipe === 'MAHASISWA');
-  const authorNames = new Set(penulisList.map((p) => p.nama.trim().toLowerCase()).filter(Boolean));
-  const eligibleReviewers = DOSEN_LIST.filter((d) => !authorNames.has(d.nama.toLowerCase()));
+  const eligibleVerifiers = resolveEligibleVerifiers(lecturers, user.id, penulisList);
 
   const handleAddPenulis = () => {
     setPenulisList((prev) => [
@@ -115,73 +117,50 @@ export default function Page() {
       setErrorMsg('Judul publikasi wajib diisi.');
       return;
     }
-    if (targetStatus === 'REVIEW_INTERNAL' && !reviewerId) {
-      setErrorMsg('Pilih Dosen Reviewer Internal terlebih dahulu sebelum mengajukan Review Internal.');
-      return;
-    }
-    if (hasMahasiswa && targetStatus !== 'DRAF' && !verifikator) {
+    if (hasMahasiswa && targetStatus !== 'DRAF' && !eligibleVerifiers.some(d => d.id === verifikator)) {
       setErrorMsg('Pilih Dosen Verifikator (Dosen Pembimbing / Penulis Pendamping) terlebih dahulu.');
       return;
     }
 
     setIsSaving(true);
     try {
-      const selectedVerif = DOSEN_LIST.find((d) => d.id === verifikator);
-      const selectedRev = DOSEN_LIST.find((d) => d.id === reviewerId);
-      const pubId = `pub-${Date.now()}`;
-      const nowIso = new Date().toISOString();
-
-      await publicationService.createPublication({
-        id: pubId,
-        judul: judul.trim(),
-        jenis,
-        nama_target: namaTarget.trim() || 'Target Publikasi',
-        peringkat: peringkat || 'NON_PERINGKAT',
-        status: targetStatus,
-        tipe_pencatat: isMahasiswaRole ? 'MAHASISWA' : 'DOSEN',
-        status_verifikasi: isMahasiswaRole || verifikator ? 'MENUNGGU' : 'TIDAK_PERLU',
-        verifikator_id: selectedVerif?.id,
-        verifikator_nama: selectedVerif ? `${selectedVerif.nama} (Pembimbing / Pendamping)` : undefined,
-        tahun: Number(tahun) || new Date().getFullYear(),
-        dicatat_oleh: user.id,
-        authors: penulisList.map((p, idx) => ({
-          id: `pa-${Date.now()}-${idx}`,
-          user_id: p.user_id,
+      const selectedVerif = eligibleVerifiers.find(d => d.id === verifikator);
+      const knownLecturers = [...lecturers, ...DUMMY_VERIFIER_LECTURERS];
+      const baseAuthors = penulisList.map(p => {
+        const normalizedName = p.nama.trim().toLowerCase();
+        const matchedLecturer = p.tipe === 'DOSEN'
+          ? knownLecturers.find(d => d.nama.trim().toLowerCase() === normalizedName)
+          : undefined;
+        return {
+          id: '',
+          user_id: p.user_id || matchedLecturer?.id,
           nama_penulis: p.nama.trim() || user.nama_lengkap,
           tipe_penulis: p.tipe,
           peran: p.peran,
           urutan: p.urutan,
-        })),
-        reviews: selectedRev
-          ? [
-            {
-              id: `rev-${Date.now()}`,
-              publication_id: pubId,
-              reviewer_id: selectedRev.id,
-              reviewer_nama: selectedRev.nama,
-              ditetapkan_oleh: user.id,
-              status: 'DITUGASKAN',
-              tenggat_review: tenggatReview,
-              ditugaskan_at: nowIso,
-            },
-          ]
-          : [],
-        stage_logs: [
-          {
-            id: `psl-${Date.now()}`,
-            publication_id: pubId,
-            tahap: targetStatus,
-            tanggal_tahap: nowIso.split('T')[0],
-            catatan: `Pencatatan publikasi awal pada status ${targetStatus.replace(/_/g, ' ')}`,
-            dicatat_oleh: user.id,
-            status_verifikasi: isMahasiswaRole || verifikator ? 'MENUNGGU' : 'TIDAK_PERLU',
-            created_at: nowIso,
-          },
-        ],
+        };
       });
+      const finalAuthors = hasMahasiswa
+        ? ensureVerifierAuthor(baseAuthors, selectedVerif)
+        : baseAuthors;
+
+      const created = await publicationService.createPublication({
+        judul: judul.trim(), jenis, nama_target: namaTarget.trim() || 'Target Publikasi',
+        peringkat: peringkat || 'NON_PERINGKAT', tahun: Number(tahun), verifikator_id: selectedVerif?.id,
+        authors: finalAuthors,
+      });
+      if (targetStatus !== 'DRAF') {
+        try {
+          await publicationService.submitPublication(created.data.id);
+        } catch {
+          window.alert('Draf sudah tersimpan, tetapi pengajuan publikasi belum berhasil. Buka draf untuk melanjutkan.');
+          router.push('/dashboard/publikasi/' + created.data.id);
+          return;
+        }
+      }
 
       router.push('/dashboard/publikasi');
-    } finally {
+    } catch (e) { window.alert(e instanceof Error ? e.message : 'Publikasi gagal disimpan.'); } finally {
       setIsSaving(false);
     }
   };
@@ -190,39 +169,47 @@ export default function Page() {
     'w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
   const labelCls = 'block text-sm font-medium text-slate-700 mb-1.5';
 
-  if (isKaprodi) {
-    return (
-      <div className="space-y-6">
-        <PageHeader
-          title="Pencatatan Publikasi Baru"
-          description="Kaprodi hanya memantau data dan rekapitulasi publikasi program studi."
-        />
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex items-start gap-3">
-          <Eye size={20} className="text-blue-600 shrink-0 mt-0.5" />
-          <div className="space-y-2">
-            <h2 className="text-base font-semibold text-slate-800">Mode Pantau Kaprodi</h2>
-            <p className="text-sm text-slate-600">
-              Pada modul Publikasi, Kaprodi hanya bertugas memantau progres serta rekapitulasi publikasi.
-              Pencatatan dan pembaruan status publikasi dilakukan langsung oleh Dosen atau Mahasiswa yang mem-publish karya.
-            </p>
-            <button
-              onClick={() => router.push('/dashboard/publikasi')}
-              className="btn-secondary text-xs px-4 py-2"
-            >
-              Kembali ke Daftar Publikasi
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Pencatatan Publikasi Baru"
-        description="Isi detail publikasi, daftar penulis, serta review internal atau verifikator bila diperlukan"
-      />
+      <div className="flex items-center gap-2">
+        <Link
+          href="/dashboard/publikasi"
+          className="text-xs text-slate-500 hover:text-slate-800 inline-flex items-center gap-1 font-medium"
+        >
+          <ArrowLeft size={14} /> Kembali ke Daftar Publikasi
+        </Link>
+      </div>
+
+      {isKaprodi ? (
+        <>
+          <PageHeader
+            title="Pencatatan Publikasi Baru"
+            description="Kaprodi hanya memantau data dan rekapitulasi publikasi program studi."
+          />
+          <MotionCard index={0} interactive={false} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex items-start gap-3">
+            <Eye size={20} className="text-blue-600 shrink-0 mt-0.5" />
+            <div className="space-y-2">
+              <WordRevealHeading as="h2" text="Mode Pantau Kaprodi" className="text-base font-semibold text-slate-800" />
+              <p className="text-sm text-slate-600">
+                Pada modul Publikasi, Kaprodi hanya bertugas memantau progres serta rekapitulasi publikasi.
+                Pencatatan dan pembaruan status publikasi dilakukan langsung oleh Dosen atau Mahasiswa yang mem-publish karya.
+              </p>
+              <button
+                type="button"
+                onClick={() => router.push('/dashboard/publikasi')}
+                className="btn-secondary text-xs px-4 py-2"
+              >
+                Kembali ke Daftar Publikasi
+              </button>
+            </div>
+          </MotionCard>
+        </>
+      ) : (
+        <>
+          <PageHeader
+            title="Pencatatan Publikasi Baru"
+            description="Isi detail publikasi, daftar penulis, serta dosen verifikator bila melibatkan mahasiswa"
+          />
 
       {errorMsg && (
         <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs font-medium text-rose-700">
@@ -231,8 +218,8 @@ export default function Page() {
       )}
 
       {/* Form Utama */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-5">
-        <h2 className="text-lg font-semibold text-slate-800">Informasi Publikasi</h2>
+      <MotionCard index={0} interactive={false} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-5">
+        <WordRevealHeading as="h2" text="Informasi Publikasi" className="text-lg font-semibold text-slate-800" />
         <div>
           <label className={labelCls}>Judul Publikasi</label>
           <input value={judul} onChange={(e) => setJudul(e.target.value)} className={inputCls} placeholder="Masukkan judul publikasi" />
@@ -274,12 +261,12 @@ export default function Page() {
             <input type="number" value={tahun} onChange={(e) => setTahun(e.target.value)} className={inputCls} min="2020" max="2030" />
           </div>
         </div>
-      </div>
+      </MotionCard>
 
       {/* Daftar Penulis */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+      <MotionCard index={1} interactive={false} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-800">Daftar Penulis</h2>
+          <WordRevealHeading as="h2" text="Daftar Penulis" className="text-lg font-semibold text-slate-800" />
           <button onClick={handleAddPenulis} type="button" className="bg-white text-slate-700 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 hover:bg-slate-50 transition-colors">
             <Plus size={14} /> Tambah Penulis
           </button>
@@ -324,41 +311,22 @@ export default function Page() {
             </tbody>
           </table>
         </div>
-      </div>
+      </MotionCard>
 
-      {/* Review Internal Opsional (FR-31) */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
-        <h2 className="text-lg font-semibold text-slate-800">Dosen Reviewer Internal (Opsional — FR-31)</h2>
-        <p className="text-xs text-slate-500">
-          Tetapkan dosen reviewer internal (bukan penulis naskah) untuk memberi catatan sebelum naskah diajukan ke penerbit.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <select value={reviewerId} onChange={(e) => setReviewerId(e.target.value)} className={inputCls}>
-            <option value="">— Tanpa Reviewer Internal —</option>
-            {eligibleReviewers.map((d) => (
-              <option key={d.id} value={d.id}>{d.nama}</option>
-            ))}
-          </select>
-          <input type="date" value={tenggatReview} onChange={(e) => setTenggatReview(e.target.value)} className={inputCls} />
-        </div>
-      </div>
-
-      {/* Verifikator Mahasiswa (FR-31) */}
+      {/* Verifikator Mahasiswa */}
       {hasMahasiswa && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
-          <h2 className="text-lg font-semibold text-slate-800">
-            Dosen Verifikator (Dosen Pembimbing / Penulis Pendamping — FR-31)
-          </h2>
+        <MotionCard index={2} interactive={false} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
+          <WordRevealHeading as="h2" text="Dosen Verifikator (Dosen Pembimbing / Penulis Pendamping)" className="text-lg font-semibold text-slate-800" />
           <p className="text-xs text-slate-500">
-            Publikasi mahasiswa wajib diverifikasi oleh dosen pembimbing atau dosen penulis pendamping sebelum masuk rekap program studi.
+            Pilih dosen pembimbing atau penulis pendamping sebagai verifikator publikasi mahasiswa.
           </p>
           <select value={verifikator} onChange={(e) => setVerifikator(e.target.value)} className={inputCls}>
             <option value="">— Pilih Dosen Pembimbing / Penulis Pendamping —</option>
-            {DOSEN_LIST.map((d) => (
+            {eligibleVerifiers.map((d) => (
               <option key={d.id} value={d.id}>{d.nama}</option>
             ))}
           </select>
-        </div>
+        </MotionCard>
       )}
 
       {/* Footer Actions */}
@@ -371,10 +339,12 @@ export default function Page() {
         >
           <Save size={14} /> Simpan Draf
         </button>
-        <button className="bg-blue-600 text-white rounded-xl px-4 py-2 text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2">
+        <button type="button" disabled={isSaving} onClick={() => handleSubmit('DIAJUKAN')} className="bg-blue-600 text-white rounded-xl px-4 py-2 text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2">
           <Send size={14} /> Ajukan
         </button>
       </div>
+        </>
+      )}
     </div>
   );
 }

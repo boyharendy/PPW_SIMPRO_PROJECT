@@ -3,25 +3,11 @@
 import { useApp } from '@/lib/context';
 import { Bell, Menu, ChevronDown, Search } from 'lucide-react';
 import { useState, useRef } from 'react';
-import type { Role } from '@/lib/types';
+import { CANONICAL_ROLES, type Role } from '@/lib/types';
 import { formatDateTime } from '@/lib/utils';
 import AnimatedDropdown from '@/components/ui/AnimatedDropdown';
 
-export const CANONICAL_ROLES: Role[] = [
-  'KAPRODI',
-  'GKM',
-  'ADMIN_PRODI',
-  'DOSEN',
-  'DOSEN_VERIFIKATOR',
-  'DOSEN_WALI',
-  'DOSEN_PEMBINA',
-  'KETUA_KELAS',
-  'MAHASISWA',
-  'PENGURUS_HIMPUNAN',
-  'KOORDINATOR_KP_PSI_PDLK',
-  'PENGELOLA_ADUAN',
-  'MITRA',
-];
+export { CANONICAL_ROLES };
 
 export const ROLE_LABELS: Record<Role, string> = {
   KAPRODI: 'Kaprodi',

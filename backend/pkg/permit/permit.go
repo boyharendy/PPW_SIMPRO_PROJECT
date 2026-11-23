@@ -1,127 +1,111 @@
 package permit
 
 import (
+	"context"
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
-	"math/rand"
+	"github.com/redis/go-redis/v9"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
 
+var ErrQuota = errors.New("kuota aduan harian tercapai")
+var ErrInvalid = errors.New("permit tidak valid atau kedaluwarsa")
+
 type PermitManager struct {
-	secretKey     []byte
-	mu            sync.Mutex
-	userQuota     map[string]int       // key: userHash -> count today
-	quotaDate     string               // YYYY-MM-DD
-	usedTokens    map[string]time.Time // prevent token replay
+	key   []byte
+	redis *redis.Client
+	mu    sync.Mutex
+	date  string
+	quota map[string]int
 }
 
 func NewPermitManager(secret string) *PermitManager {
-	if secret == "" {
-		secret = "simpro-complaint-permit-secret-key-2026"
-	}
-	return &PermitManager{
-		secretKey:  []byte(secret),
-		userQuota:  make(map[string]int),
-		quotaDate:  time.Now().Format("2006-01-02"),
-		usedTokens: make(map[string]time.Time),
-	}
-}
-
-// IssuePermit generates a 15-minute anonymous token for an authenticated student
-func (m *PermitManager) IssuePermit(userID string) (token string, expiresAt time.Time, err error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	today := time.Now().Format("2006-01-02")
-	if today != m.quotaDate {
-		m.userQuota = make(map[string]int)
-		m.quotaDate = today
-		// clean expired used tokens
-		now := time.Now()
-		for k, exp := range m.usedTokens {
-			if now.After(exp) {
-				delete(m.usedTokens, k)
-			}
+	key := []byte(secret)
+	if len(key) == 0 {
+		key = make([]byte, 32)
+		if _, err := rand.Read(key); err != nil {
+			panic(err)
 		}
 	}
-
-	// Compute user pseudo-hash (no direct PII retained)
-	userHash := m.computeHMAC(userID + ":" + today)
-	if m.userQuota[userHash] >= 5 {
-		return "", time.Time{}, errors.New("kuota pengajuan aduan harian Anda (maksimal 5 kali) telah tercapai")
-	}
-
-	m.userQuota[userHash]++
-
-	issuedAt := time.Now().Unix()
-	nonce := rand.Int63()
-	expiresAt = time.Unix(issuedAt, 0).Add(15 * time.Minute)
-
-	payload := fmt.Sprintf("%d:%d", issuedAt, nonce)
-	sig := m.computeHMAC(payload)
-
-	rawToken := fmt.Sprintf("%s:%s", payload, sig)
-	encodedToken := base64.RawURLEncoding.EncodeToString([]byte(rawToken))
-
-	return encodedToken, expiresAt, nil
+	return &PermitManager{key: key, quota: make(map[string]int)}
+}
+func NewShared(secret string, r *redis.Client) *PermitManager {
+	m := NewPermitManager(secret)
+	m.redis = r
+	return m
+}
+func Digest(key []byte, value string) string {
+	m := hmac.New(sha256.New, key)
+	m.Write([]byte(value))
+	return hex.EncodeToString(m.Sum(nil))
+}
+func TicketHash(key []byte, ticket string) string {
+	return Digest(key, strings.ToUpper(strings.TrimSpace(ticket)))
 }
 
-// ValidatePermit validates the anonymous token HMAC and 15-minute expiration
-func (m *PermitManager) ValidatePermit(encodedToken string) error {
-	if encodedToken == "" {
-		return errors.New("permit token wajib disertakan")
+var takeQuota = redis.NewScript(`
+local n=tonumber(redis.call('GET',KEYS[1]) or '0')
+if n >= tonumber(ARGV[1]) then return 0 end
+redis.call('INCR',KEYS[1])
+redis.call('EXPIREAT',KEYS[1],ARGV[2])
+return 1`)
+
+func (m *PermitManager) Issue(ctx context.Context, userID string, limit int) (string, time.Time, error) {
+	now := time.Now().In(time.FixedZone("WIB", 7*3600))
+	date := now.Format("2006-01-02")
+	key := Digest(m.key, "quota:"+date+":"+userID)
+	if m.redis != nil {
+		end := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
+		n, err := takeQuota.Run(ctx, m.redis, []string{"simpro:quota:" + key}, limit, end.Unix()).Int()
+		if err != nil {
+			return "", time.Time{}, errors.New("layanan kuota tidak tersedia")
+		}
+		if n != 1 {
+			return "", time.Time{}, ErrQuota
+		}
+	} else {
+		m.mu.Lock()
+		defer m.mu.Unlock()
+		if m.date != date {
+			clear(m.quota)
+			m.date = date
+		}
+		if m.quota[key] >= limit {
+			return "", time.Time{}, ErrQuota
+		}
+		m.quota[key]++
 	}
-
-	rawBytes, err := base64.RawURLEncoding.DecodeString(encodedToken)
-	if err != nil {
-		return errors.New("format permit token tidak valid")
+	var nonce [24]byte
+	if _, err := rand.Read(nonce[:]); err != nil {
+		return "", time.Time{}, err
 	}
-
-	parts := strings.Split(string(rawBytes), ":")
-	if len(parts) != 3 {
-		return errors.New("struktur permit token tidak valid")
-	}
-
-	issuedAtStr, nonceStr, sig := parts[0], parts[1], parts[2]
-	payload := fmt.Sprintf("%s:%s", issuedAtStr, nonceStr)
-	expectedSig := m.computeHMAC(payload)
-
-	if !hmac.Equal([]byte(sig), []byte(expectedSig)) {
-		return errors.New("tanda tangan permit token tidak valid atau telah dimanipulasi")
-	}
-
-	issuedAt, err := strconv.ParseInt(issuedAtStr, 10, 64)
-	if err != nil {
-		return errors.New("waktu penerbitan permit tidak valid")
-	}
-
-	issuedTime := time.Unix(issuedAt, 0)
-	if time.Since(issuedTime) > 15*time.Minute {
-		return errors.New("permit token telah kedaluwarsa (berlaku maksimal 15 menit)")
-	}
-
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if _, used := m.usedTokens[encodedToken]; used {
-		return errors.New("permit token ini sudah pernah digunakan")
-	}
-
-	// Mark token used until expiry
-	m.usedTokens[encodedToken] = issuedTime.Add(15 * time.Minute)
-
-	return nil
+	exp := now.Add(15 * time.Minute)
+	payload := fmt.Sprintf("%d.%s", exp.Unix(), base64.RawURLEncoding.EncodeToString(nonce[:]))
+	return payload + "." + Digest(m.key, "permit:"+payload), exp, nil
 }
 
-func (m *PermitManager) computeHMAC(data string) string {
-	h := hmac.New(sha256.New, m.secretKey)
-	h.Write([]byte(data))
-	return fmt.Sprintf("%x", h.Sum(nil))
+// Verify returns an opaque replay key. The repository spends it in the same transaction as the complaint.
+func (m *PermitManager) Verify(token string) (string, time.Time, error) {
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 || len(token) > 160 {
+		return "", time.Time{}, ErrInvalid
+	}
+	expected := Digest(m.key, "permit:"+parts[0]+"."+parts[1])
+	if !hmac.Equal([]byte(parts[2]), []byte(expected)) {
+		return "", time.Time{}, ErrInvalid
+	}
+	unix, err := strconv.ParseInt(parts[0], 10, 64)
+	exp := time.Unix(unix, 0)
+	if err != nil || !time.Now().Before(exp) || time.Until(exp) > 15*time.Minute {
+		return "", time.Time{}, ErrInvalid
+	}
+	return Digest(m.key, "spent:"+parts[1]), exp, nil
 }
-
