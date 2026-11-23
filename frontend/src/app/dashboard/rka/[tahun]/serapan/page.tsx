@@ -45,6 +45,7 @@ import {
   formatRupiah,
   getStatusLabel,
 } from '@/lib/utils';
+import MotionCard from '@/components/motion/MotionCard';
 
 export default function Page() {
   const { tahun } = useParams<{ tahun: string }>();
@@ -324,6 +325,7 @@ export default function Page() {
       {/* 3 StatCards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
+          animationIndex={0}
           title={filterTW === 'ALL' ? 'Total Pagu Aktif' : `Pagu Terjadwal (${filterTW})`}
           value={formatRupiah(totalPagu)}
           subtitle={`${filteredActivities.length} kegiatan ditampilkan`}
@@ -331,6 +333,7 @@ export default function Page() {
           icon={<Wallet size={16} />}
         />
         <StatCard
+          animationIndex={1}
           title="Total Realisasi Belanja"
           value={formatRupiah(totalRealisasi)}
           subtitle={
@@ -342,6 +345,7 @@ export default function Page() {
           icon={<PieChart size={16} />}
         />
         <StatCard
+          animationIndex={2}
           title="Persentase Serapan Pagu"
           value={`${pctTotal}%`}
           subtitle="Kalkulasi aktual tanpa clamping"
@@ -352,7 +356,7 @@ export default function Page() {
       </div>
 
       {/* View Switcher (3 Dimensi FR-38) + Filter Triwulan + Tabel */}
-      <div className="card space-y-4">
+      <MotionCard index={0} interactive={false} className="card space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           {/* View Switcher 3 Dimensi */}
           <div className="inline-flex rounded-xl border border-slate-200 p-1 bg-slate-50 flex-wrap">
@@ -422,7 +426,7 @@ export default function Page() {
           referenceYear={effectiveReference.year}
           referenceQuarter={effectiveReference.quarter}
         />
-      </div>
+      </MotionCard>
     </div>
   );
 }

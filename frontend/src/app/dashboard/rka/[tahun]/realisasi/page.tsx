@@ -25,6 +25,7 @@ import type {
   RkaRealization,
 } from '@/lib/types';
 import { formatRupiah, getStatusLabel } from '@/lib/utils';
+import MotionCard from '@/components/motion/MotionCard';
 
 type RealizationTab = 'ALL' | 'MANUAL' | 'PERJALANAN_DINAS';
 
@@ -337,7 +338,7 @@ export default function Page() {
       />
 
       {/* Tabs & Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+      <MotionCard index={0} interactive={false} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="inline-flex rounded-xl border border-slate-200 p-1 bg-slate-50 flex-wrap">
             <button
@@ -417,7 +418,7 @@ export default function Page() {
             emptyMessage="Belum ada transaksi realisasi pada kategori ini."
           />
         )}
-      </div>
+      </MotionCard>
 
       <RkaRealizationModal
         open={modalOpen}

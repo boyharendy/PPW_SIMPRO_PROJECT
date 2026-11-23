@@ -17,6 +17,11 @@ export const STORAGE_KEYS = {
   EVALUATIONS: 'simpro_evaluations',
   COMPLAINTS: 'simpro_complaints',
   CERTIFICATES: 'simpro_certificates',
+  VIOLATIONS: 'simpro_violations',
+  SANCTION_LOGS: 'simpro_sanction_logs',
+  VIOLATION_RETENTION_LOGS: 'simpro_violation_retention_logs',
+  UKM_DIRECTORIES: 'simpro_ukm_directories',
+  UKM_MEMBERSHIPS: 'simpro_ukm_memberships',
 } as const;
 
 export const storageSync = {

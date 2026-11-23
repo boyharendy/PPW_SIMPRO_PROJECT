@@ -32,6 +32,7 @@ export function RkaRealizationSummaryCards({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <StatCard
+        animationIndex={0}
         title="Total Pagu RKA"
         value={formatRupiah(totalPagu)}
         subtitle="Pagu aktif terhitung otomatis"
@@ -39,6 +40,7 @@ export function RkaRealizationSummaryCards({
         color="blue"
       />
       <StatCard
+        animationIndex={1}
         title="Total Realisasi Terbukukan"
         value={formatRupiah(totalRealisasi)}
         subtitle={`${realizationCount} transaksi aktif`}
@@ -46,6 +48,7 @@ export function RkaRealizationSummaryCards({
         color="emerald"
       />
       <StatCard
+        animationIndex={2}
         title="Realisasi Input Manual"
         value={formatRupiah(totalManual)}
         subtitle={`${manualCount} pencatatan langsung`}
@@ -53,6 +56,7 @@ export function RkaRealizationSummaryCards({
         color="slate"
       />
       <StatCard
+        animationIndex={3}
         title="Tertaut Perjalanan Dinas"
         value={formatRupiah(totalTrip)}
         subtitle={`${tripCount} perjalanan dinas selesai`}

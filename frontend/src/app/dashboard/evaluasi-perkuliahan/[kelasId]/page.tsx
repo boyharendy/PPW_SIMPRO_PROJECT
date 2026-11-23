@@ -6,6 +6,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Send, CheckCircle2, MessageSquare, Star, Users } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
 interface CpmkRow {
   kode: string;
@@ -69,11 +71,9 @@ export default function Page() {
         {/* Form Isian Dosen (2 Kolom) */}
         <div className="lg:col-span-2 space-y-6">
           {/* 1. Ketercapaian CPMK */}
-          <div className="card space-y-4">
+          <MotionCard index={0} interactive={false} className="card space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-                1. Ketercapaian CPMK (Target vs Realisasi)
-              </h3>
+              <WordRevealHeading as="h3" text="1. Ketercapaian CPMK (Target vs Realisasi)" className="text-sm font-bold text-slate-800 uppercase tracking-wider" />
               <span className="text-xs font-semibold text-blue-600">
                 Ambang Kelulusan: Target &ge; 70%
               </span>
@@ -130,13 +130,11 @@ export default function Page() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </MotionCard>
 
           {/* 2. Distribusi Nilai Mahasiswa */}
-          <div className="card space-y-3">
-            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-              2. Distribusi Nilai Akhir (38 Mahasiswa)
-            </h3>
+          <MotionCard index={1} interactive={false} className="card space-y-3">
+            <WordRevealHeading as="h3" text="2. Distribusi Nilai Akhir (38 Mahasiswa)" className="text-sm font-bold text-slate-800 uppercase tracking-wider" />
             <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
               {(Object.keys(distribusiNilai) as (keyof typeof distribusiNilai)[]).map((grade) => (
                 <div key={grade} className="p-2.5 rounded-xl border border-slate-200 bg-slate-50/60 text-center">
@@ -154,13 +152,11 @@ export default function Page() {
                 </div>
               ))}
             </div>
-          </div>
+          </MotionCard>
 
           {/* 3. Kesesuaian RPS & Rencana Perbaikan (PRD FR-45) */}
-          <div className="card space-y-4">
-            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-              3. Keselarasan RPS & Rencana Perbaikan Siklus Depan
-            </h3>
+          <MotionCard index={2} interactive={false} className="card space-y-4">
+            <WordRevealHeading as="h3" text="3. Keselarasan RPS & Rencana Perbaikan Siklus Depan" className="text-sm font-bold text-slate-800 uppercase tracking-wider" />
 
             <div>
               <label className="text-xs font-semibold text-slate-700 block mb-1.5">
@@ -207,7 +203,7 @@ export default function Page() {
                 required
               />
             </div>
-          </div>
+          </MotionCard>
 
           <div className="flex justify-end gap-3">
             <button
@@ -230,12 +226,10 @@ export default function Page() {
 
         {/* Panel Umpan Balik Mahasiswa (Berdampingan - PRD FR-44) */}
         <div className="space-y-4">
-          <div className="card space-y-4 bg-blue-50/30 border-blue-100">
+          <MotionCard index={3} interactive={false} className="card space-y-4 bg-blue-50/30 border-blue-100">
             <div className="flex items-center gap-2">
               <MessageSquare size={16} className="text-blue-600" />
-              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-                Umpan Balik Mahasiswa
-              </h3>
+              <WordRevealHeading as="h3" text="Umpan Balik Mahasiswa" className="text-sm font-bold text-slate-800 uppercase tracking-wider" />
             </div>
             <p className="text-xs text-slate-500 leading-relaxed">
               Data sinkron dari Kuesioner Evaluasi Dosen oleh Mahasiswa (EDOM) pada SIAKAD prodi.
@@ -282,7 +276,7 @@ export default function Page() {
                 "Penjelasan materi praktikum sangat runtut dan mudah dipahami, tetapi modul tutorial untuk tugas besar perlu diperbanyak contoh kodenya."
               </p>
             </div>
-          </div>
+          </MotionCard>
         </div>
       </form>
     </div>

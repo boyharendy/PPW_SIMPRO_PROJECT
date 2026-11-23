@@ -45,6 +45,13 @@ type RkaBudgetItem struct {
 	IsActive         bool    `json:"is_active"`
 }
 
+type TripBudgetOption struct {
+	ID           string  `json:"id"`
+	KodePos      string  `json:"kode_pos"`
+	NamaPos      string  `json:"nama_pos"`
+	SisaAnggaran float64 `json:"sisa_anggaran"`
+}
+
 type RkaVersion struct {
 	ID               string                 `json:"id"`
 	RkaID            string                 `json:"rka_id"`

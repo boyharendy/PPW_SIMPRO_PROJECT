@@ -7,6 +7,7 @@ import { StatCard } from '@/components/ui/StatCard';
 import { ExportMenu } from '@/components/ui/ExportMenu';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import MotionCard from '@/components/motion/MotionCard';
 
 interface RpsRecapItem {
   id: string;
@@ -135,6 +136,7 @@ export default function Page() {
       {/* 4 StatCards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
+          animationIndex={0}
           title="Total Mata Kuliah"
           value="36 MK"
           subtitle="Semester Ganjil 2024/2025"
@@ -142,6 +144,7 @@ export default function Page() {
           icon={<BookOpen size={16} />}
         />
         <StatCard
+          animationIndex={1}
           title="RPS Disahkan"
           value="28 MK"
           subtitle="77.8% telah disahkan Kaprodi"
@@ -150,6 +153,7 @@ export default function Page() {
           icon={<CheckCircle2 size={16} />}
         />
         <StatCard
+          animationIndex={2}
           title="Dalam Telaah / Revisi"
           value="5 MK"
           subtitle="Menunggu perbaikan pengampu"
@@ -157,6 +161,7 @@ export default function Page() {
           icon={<Clock size={16} />}
         />
         <StatCard
+          animationIndex={3}
           title="Belum Mengajukan"
           value="3 MK"
           subtitle="Melewati batas tenggat"
@@ -166,7 +171,7 @@ export default function Page() {
         />
       </div>
 
-      <div className="card">
+      <MotionCard index={0} interactive={false} className="card">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50">
             {['ALL', 'DISAHKAN', 'PENDING'].map((f) => (
@@ -190,7 +195,7 @@ export default function Page() {
         </div>
 
         <DataTable columns={columns} data={filtered} />
-      </div>
+      </MotionCard>
     </div>
   );
 }

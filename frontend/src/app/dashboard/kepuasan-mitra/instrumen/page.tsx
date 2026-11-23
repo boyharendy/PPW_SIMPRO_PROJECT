@@ -10,6 +10,7 @@ import Modal from '@/components/ui/Modal';
 import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import { mockSurveyTemplates } from '@/lib/mock-data';
 import type { PartnerSurveyTemplate } from '@/lib/types';
+import MotionCard from '@/components/motion/MotionCard';
 
 export default function Page() {
   const [templates, setTemplates] = useState<PartnerSurveyTemplate[]>([]);
@@ -190,13 +191,13 @@ export default function Page() {
         }
       />
 
-      <div className="card">
+      <MotionCard index={0} interactive={false} className="card">
         <DataTable
           columns={columns}
           data={templates}
           emptyMessage="Belum ada template kuesioner. Klik Tambah Instrumen untuk membuat baru."
         />
-      </div>
+      </MotionCard>
 
       {/* Modal Tambah Template */}
       <Modal

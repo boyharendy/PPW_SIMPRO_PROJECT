@@ -1,7 +1,11 @@
+'use client';
+
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
-import CurrencyInput from '@/components/ui/CurrencyInput';
-import type { RkaBudgetItem, TripCostComponent } from '@/lib/types';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
+import type { TripCostComponent } from '@/lib/types';
+import type { TripRkaBudgetOption } from '@/components/perjalanan-dinas/TripInfoSection';
 import { formatRupiah } from '@/lib/utils';
 
 export const TRIP_COST_LABELS: Array<{ key: TripCostComponent; label: string }> = [
@@ -12,13 +16,13 @@ export const TRIP_COST_LABELS: Array<{ key: TripCostComponent; label: string }> 
 ];
 
 interface TripCostEstimateSectionProps {
-  biaya: Record<TripCostComponent, number>;
+  biaya: Partial<Record<TripCostComponent, number>>;
   keteranganBiaya: Record<TripCostComponent, string>;
-  onChangeBiaya: (key: TripCostComponent, val: number) => void;
+  onChangeBiaya: (key: TripCostComponent, val: number | undefined) => void;
   onChangeKeterangan: (key: TripCostComponent, val: string) => void;
   totalBiaya: number;
   showPosRka: boolean;
-  selectedBudgetItem?: RkaBudgetItem;
+  selectedBudgetItem?: TripRkaBudgetOption;
   sisaAnggaran: number;
   overBudget: boolean;
   tooSoon: boolean;
@@ -41,9 +45,17 @@ export default function TripCostEstimateSection({
 }: TripCostEstimateSectionProps) {
   return (
     <>
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+      <MotionCard
+        index={1}
+        interactive={false}
+        className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4"
+      >
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <h2 className="text-lg font-semibold text-slate-800">Estimasi Biaya per Komponen</h2>
+          <WordRevealHeading
+            as="h2"
+            text="Estimasi Biaya per Komponen"
+            className="text-lg font-semibold text-slate-800"
+          />
           <span className="text-xs text-slate-400">Wajib diisi ≥ 0</span>
         </div>
 
@@ -57,9 +69,18 @@ export default function TripCostEstimateSection({
                 {item.label}
               </span>
               <div className="sm:col-span-5">
-                <CurrencyInput
-                  value={biaya[item.key]}
-                  onChange={(val) => onChangeBiaya(item.key, val)}
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="input-field"
+                  aria-label={'Estimasi ' + item.label}
+                  value={biaya[item.key] ?? ''}
+                  placeholder="Rp"
+                  onChange={(e) => {
+                    const amount = e.target.valueAsNumber;
+                    onChangeBiaya(item.key, Number.isFinite(amount) ? amount : undefined);
+                  }}
                 />
               </div>
               <div className="sm:col-span-4">
@@ -88,7 +109,7 @@ export default function TripCostEstimateSection({
             </span>
           </p>
         )}
-      </div>
+      </MotionCard>
 
       {(overBudget || tooSoon) && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">

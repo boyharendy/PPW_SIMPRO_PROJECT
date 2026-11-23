@@ -13,6 +13,7 @@ import { mockSurveyTemplates, mockSurveyInvitations } from '@/lib/mock-data';
 import type { PartnerSurveyTemplate, PartnerSurveyInvitation, PartnerSurveyResponse, SurveyProgram } from '@/lib/types';
 import CreateInvitationModal from './CreateInvitationModal';
 import ManualInputModal from './ManualInputModal';
+import MotionCard from '@/components/motion/MotionCard';
 
 function PengirimanMitraContent() {
   const searchParams = useSearchParams();
@@ -265,7 +266,7 @@ function PengirimanMitraContent() {
         }
       />
 
-      <div className="card">
+      <MotionCard index={0} interactive={false} className="card">
         {/* Filter Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-2">
@@ -295,7 +296,7 @@ function PengirimanMitraContent() {
           data={filtered}
           emptyMessage="Tidak ada penempatan mitra untuk filter ini."
         />
-      </div>
+      </MotionCard>
 
       {/* Modal Buat Undangan Baru */}
       <CreateInvitationModal

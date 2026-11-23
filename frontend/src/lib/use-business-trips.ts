@@ -1,61 +1,28 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { rkaService, tripService } from '@/lib/api';
-import { mockBusinessTrips, mockRkaDocuments, mockRkaRealizations } from '@/lib/mock-data';
-import { enrichRkaDocument } from '@/lib/rka-utils';
-import { STORAGE_KEYS, storageSync } from '@/lib/storage-sync';
-import type { BusinessTrip, RkaDocument, RkaRealization } from '@/lib/types';
+import { apiClient } from '@/lib/api/client';
+import { tripService } from '@/lib/api/services/trip.service';
+import { useUser } from '@/lib/context';
+import type { BusinessTrip, RkaDocument } from '@/lib/types';
 
-/**
- * Hook sinkronisasi data perjalanan dinas & dokumen RKA dari tripService + rkaService + storageSync.
- */
-export function useBusinessTrips() {
-  const [trips, setTrips] = useState<BusinessTrip[]>(mockBusinessTrips);
-  const [rkaDocs, setRkaDocs] = useState<RkaDocument[]>(mockRkaDocuments);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const syncLocal = useCallback(() => {
-    const localTrips = storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips);
-    const localDocs = storageSync.get<RkaDocument[]>(STORAGE_KEYS.RKA_DOCUMENTS, mockRkaDocuments);
-    const localReals = storageSync.get<RkaRealization[]>(
-      STORAGE_KEYS.RKA_REALIZATIONS,
-      mockRkaRealizations
-    );
-    setTrips(localTrips);
-    setRkaDocs(localDocs.map((d) => enrichRkaDocument(d, localReals, localTrips)));
-  }, []);
-
+export function useBusinessTrips(tripId?: string | null) {
+  const { currentRole } = useUser();
+  const [trips, setTrips] = useState<BusinessTrip[]>([]);
+  const [rkaDocs, setRkaDocs] = useState<RkaDocument[]>([]);
+  const [isLoading, setLoading] = useState(true);
   const reload = useCallback(async () => {
-    try {
-      const [tripRes, rkaRes] = await Promise.all([
-        tripService.getTrips(),
-        rkaService.getRkaList(),
-      ]);
-      if (tripRes.data && Array.isArray(tripRes.data)) {
-        setTrips(tripRes.data);
-      }
-      if (rkaRes.data && Array.isArray(rkaRes.data)) {
-        setRkaDocs(rkaRes.data);
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    reload();
-  }, [reload]);
-
-  useEffect(() => {
-    const handleStorageChange = () => syncLocal();
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('simpro_storage_change', handleStorageChange);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('simpro_storage_change', handleStorageChange);
-    };
-  }, [syncLocal]);
-
+    const fetchTrips = tripId
+      ? tripService.getTripById(tripId).then(res => [res.data])
+      : tripService.getTrips().then(res => res.data);
+    const fetchBudgets = currentRole === 'ADMIN_PRODI' || currentRole === 'KAPRODI'
+      ? apiClient.get<RkaDocument[]>('/rka').then(res => res.data ?? [])
+      : Promise.resolve([]);
+    const [tripResult, budgets] = await Promise.allSettled([fetchTrips, fetchBudgets]);
+    setTrips(tripResult.status === 'fulfilled' ? tripResult.value : []);
+    setRkaDocs(budgets.status === 'fulfilled' ? budgets.value : []);
+    setLoading(false);
+  }, [tripId, currentRole]);
+  useEffect(() => { void reload(); }, [reload]);
   return { trips, setTrips, rkaDocs, isLoading, reload };
 }

@@ -22,10 +22,10 @@ type AttachmentRepository interface {
 // ============================================================
 
 type supabaseAttachmentRepository struct {
-	client *database.SupabaseClient
+	client database.Store
 }
 
-func NewSupabaseAttachmentRepository(client *database.SupabaseClient) AttachmentRepository {
+func NewSupabaseAttachmentRepository(client database.Store) AttachmentRepository {
 	return &supabaseAttachmentRepository{client: client}
 }
 
@@ -124,4 +124,3 @@ func (r *memoryAttachmentRepository) FindByEntity(entityType model.AttachmentEnt
 	}
 	return result, nil
 }
-

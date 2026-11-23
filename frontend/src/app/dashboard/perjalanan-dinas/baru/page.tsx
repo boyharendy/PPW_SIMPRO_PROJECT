@@ -8,11 +8,13 @@ import TripInfoSection from '@/components/perjalanan-dinas/TripInfoSection';
 import TripCostEstimateSection, { TRIP_COST_LABELS } from '@/components/perjalanan-dinas/TripCostEstimateSection';
 import { tripService } from '@/lib/api';
 import { useUser } from '@/lib/context';
-import { mockProfiles } from '@/lib/mock-data';
-import { getAllRkaBudgetItems } from '@/lib/trip-utils';
+import { useLecturers } from '@/lib/hooks/useLecturers';
+import { apiClient } from '@/lib/api/client';
 import { useBusinessTrips } from '@/lib/use-business-trips';
 import type { BusinessTripCost, BusinessTripParticipant, TripCostComponent, TripFundingSource } from '@/lib/types';
 import { AlertCircle, AlertTriangle, ArrowLeft, Save, Send } from 'lucide-react';
+
+const COST_LABELS = TRIP_COST_LABELS;
 
 function TripFormContent() {
   const router = useRouter();
@@ -20,13 +22,17 @@ function TripFormContent() {
   const editId = searchParams.get('edit');
 
   const { user, currentRole } = useUser();
-  const { trips, rkaDocs } = useBusinessTrips();
+  const { trips } = useBusinessTrips(editId);
 
-  const dosenProfiles = useMemo(
-    () => mockProfiles.filter((p) => p.tipe_pengguna === 'DOSEN' && p.is_active),
-    []
-  );
-  const rkaBudgetItems = useMemo(() => getAllRkaBudgetItems(rkaDocs), [rkaDocs]);
+  const dosenProfiles = useLecturers();
+  const [rkaBudgetItems, setRkaBudgetItems] = useState<{ id: string; kode_pos: string; nama_pos: string; sisa_anggaran: number }[]>([]);
+  useEffect(() => {
+    let active = true;
+    apiClient.get<typeof rkaBudgetItems>('/trips/budget-options')
+      .then(res => { if (active) setRkaBudgetItems(res.data ?? []); })
+      .catch(() => { if (active) setErrorMsg('Daftar pos RKA belum tersedia.'); });
+    return () => { active = false; };
+  }, []);
 
   const editingTrip = useMemo(
     () => (editId ? trips.find((t) => t.id === editId) : undefined),
@@ -41,12 +47,7 @@ function TripFormContent() {
   const [tglKembali, setTglKembali] = useState('');
   const [sumberDana, setSumberDana] = useState<TripFundingSource | ''>('');
   const [posRkaId, setPosRkaId] = useState('');
-  const [biaya, setBiaya] = useState<Record<TripCostComponent, number>>({
-    TRANSPORTASI: 0,
-    AKOMODASI: 0,
-    UANG_HARIAN: 0,
-    LAINNYA: 0,
-  });
+  const [biaya, setBiaya] = useState<Partial<Record<TripCostComponent, number>>>({});
   const [keteranganBiaya, setKeteranganBiaya] = useState<Record<TripCostComponent, string>>({
     TRANSPORTASI: '',
     AKOMODASI: '',
@@ -85,12 +86,7 @@ function TripFormContent() {
     setSumberDana(editingTrip.sumber_dana || '');
     setPosRkaId(editingTrip.rka_budget_item_id || '');
 
-    const nextBiaya: Record<TripCostComponent, number> = {
-      TRANSPORTASI: 0,
-      AKOMODASI: 0,
-      UANG_HARIAN: 0,
-      LAINNYA: 0,
-    };
+    const nextBiaya: Partial<Record<TripCostComponent, number>> = {};
     const nextKet: Record<TripCostComponent, string> = {
       TRANSPORTASI: '',
       AKOMODASI: '',
@@ -107,11 +103,7 @@ function TripFormContent() {
   }, [editingTrip, initializedEditId]);
 
   const totalBiaya = useMemo(
-    () =>
-      biaya.TRANSPORTASI +
-      biaya.AKOMODASI +
-      biaya.UANG_HARIAN +
-      biaya.LAINNYA,
+    () => Object.values(biaya).reduce<number>((sum, value) => sum + (value ?? 0), 0),
     [biaya]
   );
 
@@ -168,15 +160,14 @@ function TripFormContent() {
         setErrorMsg('Pos RKA wajib dipilih jika sumber dana berasal dari RKA Prodi.');
         return;
       }
-      if (totalBiaya <= 0) {
-        setErrorMsg('Rincian estimasi biaya wajib diisi (total > Rp 0).');
+      if (COST_LABELS.some(({ key }) => key !== 'LAINNYA' && biaya[key] === undefined)) {
+        setErrorMsg('Isi setiap komponen biaya wajib. Masukkan 0 bila tidak ada biaya.');
         return;
       }
     }
 
     const tripId = editingTrip?.id || `trip-${Date.now()}`;
-    const leadId = pelaksanaId || user.id || 'u-dosen1';
-    const leadProfile = mockProfiles.find((p) => p.id === leadId);
+    const leadId = pelaksanaId || user.id;
 
     const participants: BusinessTripParticipant[] = [
       {
@@ -184,7 +175,6 @@ function TripFormContent() {
         trip_id: tripId,
         user_id: leadId,
         peran: 'KETUA_ROMBONGAN',
-        user: leadProfile,
       },
       ...anggotaIds
         .filter((aid) => aid !== leadId)
@@ -193,11 +183,10 @@ function TripFormContent() {
           trip_id: tripId,
           user_id: aid,
           peran: 'ANGGOTA' as const,
-          user: mockProfiles.find((p) => p.id === aid),
         })),
     ];
 
-    const costs: BusinessTripCost[] = TRIP_COST_LABELS.map((item, idx) => ({
+    const costs: BusinessTripCost[] = COST_LABELS.filter(({ key }) => biaya[key] !== undefined).map((item, idx) => ({
       id: `tc-${Date.now()}-${idx}`,
       trip_id: tripId,
       komponen: item.key,
@@ -209,7 +198,6 @@ function TripFormContent() {
     try {
       const payload = {
         diajukan_oleh: leadId,
-        pengaju: leadProfile,
         tujuan: tujuan.trim(),
         maksud_kegiatan: maksud.trim(),
         tanggal_berangkat: tglBerangkat,

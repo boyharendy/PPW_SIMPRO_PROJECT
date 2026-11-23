@@ -7,6 +7,8 @@ import { ArrowLeft, CheckCircle2, Clock, UserCheck, Download, FileText, Check } 
 import PageHeader from '@/components/ui/PageHeader';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { formatDateShort } from '@/lib/utils';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
 export default function Page() {
   const { id } = useParams<{ id: string }>();
@@ -60,10 +62,8 @@ export default function Page() {
 
       {/* Ringkasan Status & Dosen */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="card md:col-span-2 space-y-3">
-          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-            Informasi Dokumen RPS
-          </h3>
+        <MotionCard index={0} interactive={false} className="card md:col-span-2 space-y-3">
+          <WordRevealHeading as="h3" text="Informasi Dokumen RPS" className="text-sm font-bold text-slate-800 uppercase tracking-wider" />
           <div className="grid grid-cols-2 gap-4 text-xs">
             <div>
               <span className="text-slate-400 block mb-0.5">Dosen Pengampu Utama:</span>
@@ -84,12 +84,10 @@ export default function Page() {
               </span>
             </div>
           </div>
-        </div>
+        </MotionCard>
 
-        <div className="card space-y-2">
-          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-            Riwayat Versi Berkas
-          </h3>
+        <MotionCard index={1} interactive={false} className="card space-y-2">
+          <WordRevealHeading as="h3" text="Riwayat Versi Berkas" className="text-sm font-bold text-slate-800 uppercase tracking-wider" />
           <div className="space-y-2 text-xs">
             <div className="p-2.5 rounded-lg border border-blue-200 bg-blue-50/50 flex justify-between items-center">
               <div>
@@ -106,16 +104,14 @@ export default function Page() {
               <span className="text-[10px]">Perlu Revisi</span>
             </div>
           </div>
-        </div>
+        </MotionCard>
       </div>
 
       {/* Hasil Review 5 Pilar Mutu */}
-      <div className="card space-y-4">
+      <MotionCard index={2} interactive={false} className="card space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-              Hasil Telaah Reviewer — Instrumen 5 Pilar Mutu
-            </h3>
+            <WordRevealHeading as="h3" text="Hasil Telaah Reviewer — Instrumen 5 Pilar Mutu" className="text-sm font-bold text-slate-800 uppercase tracking-wider" />
             <p className="text-xs text-slate-500 mt-0.5">
               Reviewer: <strong>{rps.reviewer}</strong> • Rekomendasi:{' '}
               <strong className="text-emerald-700">{rps.rekomendasi}</strong>
@@ -141,7 +137,7 @@ export default function Page() {
           <span className="font-semibold text-slate-700 block mb-1">Catatan Evaluasi Reviewer:</span>
           <p className="text-slate-600 italic leading-relaxed">"{rps.catatanReviewer}"</p>
         </div>
-      </div>
+      </MotionCard>
     </div>
   );
 }

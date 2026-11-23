@@ -1,12 +1,12 @@
 package middleware
 
 import (
+	"context"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"simpro-backend/internal/model"
 	"simpro-backend/pkg/response"
-	"simpro-backend/pkg/utils"
 )
 
 const (
@@ -16,7 +16,7 @@ const (
 	CtxActiveRole = "active_role"
 )
 
-func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
+func AuthMiddleware(authenticate func(context.Context, string) (*model.User, error)) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -33,7 +33,7 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 		}
 
 		tokenString := parts[1]
-		claims, err := utils.ValidateToken(tokenString, jwtSecret)
+		user, err := authenticate(c.Request.Context(), tokenString)
 		if err != nil {
 			response.Unauthorized(c, "Token tidak valid atau sudah kadaluarsa")
 			c.Abort()
@@ -41,11 +41,12 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 		}
 
 		// Store user details in context
-		c.Set(CtxUserID, claims.UserID)
-		c.Set(CtxUserEmail, claims.Email)
-		c.Set(CtxUserRoles, claims.Roles)
-		c.Set(CtxActiveRole, claims.ActiveRole)
-		c.Set("is_violence_handler", claims.PenangananKekerasan)
+		c.Set("principal", user)
+		c.Set(CtxUserID, user.ID)
+		c.Set(CtxUserEmail, user.Email)
+		c.Set(CtxUserRoles, user.Roles)
+		c.Set(CtxActiveRole, user.ActiveRole)
+		c.Set("is_violence_handler", user.PenangananKekerasan)
 
 		c.Next()
 	}

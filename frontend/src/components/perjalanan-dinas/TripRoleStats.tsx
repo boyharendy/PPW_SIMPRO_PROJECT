@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import {
   CheckCircle2,
@@ -27,45 +29,46 @@ interface TripRoleStatsProps {
   isKaprodi: boolean;
   isAdminProdi: boolean;
   isDosen: boolean;
-  stats: TripRoleStatsData;
+  roleStats: TripRoleStatsData;
 }
 
-/**
- * Renders the 4-card KPI summary row tailored to the active user role in Perjalanan Dinas.
- */
 export default function TripRoleStats({
   isKaprodi,
   isAdminProdi,
   isDosen,
-  stats,
+  roleStats,
 }: TripRoleStatsProps) {
   if (isKaprodi) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
+          animationIndex={0}
           title="Menunggu Persetujuan"
-          value={stats.pendingCount}
+          value={roleStats.pendingCount}
           subtitle="Perlu keputusan Kaprodi"
           badgeTone="amber"
           icon={<Clock size={16} />}
         />
         <StatCard
+          animationIndex={1}
           title="Disetujui / Berjalan"
-          value={stats.approvedCount + stats.reportedCount}
+          value={roleStats.approvedCount + roleStats.reportedCount}
           subtitle="Sedang berjalan & dilaporkan"
           badgeTone="emerald"
           icon={<Plane size={16} />}
         />
         <StatCard
+          animationIndex={2}
           title="Revisi / Ditolak"
-          value={stats.revisionCount + stats.rejectedCount}
+          value={roleStats.revisionCount + roleStats.rejectedCount}
           subtitle="Perlu perbaikan atau ditolak"
           badgeTone="rose"
           icon={<RotateCcw size={16} />}
         />
         <StatCard
+          animationIndex={3}
           title="Estimasi Antrean"
-          value={formatRupiah(stats.pendingBudget)}
+          value={formatRupiah(roleStats.pendingBudget)}
           subtitle="Total usulan berstatus Diajukan"
           badgeTone="blue"
           icon={<Wallet size={16} />}
@@ -78,29 +81,33 @@ export default function TripRoleStats({
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
+          animationIndex={0}
           title="Perlu Verifikasi Berkas"
-          value={stats.reportedCount}
+          value={roleStats.reportedCount}
           subtitle="Menunggu konfirmasi Admin Prodi"
           badgeTone="amber"
           icon={<FileCheck size={16} />}
         />
         <StatCard
+          animationIndex={1}
           title="Berjalan / Belum Lapor"
-          value={stats.approvedCount}
+          value={roleStats.approvedCount}
           subtitle="Disetujui, menanti laporan hasil"
           badgeTone="blue"
           icon={<Plane size={16} />}
         />
         <StatCard
+          animationIndex={2}
           title="Menunggu Kaprodi"
-          value={stats.pendingCount}
+          value={roleStats.pendingCount}
           subtitle="Sedang dalam antrean persetujuan"
           badgeTone="slate"
           icon={<Clock size={16} />}
         />
         <StatCard
+          animationIndex={3}
           title="Selesai"
-          value={stats.completedCount}
+          value={roleStats.completedCount}
           subtitle="Berkas lengkap & terverifikasi"
           badgeTone="emerald"
           icon={<CheckCircle2 size={16} />}
@@ -113,29 +120,33 @@ export default function TripRoleStats({
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
+          animationIndex={0}
           title="Draf & Perlu Revisi"
-          value={stats.draftCount + stats.revisionCount}
+          value={roleStats.draftCount + roleStats.revisionCount}
           subtitle="Perlu dilengkapi atau diajukan"
           badgeTone="amber"
           icon={<Edit3 size={16} />}
         />
         <StatCard
+          animationIndex={1}
           title="Menunggu Kaprodi"
-          value={stats.pendingCount}
+          value={roleStats.pendingCount}
           subtitle="Usulan sedang ditinjau"
           badgeTone="blue"
           icon={<Clock size={16} />}
         />
         <StatCard
+          animationIndex={2}
           title="Perlu Laporan Hasil"
-          value={stats.approvedCount}
+          value={roleStats.approvedCount}
           subtitle="Siap unggah bukti & realisasi"
           badgeTone="indigo"
           icon={<UploadCloud size={16} />}
         />
         <StatCard
+          animationIndex={3}
           title="Dilaporkan & Selesai"
-          value={stats.reportedCount + stats.completedCount}
+          value={roleStats.reportedCount + roleStats.completedCount}
           subtitle="Telah dilaporkan / tuntas"
           badgeTone="emerald"
           icon={<CheckCircle2 size={16} />}

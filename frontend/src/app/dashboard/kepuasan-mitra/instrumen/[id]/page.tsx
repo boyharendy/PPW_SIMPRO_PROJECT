@@ -11,6 +11,8 @@ import Modal from '@/components/ui/Modal';
 import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import { mockSurveyTemplates } from '@/lib/mock-data';
 import type { PartnerSurveyTemplate, PartnerSurveyAspect } from '@/lib/types';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
 export default function Page() {
   const params = useParams();
@@ -242,23 +244,23 @@ export default function Page() {
 
       {/* Ringkasan Konfigurasi & Status Bobot (Komposisi Seragam & Selaras) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="card p-4 sm:p-5 flex flex-col justify-between bg-white shadow-xs">
+        <MotionCard index={0} interactive className="card p-4 sm:p-5 flex flex-col justify-between bg-white shadow-xs">
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Program & Skala</div>
           <div className="mt-2">
             <div className="text-2xl font-bold text-slate-900 tracking-tight">Program {template.program}</div>
             <div className="text-xs font-medium text-slate-500 mt-1">Skala Likert 1.0 s.d. {template.skala_maks}.0</div>
           </div>
-        </div>
+        </MotionCard>
 
-        <div className="card p-4 sm:p-5 flex flex-col justify-between bg-white shadow-xs">
+        <MotionCard index={1} interactive className="card p-4 sm:p-5 flex flex-col justify-between bg-white shadow-xs">
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Responden</div>
           <div className="mt-2">
             <div className="text-2xl font-bold text-slate-900 tracking-tight">{template.total_responden || 0} Mitra</div>
             <div className="text-xs font-medium text-slate-500 mt-1">Respons tersimpan dari instrumen ini</div>
           </div>
-        </div>
+        </MotionCard>
 
-        <div className="card p-4 sm:p-5 flex flex-col justify-between bg-white shadow-xs">
+        <MotionCard index={2} interactive className="card p-4 sm:p-5 flex flex-col justify-between bg-white shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Akumulasi Bobot</span>
             <span
@@ -280,14 +282,14 @@ export default function Page() {
               />
             </div>
           </div>
-        </div>
+        </MotionCard>
       </div>
 
       {/* Tabel Aspek */}
-      <div className="card">
+      <MotionCard index={3} interactive={false} className="card">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-base font-bold text-slate-800">Daftar Aspek Penilaian Kuesioner</h3>
+            <WordRevealHeading as="h3" text="Daftar Aspek Penilaian Kuesioner" className="text-base font-bold text-slate-800" />
             <p className="text-xs text-slate-500">
               Aspek-aspek kompetensi yang dinilai oleh perwakilan mitra industri saat mengisi formulir.
             </p>
@@ -295,7 +297,7 @@ export default function Page() {
         </div>
 
         <DataTable columns={columns} data={aspeks} emptyMessage="Belum ada aspek penilaian pada template ini." />
-      </div>
+      </MotionCard>
 
       {/* Modal Tambah/Edit Aspek */}
       <Modal

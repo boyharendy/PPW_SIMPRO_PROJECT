@@ -11,6 +11,7 @@ import { rkaService } from '@/lib/api';
 import { useUser } from '@/lib/context';
 import type { RkaDocument } from '@/lib/types';
 import { formatRupiah } from '@/lib/utils';
+import MotionCard from '@/components/motion/MotionCard';
 
 export default function Page() {
   const router = useRouter();
@@ -189,13 +190,13 @@ export default function Page() {
         }
       />
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <MotionCard index={0} interactive={false} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="p-8 text-center text-sm text-slate-400">Memuat daftar dokumen RKA...</div>
         ) : (
           <DataTable columns={columns} data={docs} emptyMessage="Belum ada dokumen RKA" />
         )}
-      </div>
+      </MotionCard>
 
       {isKaprodi && (
         <Modal

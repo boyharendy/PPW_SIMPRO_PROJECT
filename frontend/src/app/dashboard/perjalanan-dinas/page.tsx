@@ -4,35 +4,44 @@ import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  AlertTriangle,
   CheckCircle2,
-  Clock,
-  Edit3,
-  Eye,
   FileCheck,
   FileSpreadsheet,
   Plus,
-  UploadCloud,
 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
-import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
-import { StatusBadge } from '@/components/ui/StatusBadge';
+import { DataTable } from '@/components/ui/DataTable';
 import TripApprovalModal, { type TripDecision } from '@/components/perjalanan-dinas/TripApprovalModal';
 import TripCompletenessModal from '@/components/perjalanan-dinas/TripCompletenessModal';
 import TripRoleStats from '@/components/perjalanan-dinas/TripRoleStats';
-import TripFilterBar, { TRIP_TABS } from '@/components/perjalanan-dinas/TripFilterBar';
+import { buildTripTableColumns } from '@/components/perjalanan-dinas/tripTableColumns';
 import { useUser } from '@/lib/context';
 import { useBusinessTrips } from '@/lib/use-business-trips';
-import {
-  getTripLeadName,
-  getTripPolicyWarnings,
-  getTripTotalEstimasi,
-  isTripIncomplete,
-  isTripLateReport,
-  isTripOwnedByUser,
-} from '@/lib/trip-utils';
+import { getTripTotalEstimasi, isTripOwnedByUser } from '@/lib/trip-utils';
 import type { BusinessTrip } from '@/lib/types';
-import { formatDateShort, formatRupiah, getStatusLabel } from '@/lib/utils';
+import MotionCard from '@/components/motion/MotionCard';
+
+const TABS = [
+  'Semua',
+  'DRAF',
+  'DIAJUKAN',
+  'PERLU_REVISI',
+  'DISETUJUI',
+  'DILAPORKAN',
+  'SELESAI',
+  'DITOLAK',
+] as const;
+
+const TAB_LABELS: Record<string, string> = {
+  Semua: 'Semua',
+  DRAF: 'Draf',
+  DIAJUKAN: 'Menunggu Persetujuan',
+  PERLU_REVISI: 'Perlu Revisi',
+  DISETUJUI: 'Disetujui',
+  DILAPORKAN: 'Dilaporkan',
+  SELESAI: 'Selesai',
+  DITOLAK: 'Ditolak',
+};
 
 export default function PerjalananDinasPage() {
   const router = useRouter();
@@ -73,7 +82,7 @@ export default function PerjalananDinasPage() {
 
   const countsByStatus = useMemo(() => {
     const counts: Record<string, number> = { Semua: scopedTrips.length };
-    for (const tab of TRIP_TABS) {
+    for (const tab of TABS) {
       if (tab !== 'Semua') {
         counts[tab] = scopedTrips.filter((t) => t.status === tab).length;
       }
@@ -139,171 +148,17 @@ export default function PerjalananDinasPage() {
     );
   };
 
-  const columns: DataTableColumn<BusinessTrip>[] = [
-    {
-      key: 'tujuan',
-      header: 'Tujuan & Maksud',
-      render: (row) => {
-        const isOwner = isTripOwnedByUser(row, user.id);
-        const warnings = isKaprodi ? getTripPolicyWarnings(row, rkaDocs) : [];
-        const incompleteFlag = (isAdminProdi || isOwner) && isTripIncomplete(row);
-        const lateFlag = (isAdminProdi || isOwner) && isTripLateReport(row);
-
-        return (
-          <div className="min-w-0 max-w-md">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <p className="text-sm font-semibold text-slate-800">{row.tujuan}</p>
-              {isDosen && dosenScope === 'ALL' && isOwner && (
-                <span className="rounded-full bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 text-[10px] font-semibold">
-                  Milik Saya
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-slate-500 truncate max-w-[320px]">{row.maksud_kegiatan}</p>
-
-            {row.status === 'PERLU_REVISI' && row.catatan_keputusan && (
-              <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-0.5 mt-1 line-clamp-1">
-                Revisi Kaprodi: {row.catatan_keputusan}
-              </p>
-            )}
-
-            {warnings.map((w, idx) => (
-              <span
-                key={`w-${idx}`}
-                className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded mt-1 mr-1"
-              >
-                <AlertTriangle size={11} /> {w}
-              </span>
-            ))}
-
-            {incompleteFlag && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded mt-1 mr-1">
-                <AlertTriangle size={11} /> Bukti/Laporan Belum Lengkap
-              </span>
-            )}
-
-            {lateFlag && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded mt-1 mr-1">
-                <Clock size={11} /> Melewati Tenggat Laporan
-              </span>
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      key: 'pelaksana',
-      header: 'Pelaksana',
-      render: (row) => {
-        const participantCount = row.participants?.length || 1;
-        return (
-          <div>
-            <span className="text-sm font-medium text-slate-800 block">
-              {getTripLeadName(row)}
-            </span>
-            {participantCount > 1 && (
-              <span className="text-[11px] text-slate-500">
-                +{participantCount - 1} anggota rombongan
-              </span>
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      key: 'tanggal',
-      header: 'Tanggal',
-      render: (row) => (
-        <span className="text-xs sm:text-sm text-slate-700 whitespace-nowrap">
-          {formatDateShort(row.tanggal_berangkat)} – {formatDateShort(row.tanggal_kembali)}
-        </span>
-      ),
-    },
-    {
-      key: 'sumberDana',
-      header: 'Sumber Dana & Estimasi',
-      render: (row) => (
-        <div className="whitespace-nowrap">
-          <span className="text-xs font-semibold text-slate-800 block">
-            {formatRupiah(getTripTotalEstimasi(row))}
-          </span>
-          <span className="text-[11px] text-slate-500">{getStatusLabel(row.sumber_dana)}</span>
-        </div>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (row) => (
-        <div className="space-y-1">
-          <StatusBadge status={row.status} size="sm" />
-          {row.nomor_surat_tugas && (
-            <div className="text-[10px] font-mono text-slate-500">{row.nomor_surat_tugas}</div>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'aksi',
-      header: 'Aksi',
-      className: 'text-right',
-      render: (row) => {
-        const isOwner = isTripOwnedByUser(row, user.id);
-        const canDosenEdit = isDosen && isOwner && (row.status === 'DRAF' || row.status === 'PERLU_REVISI');
-        const canDosenReport =
-          isDosen &&
-          isOwner &&
-          (row.status === 'DISETUJUI' || (row.status === 'DILAPORKAN' && Boolean(row.is_belum_lengkap)));
-
-        return (
-          <div className="flex items-center justify-end gap-2 whitespace-nowrap">
-            {isKaprodi && row.status === 'DIAJUKAN' && (
-              <button
-                onClick={() => setSelectedTripForApproval(row)}
-                className="btn-primary text-xs px-3 py-1.5 inline-flex items-center gap-1.5"
-              >
-                <CheckCircle2 size={13} /> Tinjau &amp; Setujui
-              </button>
-            )}
-
-            {isAdminProdi && row.status === 'DILAPORKAN' && (
-              <button
-                onClick={() => setSelectedTripForCompleteness(row)}
-                className="btn-primary text-xs px-3 py-1.5 inline-flex items-center gap-1.5"
-              >
-                <FileCheck size={13} /> Verifikasi Berkas
-              </button>
-            )}
-
-            {canDosenEdit && (
-              <Link
-                href={`/dashboard/perjalanan-dinas/baru?edit=${row.id}`}
-                className="btn-primary text-xs px-3 py-1.5 inline-flex items-center gap-1.5"
-              >
-                <Edit3 size={13} /> {row.status === 'PERLU_REVISI' ? 'Revisi & Ajukan' : 'Lanjutkan Draf'}
-              </Link>
-            )}
-
-            {canDosenReport && (
-              <Link
-                href={`/dashboard/perjalanan-dinas/${row.id}/laporan`}
-                className="btn-primary text-xs px-3 py-1.5 inline-flex items-center gap-1.5"
-              >
-                <UploadCloud size={13} /> {row.is_belum_lengkap ? 'Lengkapi Bukti' : 'Laporkan Hasil'}
-              </Link>
-            )}
-
-            <button
-              onClick={() => router.push(`/dashboard/perjalanan-dinas/${row.id}`)}
-              className="btn-secondary text-xs px-2.5 py-1.5 inline-flex items-center gap-1.5"
-            >
-              <Eye size={13} /> Detail
-            </button>
-          </div>
-        );
-      },
-    },
-  ];
+  const columns = buildTripTableColumns({
+    userId: user.id,
+    isKaprodi,
+    isAdminProdi,
+    isDosen,
+    dosenScope,
+    rkaDocs,
+    onApprove: setSelectedTripForApproval,
+    onVerifyCompleteness: setSelectedTripForCompleteness,
+    onViewDetail: (tripId) => router.push(`/dashboard/perjalanan-dinas/${tripId}`),
+  });
 
   const pageDescription = isKaprodi
     ? 'Tinjau, setujui, dan pantau pengajuan rencana perjalanan dinas serta laporan pelaksanaannya.'
@@ -387,32 +242,86 @@ export default function PerjalananDinasPage() {
         </div>
       )}
 
+      {/* Ringkasan StatCard sesuai Peran */}
       <TripRoleStats
         isKaprodi={isKaprodi}
         isAdminProdi={isAdminProdi}
         isDosen={isDosen}
-        stats={roleStats}
+        roleStats={roleStats}
       />
 
-      <TripFilterBar
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        countsByStatus={countsByStatus}
-        isKaprodi={isKaprodi}
-        isAdminProdi={isAdminProdi}
-        isDosen={isDosen}
-        dosenScope={dosenScope}
-        onDosenScopeChange={setDosenScope}
-      />
+      {/* Filter Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 w-fit flex-wrap">
+          {TABS.map((tab) => {
+            const count = countsByStatus[tab] || 0;
+            const highlightTab =
+              (isKaprodi && tab === 'DIAJUKAN') ||
+              (isAdminProdi && tab === 'DILAPORKAN') ||
+              (isDosen && (tab === 'PERLU_REVISI' || tab === 'DISETUJUI'));
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors inline-flex items-center gap-1.5 ${
+                  activeTab === tab
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <span>{TAB_LABELS[tab]}</span>
+                {count > 0 && (
+                  <span
+                    className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                      highlightTab
+                        ? 'bg-amber-100 text-amber-800'
+                        : 'bg-slate-200/80 text-slate-600'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {isDosen && (
+          <div className="inline-flex items-center gap-1 bg-slate-100 rounded-xl p-1 w-fit shrink-0">
+            <button
+              type="button"
+              onClick={() => setDosenScope('MINE')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                dosenScope === 'MINE'
+                  ? 'bg-white text-blue-700 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Perjalanan Saya
+            </button>
+            <button
+              type="button"
+              onClick={() => setDosenScope('ALL')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                dosenScope === 'ALL'
+                  ? 'bg-white text-blue-700 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Semua Perjalanan Prodi
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Data Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+      <MotionCard index={0} interactive={false} className="bg-white rounded-2xl border border-slate-200 shadow-sm">
         <DataTable
           columns={columns}
           data={filtered}
           emptyMessage="Belum ada data perjalanan dinas untuk filter ini"
         />
-      </div>
+      </MotionCard>
 
       <TripApprovalModal
         trip={selectedTripForApproval}

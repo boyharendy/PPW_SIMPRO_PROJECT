@@ -1,11 +1,9 @@
+'use client';
+
 import React from 'react';
-import Link from 'next/link';
 import {
   AlertCircle,
-  ArrowLeft,
   CheckCircle2,
-  GitBranch,
-  History,
   Lock,
   PieChart,
   TrendingUp,
@@ -13,118 +11,41 @@ import {
 } from 'lucide-react';
 import { StatCard } from '@/components/ui/StatCard';
 import type { RkaVersion } from '@/lib/types';
-import { formatRupiah, getStatusLabel } from '@/lib/utils';
+import { formatRupiah } from '@/lib/utils';
 
-export function RkaNotFoundState({ tahun }: { tahun: string }) {
-  return (
-    <div className="space-y-4">
-      <Link
-        href="/dashboard/rka"
-        className="text-xs text-slate-500 hover:text-slate-800 inline-flex items-center gap-1 font-medium"
-      >
-        <ArrowLeft size={14} /> Kembali ke Daftar Dokumen RKA
-      </Link>
-      <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-3">
-        <AlertCircle className="mx-auto text-amber-500" size={32} />
-        <h2 className="text-lg font-bold text-slate-800">Dokumen RKA TA {tahun} Tidak Ditemukan</h2>
-        <p className="text-xs text-slate-500">
-          Dokumen RKA untuk tahun anggaran ini belum dibuat atau telah dihapus.
-        </p>
-        <Link href="/dashboard/rka" className="btn-primary text-xs px-4 py-2 inline-flex">
-          Kembali ke Daftar RKA
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-interface RkaVersionTopBarProps {
-  versions: RkaVersion[];
-  selectedVersionNum?: number;
-  onSelectVersion: (num: number) => void;
-  onOpenHistory: () => void;
-}
-
-export function RkaVersionTopBar({
-  versions,
-  selectedVersionNum,
-  onSelectVersion,
-  onOpenHistory,
-}: RkaVersionTopBarProps) {
-  return (
-    <div className="flex items-center justify-between flex-wrap gap-2">
-      <Link
-        href="/dashboard/rka"
-        className="text-xs text-slate-500 hover:text-slate-800 inline-flex items-center gap-1 font-medium"
-      >
-        <ArrowLeft size={14} /> Kembali ke Daftar Dokumen RKA
-      </Link>
-
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs">
-          <GitBranch size={13} className="text-blue-600" />
-          <span className="text-slate-500 font-medium">Versi:</span>
-          <select
-            value={selectedVersionNum ?? 1}
-            onChange={(e) => onSelectVersion(Number(e.target.value))}
-            className="bg-transparent font-bold text-slate-800 focus:outline-none cursor-pointer"
-          >
-            {versions.map((v) => (
-              <option key={v.id} value={v.nomor_versi}>
-                v{v.nomor_versi} — {getStatusLabel(v.status)} ({formatRupiah(v.total_anggaran)})
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <button
-          type="button"
-          onClick={onOpenHistory}
-          className="btn-secondary text-xs px-3 py-1.5 inline-flex items-center gap-1.5"
-        >
-          <History size={14} /> Riwayat Versi &amp; Audit Log
-        </button>
-      </div>
-    </div>
-  );
-}
-
-interface RkaStatusBannersAndStatsProps {
+interface RkaDetailStatusSectionProps {
   bannerMessage: { tone: 'success' | 'error'; text: string } | null;
   onDismissBanner: () => void;
   isViewingArchivedSnapshot: boolean;
-  selectedVersion?: RkaVersion;
-  activeVersion?: RkaVersion;
-  onSelectActiveVersion: (nomorVersi: number) => void;
   isLockedActive: boolean;
   isKaprodi: boolean;
   isViewingEditableVersion: boolean;
   validation: { valid: boolean; errors: string[] };
+  selectedVersion?: RkaVersion;
+  activeVersion?: RkaVersion;
+  onSelectVersion: (num: number) => void;
   displayedTotalPagu: number;
-  activityCount: number;
+  displayedActivityCount: number;
   totalRealisasi: number;
   serapanPct: number;
 }
 
-/**
- * Renders contextual RKA feedback/status banners and the 3-card budget summary row.
- */
-export default function RkaStatusBannersAndStats({
+export default function RkaDetailStatusSection({
   bannerMessage,
   onDismissBanner,
   isViewingArchivedSnapshot,
-  selectedVersion,
-  activeVersion,
-  onSelectActiveVersion,
   isLockedActive,
   isKaprodi,
   isViewingEditableVersion,
   validation,
+  selectedVersion,
+  activeVersion,
+  onSelectVersion,
   displayedTotalPagu,
-  activityCount,
+  displayedActivityCount,
   totalRealisasi,
   serapanPct,
-}: RkaStatusBannersAndStatsProps) {
+}: RkaDetailStatusSectionProps) {
   return (
     <>
       {bannerMessage && (
@@ -165,7 +86,7 @@ export default function RkaStatusBannersAndStats({
           {activeVersion && (
             <button
               type="button"
-              onClick={() => onSelectActiveVersion(activeVersion.nomor_versi)}
+              onClick={() => onSelectVersion(activeVersion.nomor_versi)}
               className="text-xs font-semibold text-purple-700 underline"
             >
               Kembali ke Versi Aktif (v{activeVersion.nomor_versi})
@@ -202,13 +123,15 @@ export default function RkaStatusBannersAndStats({
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
+          animationIndex={0}
           title="Total Pagu (Otomatis)"
           value={formatRupiah(displayedTotalPagu)}
-          subtitle={`Dari ${activityCount} butir kegiatan`}
+          subtitle={`Dari ${displayedActivityCount} butir kegiatan`}
           icon={<Wallet size={16} />}
           color="blue"
         />
         <StatCard
+          animationIndex={1}
           title="Total Realisasi Berjalan"
           value={formatRupiah(totalRealisasi)}
           subtitle={
@@ -220,6 +143,7 @@ export default function RkaStatusBannersAndStats({
           color={totalRealisasi > displayedTotalPagu ? 'rose' : 'emerald'}
         />
         <StatCard
+          animationIndex={2}
           title="Persentase Serapan"
           value={`${serapanPct}%`}
           subtitle={`Versi ditampilkan: v${selectedVersion?.nomor_versi ?? 1}`}

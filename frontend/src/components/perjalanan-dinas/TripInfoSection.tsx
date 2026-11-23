@@ -1,6 +1,22 @@
+'use client';
+
 import React from 'react';
 import { CheckCircle2 } from 'lucide-react';
-import type { Profile, RkaBudgetItem, TripFundingSource } from '@/lib/types';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
+import type { TripFundingSource } from '@/lib/types';
+
+export interface TripLecturerOption {
+  id: string;
+  nama_lengkap: string;
+}
+
+export interface TripRkaBudgetOption {
+  id: string;
+  kode_pos: string;
+  nama_pos: string;
+  sisa_anggaran?: number;
+}
 
 export const TRIP_SUMBER_DANA: Array<{ value: TripFundingSource; label: string }> = [
   { value: 'RKA_PRODI', label: 'RKA Prodi' },
@@ -12,7 +28,7 @@ export const TRIP_SUMBER_DANA: Array<{ value: TripFundingSource; label: string }
 
 interface TripInfoSectionProps {
   inputCls: string;
-  dosenProfiles: Profile[];
+  dosenProfiles: TripLecturerOption[];
   pelaksanaId: string;
   anggotaIds: string[];
   tujuan: string;
@@ -22,7 +38,7 @@ interface TripInfoSectionProps {
   sumberDana: TripFundingSource | '';
   showPosRka: boolean;
   posRkaId: string;
-  rkaBudgetItems: RkaBudgetItem[];
+  rkaBudgetItems: TripRkaBudgetOption[];
   onChangePelaksana: (val: string) => void;
   onToggleAnggota: (id: string) => void;
   onChangeTujuan: (val: string) => void;
@@ -59,8 +75,16 @@ export default function TripInfoSection({
   onChangePosRka,
 }: TripInfoSectionProps) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-5">
-      <h2 className="text-lg font-semibold text-slate-800">Informasi Perjalanan</h2>
+    <MotionCard
+      index={0}
+      interactive={false}
+      className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-5"
+    >
+      <WordRevealHeading
+        as="h2"
+        text="Informasi Perjalanan"
+        className="text-lg font-semibold text-slate-800"
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5 sm:col-span-2">
@@ -196,6 +220,6 @@ export default function TripInfoSection({
           </div>
         )}
       </div>
-    </div>
+    </MotionCard>
   );
 }

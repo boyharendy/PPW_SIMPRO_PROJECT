@@ -1,56 +1,63 @@
+'use client';
+
 import React from 'react';
-import { ChevronDown, ChevronRight, Edit3, GitBranch, Plus, Trash2 } from 'lucide-react';
-import Modal from '@/components/ui/Modal';
+import {
+  ChevronDown,
+  ChevronRight,
+  Edit3,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import {
   computeActivityTotal,
   formatActivityQuarters,
   resolveActivityPicName,
 } from '@/lib/rka-utils';
-import type { RkaActivity, RkaVersion } from '@/lib/types';
+import type { RkaActivity } from '@/lib/types';
 import {
   calculateAbsorptionPercentage,
-  formatDateShort,
   formatRupiah,
   getStatusLabel,
 } from '@/lib/utils';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
-interface RkaActivityAccordionListProps {
+interface RkaActivityListProps {
   activities: RkaActivity[];
   expandedIds: Record<string, boolean>;
-  isEditable: boolean;
-  isArchived: boolean;
-  onToggleExpand: (id: string) => void;
+  onToggleExpand: (actId: string) => void;
+  isViewingEditableVersion: boolean;
+  isViewingArchivedSnapshot: boolean;
   onAddActivity: () => void;
   onEditActivity: (act: RkaActivity) => void;
   onDeleteActivity: (act: RkaActivity) => void;
 }
 
-/**
- * Renders the expandable list of RKA activities along with itemized budget sub-tables.
- */
-export function RkaActivityAccordionList({
+export default function RkaActivityList({
   activities,
   expandedIds,
-  isEditable,
-  isArchived,
   onToggleExpand,
+  isViewingEditableVersion,
+  isViewingArchivedSnapshot,
   onAddActivity,
   onEditActivity,
   onDeleteActivity,
-}: RkaActivityAccordionListProps) {
+}: RkaActivityListProps) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+    <MotionCard index={0} interactive={false} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h2 className="text-lg font-semibold text-slate-800">
-            Daftar Butir Kegiatan &amp; Pos Anggaran
-          </h2>
+          <WordRevealHeading
+            as="h2"
+            text="Daftar Butir Kegiatan & Pos Anggaran"
+            className="text-lg font-semibold text-slate-800"
+          />
           <p className="text-xs text-slate-500">
             Klik baris kegiatan untuk melihat rincian Pos Anggaran, Sumber Dana, Indikator Kinerja, PIC, dan Jadwal Pelaksanaan.
           </p>
         </div>
-        {isEditable && (
+        {isViewingEditableVersion && (
           <button
             type="button"
             onClick={onAddActivity}
@@ -66,7 +73,7 @@ export function RkaActivityAccordionList({
           <p className="text-sm font-medium text-slate-600">
             Belum ada butir kegiatan pada RKA ini.
           </p>
-          {isEditable && (
+          {isViewingEditableVersion && (
             <button
               type="button"
               onClick={onAddActivity}
@@ -78,7 +85,7 @@ export function RkaActivityAccordionList({
         </div>
       ) : (
         <div className="space-y-3">
-          {activities.map((act) => {
+          {activities.map((act, idx) => {
             const isExpanded = expandedIds[act.id] ?? true;
             const actPagu = computeActivityTotal(act);
             const actReal = act.total_realisasi ?? 0;
@@ -86,10 +93,13 @@ export function RkaActivityAccordionList({
             const isOver = actReal > actPagu;
 
             return (
-              <div
+              <MotionCard
                 key={act.id}
+                index={idx}
+                interactive
                 className="rounded-xl border border-slate-200 overflow-hidden bg-white"
               >
+                {/* Activity Header Row */}
                 <div
                   onClick={() => onToggleExpand(act.id)}
                   className="p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-slate-50/70 hover:bg-slate-50 cursor-pointer transition-colors"
@@ -131,7 +141,7 @@ export function RkaActivityAccordionList({
                       <span className="text-sm font-bold text-slate-900 font-mono">
                         {formatRupiah(actPagu)}
                       </span>
-                      {!isArchived && (
+                      {!isViewingArchivedSnapshot && (
                         <span
                           className={`text-[11px] block font-semibold ${
                             isOver ? 'text-rose-600' : 'text-slate-500'
@@ -142,7 +152,7 @@ export function RkaActivityAccordionList({
                       )}
                     </div>
 
-                    {isEditable && (
+                    {isViewingEditableVersion && (
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
@@ -165,6 +175,7 @@ export function RkaActivityAccordionList({
                   </div>
                 </div>
 
+                {/* Pos Anggaran Sub-table */}
                 {isExpanded && (
                   <div className="border-t border-slate-200 overflow-x-auto">
                     <table className="w-full text-xs">
@@ -176,7 +187,9 @@ export function RkaActivityAccordionList({
                           <th className="py-2.5 px-3">Sumber Dana</th>
                           <th className="py-2.5 px-3 text-center">Vol &amp; Satuan</th>
                           <th className="py-2.5 px-3 text-right">Nominal Pagu</th>
-                          {!isArchived && <th className="py-2.5 px-4 text-right">Realisasi</th>}
+                          {!isViewingArchivedSnapshot && (
+                            <th className="py-2.5 px-4 text-right">Realisasi</th>
+                          )}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -212,7 +225,7 @@ export function RkaActivityAccordionList({
                                 <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-800">
                                   {formatRupiah(pos.nominal_anggaran)}
                                 </td>
-                                {!isArchived && (
+                                {!isViewingArchivedSnapshot && (
                                   <td
                                     className={`py-2.5 px-4 text-right font-mono font-semibold ${
                                       posOver ? 'text-rose-600' : 'text-slate-600'
@@ -229,132 +242,11 @@ export function RkaActivityAccordionList({
                     </table>
                   </div>
                 )}
-              </div>
+              </MotionCard>
             );
           })}
         </div>
       )}
-    </div>
-  );
-}
-
-interface RkaVersionSummaryCardProps {
-  versions: RkaVersion[];
-  selectedVersionNum?: number;
-  onSelectVersion: (num: number) => void;
-  onOpenHistory: () => void;
-}
-
-/**
- * Renders the document version history summary card below the activity list.
- */
-export function RkaVersionSummaryCard({
-  versions,
-  selectedVersionNum,
-  onSelectVersion,
-  onOpenHistory,
-}: RkaVersionSummaryCardProps) {
-  return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <GitBranch size={18} className="text-slate-400" />
-          <h2 className="text-base font-semibold text-slate-800">Riwayat Versi Dokumen</h2>
-        </div>
-        <button
-          type="button"
-          onClick={onOpenHistory}
-          className="text-xs font-semibold text-blue-600 hover:underline"
-        >
-          Bandingkan Versi &amp; Audit Log →
-        </button>
-      </div>
-      <div className="space-y-2.5">
-        {versions.map((v) => {
-          const isSelected = v.nomor_versi === selectedVersionNum;
-          return (
-            <div
-              key={v.id}
-              onClick={() => onSelectVersion(v.nomor_versi)}
-              className={`flex items-center justify-between p-3 rounded-xl border transition-colors cursor-pointer ${
-                isSelected
-                  ? 'border-blue-300 bg-blue-50/40'
-                  : 'border-slate-100 hover:border-slate-200'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
-                  v{v.nomor_versi}
-                </span>
-                <div>
-                  <p className="text-sm font-medium text-slate-800">
-                    Versi {v.nomor_versi} • {formatRupiah(v.total_anggaran)}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {v.alasan_revisi || 'Penyusunan RKA'} • {formatDateShort(v.diterapkan_at || v.created_at)}
-                  </p>
-                </div>
-              </div>
-              <StatusBadge status={v.status} size="sm" />
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-interface RkaRevisionModalProps {
-  open: boolean;
-  tahunAnggaran: number;
-  nextVersionNum: number;
-  alasanRevisi: string;
-  onChangeAlasan: (val: string) => void;
-  onClose: () => void;
-  onSubmit: (e: React.FormEvent) => void;
-}
-
-/**
- * Renders the modal prompting Kaprodi for justification when initiating a new RKA revision.
- */
-export function RkaRevisionModal({
-  open,
-  tahunAnggaran,
-  nextVersionNum,
-  alasanRevisi,
-  onChangeAlasan,
-  onClose,
-  onSubmit,
-}: RkaRevisionModalProps) {
-  return (
-    <Modal open={open} onClose={onClose} title={`Buat Revisi RKA TA ${tahunAnggaran}`} size="sm">
-      <form onSubmit={onSubmit} className="space-y-4 text-xs">
-        <div className="rounded-xl bg-blue-50 border border-blue-100 p-3 text-blue-800 leading-relaxed">
-          Membuat revisi akan mengarsipkan versi aktif saat ini sebagai snapshot <strong>read-only</strong> dan
-          membuka draf versi baru (<strong>v{nextVersionNum}</strong>) untuk disunting dan disahkan.
-        </div>
-        <div>
-          <label className="font-semibold text-slate-700 block mb-1.5">
-            Alasan / Justifikasi Revisi *
-          </label>
-          <textarea
-            rows={3}
-            value={alasanRevisi}
-            onChange={(e) => onChangeAlasan(e.target.value)}
-            placeholder="Contoh: Pergeseran pagu perjalanan dinas & penambahan alokasi lab..."
-            className="input-field text-xs resize-none"
-            required
-          />
-        </div>
-        <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="btn-secondary text-xs px-4 py-2">
-            Batal
-          </button>
-          <button type="submit" className="btn-primary text-xs px-4 py-2">
-            Buka Draf Revisi
-          </button>
-        </div>
-      </form>
-    </Modal>
+    </MotionCard>
   );
 }

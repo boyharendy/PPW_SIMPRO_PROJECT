@@ -408,6 +408,9 @@ export const NAV_ITEMS: NavItem[] = [
  * Deny by default if no rule matches.
  */
 export function canAccess(pathname: string, currentRole: Role): boolean {
+  if (/^\/dashboard\/kelola\/aduan\/[a-f0-9-]{36}\/?$/i.test(pathname)) {
+    return ['DOSEN','GKM','ADMIN_PRODI','KAPRODI','PENGELOLA_ADUAN','PETUGAS_KEKERASAN'].includes(currentRole);
+  }
   if (!pathname || !pathname.startsWith('/dashboard')) {
     return true;
   }

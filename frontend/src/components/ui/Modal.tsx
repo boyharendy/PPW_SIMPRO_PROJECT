@@ -38,7 +38,7 @@ export default function Modal({ open, isOpen, onClose, title, children, footer, 
             <X size={18} />
           </button>
         </div>
-        <div className="flex-1 min-h-0 px-6 py-5 overflow-y-auto custom-scrollbar">
+        <div data-lenis-prevent className="flex-1 min-h-0 px-6 py-5 overflow-y-auto custom-scrollbar">
           {children}
         </div>
         {footer && (

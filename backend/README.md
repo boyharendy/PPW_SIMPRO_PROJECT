@@ -2,10 +2,12 @@
 
 Backend RESTful API untuk Sistem Informasi Manajemen Program Studi (SIMPRO), dibangun menggunakan **Go (Golang)** dengan **Gin Web Framework** dan arsitektur modular (*Clean Architecture*).
 
+Konfigurasi contoh menggunakan mode lokal dengan data dalam memori. Staging dan produksi menggunakan Supabase Auth, PostgreSQL dengan RLS, bucket privat, dan Redis bersama. Urutan penyiapan, migrasi data lama, serta uji penerimaan tersedia di [rencana perbaikan backend](../RENCANA_PERBAIKAN_BACKEND.md).
+
 ---
 
 ## 🚀 Persyaratan Sistem
-- [Go (Golang)](https://go.dev/dl/) versi 1.21 ke atas.
+- [Go (Golang)](https://go.dev/dl/) versi 1.25 ke atas.
 
 ---
 
@@ -18,7 +20,7 @@ cd backend
 
 ### 2. Unduh dependensi (Go Modules)
 ```bash
-go mod tidy
+go mod download
 ```
 
 ### 3. Salin file konfigurasi environment
@@ -28,7 +30,7 @@ cp .env.example .env
 
 ### 4. Jalankan Server
 ```bash
-go run cmd/api/main.go
+go run ./cmd/api
 ```
 Server akan aktif di: **`http://localhost:8080/api/v1`**
 
@@ -45,7 +47,10 @@ Server akan aktif di: **`http://localhost:8080/api/v1`**
 | `POST` | `/api/v1/auth/switch-role` | Ganti peran aktif | Bearer Token |
 | `GET` | `/api/v1/users` | List pengguna (paginasi & search) | Bearer Token |
 
-### Kredensial Uji Coba Default:
+### Akun demo lokal
+
+Akun ini tersedia saat API berjalan dengan `SERVER_ENV=development` atau `test`. Staging dan produksi memakai akun Supabase Auth yang sudah terhubung ke profil prodi aktif.
+
 - **Email**: `kaprodi@universitas.ac.id`
 - **Password**: `password123`
 - **Peran**: Kaprodi, Dosen, GKM, dll.

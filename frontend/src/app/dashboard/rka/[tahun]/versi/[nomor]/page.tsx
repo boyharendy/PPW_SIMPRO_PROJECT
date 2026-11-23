@@ -12,6 +12,8 @@ import { mockProfiles } from '@/lib/mock-data';
 import { computeRkaVersionDiff, getVersionSnapshot } from '@/lib/rka-utils';
 import type { RkaDocument } from '@/lib/types';
 import { formatDateShort, formatRupiah } from '@/lib/utils';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
 export default function Page() {
   const { tahun, nomor } = useParams<{ tahun: string; nomor: string }>();
@@ -119,10 +121,8 @@ export default function Page() {
         }
       />
 
-      <div className="card space-y-3">
-        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-          Informasi Versi
-        </h3>
+      <MotionCard index={0} interactive={false} className="card space-y-3">
+        <WordRevealHeading as="h3" text="Informasi Versi" className="text-sm font-bold text-slate-800 uppercase tracking-wider" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
           <div>
             <span className="text-slate-400 block mb-0.5">Nomor Versi:</span>
@@ -153,16 +153,18 @@ export default function Page() {
             </p>
           </div>
         </div>
-      </div>
+      </MotionCard>
 
       {diff && (
-        <div className="card space-y-4">
+        <MotionCard index={1} interactive={false} className="card space-y-4">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2">
               <GitCompare size={16} className="text-blue-600" />
-              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-                Perbandingan terhadap {prevVersion ? `Versi #${prevVersion.nomor_versi}` : 'Awal'}
-              </h3>
+              <WordRevealHeading
+                as="h3"
+                text={`Perbandingan terhadap ${prevVersion ? `Versi #${prevVersion.nomor_versi}` : 'Awal'}`}
+                className="text-sm font-bold text-slate-800 uppercase tracking-wider"
+              />
             </div>
             <span className="text-xs font-mono font-bold text-slate-700">
               Selisih Total: {diff.deltaTotal >= 0 ? '+' : ''}
@@ -217,7 +219,7 @@ export default function Page() {
               ))}
             </div>
           )}
-        </div>
+        </MotionCard>
       )}
     </div>
   );

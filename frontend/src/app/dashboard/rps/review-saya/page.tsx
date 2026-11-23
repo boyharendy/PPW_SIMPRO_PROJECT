@@ -7,6 +7,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { formatDateShort } from '@/lib/utils';
+import MotionCard from '@/components/motion/MotionCard';
 
 interface RpsReviewTask {
   id: string;
@@ -125,13 +126,13 @@ export default function Page() {
         description="Daftar dokumen RPS yang ditugaskan kepada Anda untuk ditelaah berbasis 5 pilar mutu."
       />
 
-      <div className="card">
+      <MotionCard index={0} interactive={false} className="card">
         <DataTable
           columns={columns}
           data={MOCK_TASKS}
           emptyMessage="Tidak ada tugas review RPS saat ini."
         />
-      </div>
+      </MotionCard>
     </div>
   );
 }

@@ -27,10 +27,10 @@ type AdminRepository interface {
 // ============================================================
 
 type supabaseAdminRepository struct {
-	client *database.SupabaseClient
+	client database.Store
 }
 
-func NewSupabaseAdminRepository(client *database.SupabaseClient) AdminRepository {
+func NewSupabaseAdminRepository(client database.Store) AdminRepository {
 	return &supabaseAdminRepository{client: client}
 }
 
@@ -278,4 +278,3 @@ func (r *memoryAdminRepository) LogAudit(log *model.AuditLog) error {
 	r.auditLogs = append([]*model.AuditLog{log}, r.auditLogs...)
 	return nil
 }
-

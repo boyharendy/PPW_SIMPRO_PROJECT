@@ -8,8 +8,8 @@ import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useUser } from '@/lib/context';
 import { publicationService } from '@/lib/api/services/publication.service';
-import { mockPublications } from '@/lib/mock-data';
 import type { Publication } from '@/lib/types';
+import MotionCard from '@/components/motion/MotionCard';
 
 const JENIS_COLORS: Record<string, string> = {
   JURNAL: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -33,7 +33,7 @@ export default function Page() {
   const { currentRole } = useUser();
   const isKaprodi = currentRole === 'KAPRODI';
 
-  const [publications, setPublications] = useState<Publication[]>(mockPublications);
+  const [publications, setPublications] = useState<Publication[]>([]);
   const [activeTab, setActiveTab] = useState<string>('Semua');
   const [search, setSearch] = useState('');
 
@@ -43,7 +43,7 @@ export default function Page() {
       if (active && res.data && Array.isArray(res.data)) {
         setPublications(res.data);
       }
-    });
+    }).catch(() => { if(active) setPublications([]); });
     return () => {
       active = false;
     };
@@ -147,7 +147,7 @@ export default function Page() {
       />
 
       {/* Filter Tabs + Search */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+      <MotionCard index={0} interactive={false} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-1 overflow-x-auto">
             {TABS.map((tab) => (
@@ -175,12 +175,12 @@ export default function Page() {
             />
           </div>
         </div>
-      </div>
+      </MotionCard>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+      <MotionCard index={1} interactive={false} className="bg-white rounded-2xl border border-slate-200 shadow-sm">
         <DataTable columns={columns} data={filtered} emptyMessage="Tidak ada publikasi ditemukan" />
-      </div>
+      </MotionCard>
     </div>
   );
 }

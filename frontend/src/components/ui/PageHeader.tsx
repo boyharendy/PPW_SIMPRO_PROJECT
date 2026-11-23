@@ -1,6 +1,7 @@
 'use client';
 
 import React, { ReactNode } from 'react';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
 export interface PageHeaderProps {
   title: string;
@@ -26,9 +27,11 @@ export function PageHeader({
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
       <div className="space-y-1 min-w-0">
         <div className="flex items-center gap-2.5 flex-wrap">
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-            {title}
-          </h1>
+          <WordRevealHeading
+            as="h1"
+            text={title}
+            className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight"
+          />
           {badge}
         </div>
         {descText && (

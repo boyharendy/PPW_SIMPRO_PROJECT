@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import type { Role, Notification } from '@/lib/types';
-import { mockNotifications, mockProfiles } from '@/lib/mock-data';
 import { authService, tokenStorage } from '@/lib/api';
 import type { LoginPayload } from '@/lib/types/api';
 
@@ -23,9 +22,11 @@ interface AppContextType {
   markAsRead: (id: string) => void;
   sidebarOpen: boolean;
   setSidebarOpen: (v: boolean) => void;
+  mobileSidebarOpen: boolean;
+  setMobileSidebarOpen: (v: boolean) => void;
   isAuthenticated: boolean;
   isLoadingSession: boolean;
-  login: (payload: LoginPayload) => Promise<void>;
+  login: (payload: LoginPayload, options?: Pick<RequestInit, 'redirect'>) => Promise<void>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<void>;
 }
@@ -50,34 +51,7 @@ export function useUser() {
   };
 }
 
-const DEFAULT_FALLBACK_USER: AuthUser = {
-  id: 'u-kaprodi',
-  nama_lengkap: mockProfiles[0]?.nama_lengkap || 'Dr. Ahmad Fauzi, M.T. (Kaprodi)',
-  email: mockProfiles[0]?.email || 'kaprodi@univ.ac.id',
-  roles: [
-    'KAPRODI',
-    'GKM',
-    'ADMIN_PRODI',
-    'DOSEN',
-    'DOSEN_VERIFIKATOR',
-    'DOSEN_WALI',
-    'DOSEN_PEMBINA',
-    'KETUA_KELAS',
-    'MAHASISWA',
-    'PENGURUS_HIMPUNAN',
-    'KOORDINATOR_KP_PSI_PDLK',
-    'PENGELOLA_ADUAN',
-    'MITRA',
-    'KOORDINATOR_KP',
-    'KOORDINATOR_PSI',
-    'KOORDINATOR_PDLK',
-    'PETUGAS_KEKERASAN',
-    'MITRA_EKSTERNAL',
-    'HIMPUNAN',
-  ],
-  activeRole: 'KAPRODI',
-  penanganan_kekerasan: true,
-};
+const SIGNED_OUT_USER: AuthUser = { id: '', nama_lengkap: '', email: '', roles: [], activeRole: 'MAHASISWA' };
 
 function sanitizeRoles(roles?: Role[]): Role[] {
   if (!roles || roles.length === 0) return ['MAHASISWA'];
@@ -86,11 +60,12 @@ function sanitizeRoles(roles?: Role[]): Role[] {
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser>(DEFAULT_FALLBACK_USER);
+  const [user, setUser] = useState<AuthUser>(SIGNED_OUT_USER);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoadingSession, setIsLoadingSession] = useState<boolean>(true);
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Sync session with Golang Backend if token is present
   const refreshSession = useCallback(async () => {
@@ -111,6 +86,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           nama_lengkap: u.nama_lengkap,
           email: u.email,
           roles: cleanUserRoles,
+          penanganan_kekerasan: u.penanganan_kekerasan,
           activeRole: u.active_role || cleanUserRoles[0] || 'MAHASISWA',
         });
         setIsAuthenticated(true);
@@ -142,6 +118,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             nama_lengkap: u.nama_lengkap,
             email: u.email,
             roles: cleanUserRoles,
+          penanganan_kekerasan: u.penanganan_kekerasan,
             activeRole: u.active_role || cleanUserRoles[0] || 'MAHASISWA',
           });
           setIsAuthenticated(true);
@@ -172,7 +149,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (res.data?.user) {
           setUser(prev => ({
             ...prev,
-            activeRole: res.data?.user?.active_role || role,
+            activeRole: res.data.user.active_role,
+            penanganan_kekerasan: res.data.user.penanganan_kekerasan,
           }));
           return;
         }
@@ -182,13 +160,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Mode demo / unauthenticated: ganti state hanya jika terdaftar di user.roles
-    setUser(prev => ({ ...prev, activeRole: role }));
+
   }, [isAuthenticated, user.roles]);
 
-  const login = useCallback(async (payload: LoginPayload) => {
-    const res = await authService.login(payload);
-    if (res.data?.user) {
+  const login = useCallback(async (payload: LoginPayload, options?: Pick<RequestInit, 'redirect'>) => {
+    const res = await authService.login(payload, options);
+    if (res.data?.user && res.data.tokens?.access_token) {
       const u = res.data.user;
       const cleanUserRoles = sanitizeRoles(u.roles);
       setUser({
@@ -196,16 +173,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
         nama_lengkap: u.nama_lengkap,
         email: u.email,
         roles: cleanUserRoles,
+          penanganan_kekerasan: u.penanganan_kekerasan,
         activeRole: u.active_role || cleanUserRoles[0] || 'MAHASISWA',
       });
       setIsAuthenticated(true);
+      return;
     }
+    throw new Error('API tidak mengembalikan sesi login yang valid.');
   }, []);
 
   const logout = useCallback(async () => {
     await authService.logout();
     setIsAuthenticated(false);
-    setUser(DEFAULT_FALLBACK_USER);
+    setUser(SIGNED_OUT_USER);
   }, []);
 
   const markAsRead = useCallback((id: string) => {
@@ -226,6 +206,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         markAsRead,
         sidebarOpen,
         setSidebarOpen,
+        mobileSidebarOpen,
+        setMobileSidebarOpen,
         isAuthenticated,
         isLoadingSession,
         login,

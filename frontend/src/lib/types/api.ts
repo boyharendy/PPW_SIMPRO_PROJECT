@@ -69,6 +69,7 @@ export interface UserSession {
   username?: string;
   roles: Role[];
   active_role: Role;
+  penanganan_kekerasan?: boolean;
   avatar_url?: string;
   is_active: boolean;
   created_at: string;

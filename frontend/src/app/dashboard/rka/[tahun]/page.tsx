@@ -14,29 +14,21 @@ import PageHeader from '@/components/ui/PageHeader';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import RkaActivityFormModal from '@/components/rka/RkaActivityFormModal';
 import RkaVersionHistoryModal from '@/components/rka/RkaVersionHistoryModal';
-import RkaStatusBannersAndStats, {
+import RkaActivityList from '@/components/rka/RkaActivityList';
+import RkaDetailStatusSection from '@/components/rka/RkaDetailStatusSection';
+import RkaVersionSummarySection, {
   RkaNotFoundState,
-  RkaVersionTopBar,
-} from '@/components/rka/RkaStatusBannersAndStats';
-import {
-  RkaActivityAccordionList,
-  RkaRevisionModal,
-  RkaVersionSummaryCard,
-} from '@/components/rka/RkaActivityAccordionList';
+  RkaVersionToolbar,
+} from '@/components/rka/RkaVersionSummarySection';
 import { rkaService } from '@/lib/api';
 import { useUser } from '@/lib/context';
 import {
-  computeActivityTotal,
   computeDocumentTotalPagu,
   getVersionSnapshot,
   validateRkaForApproval,
 } from '@/lib/rka-utils';
 import type { RkaActivity, RkaDocument } from '@/lib/types';
-import {
-  calculateAbsorptionPercentage,
-  formatRupiah,
-  getStatusLabel,
-} from '@/lib/utils';
+import { calculateAbsorptionPercentage, getStatusLabel } from '@/lib/utils';
 
 export default function Page() {
   const { tahun } = useParams<{ tahun: string }>();
@@ -52,7 +44,6 @@ export default function Page() {
   const [editingActivity, setEditingActivity] = useState<RkaActivity | null>(null);
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [revisionModalOpen, setRevisionModalOpen] = useState(false);
-  const [alasanRevisi, setAlasanRevisi] = useState('');
   const [bannerMessage, setBannerMessage] = useState<{
     tone: 'success' | 'error';
     text: string;
@@ -121,7 +112,6 @@ export default function Page() {
     [versions, selectedVersionNum, activeVersion, workingVersion]
   );
 
-  // Tentukan apakah user sedang melihat versi draf/revisi yang dapat diedit oleh Kaprodi
   const isViewingEditableVersion = useMemo(() => {
     if (!doc || !isKaprodi) return false;
     if (doc.status === 'DITUTUP' || doc.status === 'ARSIP') return false;
@@ -213,23 +203,14 @@ export default function Page() {
     }
   };
 
-  const handleStartRevision = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleStartRevision = async (alasan: string) => {
     if (!doc || !isKaprodi) return;
-    if (!alasanRevisi.trim()) return;
-
-    const res = await rkaService.startRevision(
-      doc.tahun_anggaran,
-      alasanRevisi.trim(),
-      user.id,
-      user.name
-    );
+    const res = await rkaService.startRevision(doc.tahun_anggaran, alasan, user.id, user.name);
     if (res.success && res.data) {
       setDoc(res.data);
       const draftVer = (res.data.versions || []).find((v) => v.id === res.data?.versi_kerja_id);
       if (draftVer) setSelectedVersionNum(draftVer.nomor_versi);
       setRevisionModalOpen(false);
-      setAlasanRevisi('');
       setBannerMessage({ tone: 'success', text: res.message });
     } else {
       setBannerMessage({ tone: 'error', text: res.message });
@@ -262,9 +243,9 @@ export default function Page() {
 
   return (
     <div className="space-y-5">
-      <RkaVersionTopBar
+      <RkaVersionToolbar
         versions={versions}
-        selectedVersionNum={selectedVersion?.nomor_versi}
+        selectedVersionNumber={selectedVersion?.nomor_versi}
         onSelectVersion={setSelectedVersionNum}
         onOpenHistory={() => setHistoryModalOpen(true)}
       />
@@ -319,10 +300,7 @@ export default function Page() {
             {isKaprodi && isLockedActive && (
               <button
                 type="button"
-                onClick={() => {
-                  setAlasanRevisi('');
-                  setRevisionModalOpen(true);
-                }}
+                onClick={() => setRevisionModalOpen(true)}
                 className="btn-primary text-xs px-4 py-2 inline-flex items-center gap-1.5"
               >
                 <FilePlus size={14} /> Buat Revisi RKA
@@ -347,29 +325,29 @@ export default function Page() {
         }
       />
 
-      <RkaStatusBannersAndStats
+      <RkaDetailStatusSection
         bannerMessage={bannerMessage}
         onDismissBanner={() => setBannerMessage(null)}
         isViewingArchivedSnapshot={isViewingArchivedSnapshot}
-        selectedVersion={selectedVersion}
-        activeVersion={activeVersion}
-        onSelectActiveVersion={(vNum) => setSelectedVersionNum(vNum)}
         isLockedActive={isLockedActive}
         isKaprodi={isKaprodi}
         isViewingEditableVersion={isViewingEditableVersion}
         validation={validation}
+        selectedVersion={selectedVersion}
+        activeVersion={activeVersion}
+        onSelectVersion={setSelectedVersionNum}
         displayedTotalPagu={displayedTotalPagu}
-        activityCount={displayedActivities.length}
+        displayedActivityCount={displayedActivities.length}
         totalRealisasi={totalRealisasi}
         serapanPct={serapanPct}
       />
 
-      <RkaActivityAccordionList
+      <RkaActivityList
         activities={displayedActivities}
         expandedIds={expandedIds}
-        isEditable={isViewingEditableVersion}
-        isArchived={isViewingArchivedSnapshot}
         onToggleExpand={toggleExpand}
+        isViewingEditableVersion={isViewingEditableVersion}
+        isViewingArchivedSnapshot={isViewingArchivedSnapshot}
         onAddActivity={() => {
           setEditingActivity(null);
           setActivityModalOpen(true);
@@ -381,11 +359,16 @@ export default function Page() {
         onDeleteActivity={handleDeleteActivity}
       />
 
-      <RkaVersionSummaryCard
+      <RkaVersionSummarySection
         versions={versions}
-        selectedVersionNum={selectedVersion?.nomor_versi}
-        onSelectVersion={(num) => setSelectedVersionNum(num)}
+        selectedVersionNumber={selectedVersion?.nomor_versi}
+        onSelectVersion={setSelectedVersionNum}
         onOpenHistory={() => setHistoryModalOpen(true)}
+        isKaprodi={isKaprodi}
+        tahunAnggaran={doc.tahun_anggaran}
+        revisionModalOpen={revisionModalOpen}
+        onCloseRevisionModal={() => setRevisionModalOpen(false)}
+        onSubmitRevision={handleStartRevision}
       />
 
       {isKaprodi && (
@@ -407,18 +390,6 @@ export default function Page() {
         selectedVersionNumber={selectedVersion?.nomor_versi ?? 1}
         onSelectVersion={(num) => setSelectedVersionNum(num)}
       />
-
-      {isKaprodi && (
-        <RkaRevisionModal
-          open={revisionModalOpen}
-          tahunAnggaran={doc.tahun_anggaran}
-          nextVersionNum={(versions[0]?.nomor_versi ?? 1) + 1}
-          alasanRevisi={alasanRevisi}
-          onChangeAlasan={setAlasanRevisi}
-          onClose={() => setRevisionModalOpen(false)}
-          onSubmit={handleStartRevision}
-        />
-      )}
     </div>
   );
 }

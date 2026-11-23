@@ -1,5 +1,7 @@
 import React from 'react';
 import { AlertCircle, CheckCircle2, Clock } from 'lucide-react';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import {
   computeActivityTotal,
@@ -301,13 +303,17 @@ export default function RkaSerapanTable({
         />
         {byCategory.length > 0 && (
           <div className="pt-2 border-t border-slate-100 space-y-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Rincian Pos Anggaran Per Kategori
-            </h3>
+            <WordRevealHeading
+              as="h3"
+              text="Rincian Pos Anggaran Per Kategori"
+              className="text-xs font-bold uppercase tracking-wider text-slate-500"
+            />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {byCategory.map((cat) => (
-                <div
+              {byCategory.map((cat, idx) => (
+                <MotionCard
                   key={cat.kategori}
+                  index={idx}
+                  interactive
                   className="rounded-xl border border-slate-200 p-3.5 bg-slate-50/50 space-y-2"
                 >
                   <div className="flex items-center justify-between">
@@ -345,7 +351,7 @@ export default function RkaSerapanTable({
                       );
                     })}
                   </div>
-                </div>
+                </MotionCard>
               ))}
             </div>
           </div>

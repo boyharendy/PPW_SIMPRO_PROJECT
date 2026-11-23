@@ -6,6 +6,7 @@ import { Eye, Edit3, BarChart3, Users, CheckCircle2, FileText } from 'lucide-rea
 import PageHeader from '@/components/ui/PageHeader';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import MotionCard from '@/components/motion/MotionCard';
 
 interface KelasEvaluasi {
   id: string;
@@ -138,7 +139,7 @@ export default function Page() {
         }
       />
 
-      <div className="card">
+      <MotionCard index={0} interactive={false} className="card">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50">
             {['ALL', 'BELUM', 'DRAF', 'TERKIRIM', 'DITINJAU'].map((st) => (
@@ -162,7 +163,7 @@ export default function Page() {
         </div>
 
         <DataTable columns={columns} data={filtered} emptyMessage="Tidak ada kelas untuk filter ini." />
-      </div>
+      </MotionCard>
     </div>
   );
 }

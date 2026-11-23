@@ -24,6 +24,7 @@ import {
 } from '@/lib/trip-utils';
 import type { BusinessTrip } from '@/lib/types';
 import { formatDateShort, formatRupiah, getStatusLabel } from '@/lib/utils';
+import MotionCard from '@/components/motion/MotionCard';
 
 export default function PersetujuanPerjalananDinasPage() {
   const { trips, rkaDocs, reload } = useBusinessTrips();
@@ -212,6 +213,7 @@ export default function PersetujuanPerjalananDinasPage() {
       {/* Ringkasan Antrean Persetujuan */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
+          animationIndex={0}
           title="Menunggu Persetujuan"
           value={stats.pendingCount}
           subtitle="Usulan berstatus Diajukan"
@@ -219,6 +221,7 @@ export default function PersetujuanPerjalananDinasPage() {
           icon={<Clock size={16} />}
         />
         <StatCard
+          animationIndex={1}
           title="Telah Disetujui"
           value={stats.approvedCount}
           subtitle="Disetujui / Berjalan / Selesai"
@@ -226,6 +229,7 @@ export default function PersetujuanPerjalananDinasPage() {
           icon={<CheckCircle2 size={16} />}
         />
         <StatCard
+          animationIndex={2}
           title="Revisi / Ditolak"
           value={stats.revisedOrRejectedCount}
           subtitle="Dikembalikan atau ditolak"
@@ -233,6 +237,7 @@ export default function PersetujuanPerjalananDinasPage() {
           icon={<RotateCcw size={16} />}
         />
         <StatCard
+          animationIndex={3}
           title="Estimasi Antrean"
           value={formatRupiah(stats.pendingBudget)}
           subtitle="Total pagu menunggu persetujuan"
@@ -241,13 +246,13 @@ export default function PersetujuanPerjalananDinasPage() {
         />
       </div>
 
-      <div className="card">
+      <MotionCard index={0} interactive={false} className="card">
         <DataTable
           columns={columns}
           data={approvalRows}
           emptyMessage="Tidak ada usulan perjalanan dinas yang perlu ditinjau."
         />
-      </div>
+      </MotionCard>
 
       <TripApprovalModal
         trip={selectedTrip}

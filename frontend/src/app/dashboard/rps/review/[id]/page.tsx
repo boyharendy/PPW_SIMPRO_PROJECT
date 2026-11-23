@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, CheckCircle2, Download, Send, Save, AlertCircle } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
 interface PilarCheck {
   id: string;
@@ -95,7 +97,7 @@ export default function Page() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Info Berkas RPS */}
-        <div className="card flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/70 border border-slate-200">
+        <MotionCard index={0} interactive={false} className="card flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/70 border border-slate-200">
           <div>
             <div className="text-xs text-slate-400 font-semibold uppercase">Mata Kuliah Ditelaah</div>
             <div className="text-base font-bold text-slate-800 mt-0.5">
@@ -111,13 +113,11 @@ export default function Page() {
           >
             <Download size={14} /> Unduh Berkas RPS
           </button>
-        </div>
+        </MotionCard>
 
         {/* 5 Pilar Mutu Checklist */}
-        <div className="card space-y-4">
-          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-            Instrumen Evaluasi 5 Pilar Mutu RPS
-          </h3>
+        <MotionCard index={1} interactive={false} className="card space-y-4">
+          <WordRevealHeading as="h3" text="Instrumen Evaluasi 5 Pilar Mutu RPS" className="text-sm font-bold text-slate-800 uppercase tracking-wider" />
 
           <div className="space-y-4 divide-y divide-slate-100">
             {pilars.map((p) => (
@@ -165,13 +165,11 @@ export default function Page() {
               </div>
             ))}
           </div>
-        </div>
+        </MotionCard>
 
         {/* Rekomendasi Akhir & Catatan Umum */}
-        <div className="card space-y-4">
-          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-            Rekomendasi Akhir Reviewer
-          </h3>
+        <MotionCard index={2} interactive={false} className="card space-y-4">
+          <WordRevealHeading as="h3" text="Rekomendasi Akhir Reviewer" className="text-sm font-bold text-slate-800 uppercase tracking-wider" />
 
           <div>
             <label className="text-xs font-semibold text-slate-700 block mb-1.5">
@@ -219,7 +217,7 @@ export default function Page() {
               required
             />
           </div>
-        </div>
+        </MotionCard>
 
         {/* Action Buttons */}
         <div className="flex justify-end gap-3 pt-2">

@@ -13,12 +13,12 @@ import {
   ShieldCheck,
   UserPlus,
 } from 'lucide-react';
+import { useLecturers } from '@/lib/hooks/useLecturers';
 import PageHeader from '@/components/ui/PageHeader';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { formatDateShort } from '@/lib/utils';
 import { useUser } from '@/lib/context';
 import { publicationService } from '@/lib/api/services/publication.service';
-import { mockPublications } from '@/lib/mock-data';
 import type { Publication, PublicationReview } from '@/lib/types';
 import {
   AssignReviewerModal,
@@ -26,21 +26,18 @@ import {
   UpdateStageModal,
   VerifyStudentPubModal,
 } from './PublicationActionModals';
+import MotionCard from '@/components/motion/MotionCard';
+import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
-const DOSEN_LIST = [
-  { id: 'u-dosen1', nama: 'Dr. Eng. Hendra Wijaya, M.Sc.' },
-  { id: 'u-dosen2', nama: 'Dewi Lestari, M.T.' },
-  { id: 'u-gkm', nama: 'Siti Rahmawati, M.Kom.' },
-  { id: 'u-koordinator', nama: 'Ir. Agus Pratama, M.Kom.' },
-];
+
 
 export default function Page() {
   const { id } = useParams<{ id: string }>();
   const { user, currentRole } = useUser();
+  const lecturers = useLecturers();
 
-  const [pub, setPub] = useState<Publication>(
-    () => mockPublications.find((p) => p.id === id) || mockPublications[0]
-  );
+  const [pub, setPub] = useState<Publication | null>(null);
+  const [loadError,setLoadError]=useState(false);
   const [stageModal, setStageModal] = useState(false);
   const [newTahap, setNewTahap] = useState<string>('DIAJUKAN');
   const [newBukti, setNewBukti] = useState('');
@@ -65,11 +62,13 @@ export default function Page() {
       if (active && res.data) {
         setPub(res.data);
       }
-    });
+    }).catch(() => { if(active) {setPub(null);setLoadError(true);} });
     return () => {
       active = false;
     };
   }, [id]);
+
+  if (!pub || pub.id!==id) return <p role="status">{loadError ? "Publikasi tidak tersedia." : "Memuat publikasi?"}</p>;
 
   const isKaprodi = currentRole === 'KAPRODI';
   const publisherType =
@@ -80,12 +79,12 @@ export default function Page() {
   const canVerifyStudentPub =
     !isKaprodi &&
     (currentRole === 'DOSEN' || currentRole === 'DOSEN_VERIFIKATOR') &&
-    pub.status_verifikasi === 'MENUNGGU';
+    pub.status_verifikasi === 'MENUNGGU' && pub.verifikator_id === user.id;
   const canReviewInternal = !isKaprodi && currentRole === 'DOSEN';
 
   const authorIds = new Set(pub.authors?.map((a) => a.user_id).filter(Boolean));
   const authorNames = new Set(pub.authors?.map((a) => a.nama_penulis.toLowerCase()));
-  const eligibleReviewers = DOSEN_LIST.filter(
+  const eligibleReviewers = lecturers.filter(
     (d) => !authorIds.has(d.id) && !authorNames.has(d.nama.toLowerCase())
   );
 
@@ -98,12 +97,12 @@ export default function Page() {
 
   const handleUpdateStage = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await publicationService.updateStatus(pub.id, {
+    await publicationService.updateStatus(pub.id, {
       status: newTahap,
       bukti: newBukti.trim() || undefined,
       catatan: newCatatan.trim() || undefined,
     });
-    if (res.data) setPub(res.data);
+    setPub((await publicationService.getPublicationById(id)).data);
     setNewBukti('');
     setNewCatatan('');
     setStageModal(false);
@@ -113,12 +112,12 @@ export default function Page() {
     e.preventDefault();
     const chosen = eligibleReviewers.find((d) => d.id === selectedReviewerId);
     if (!chosen) return;
-    const res = await publicationService.assignReviewer(pub.id, {
+    await publicationService.assignReviewer(pub.id, {
       reviewer_id: chosen.id,
       reviewer_nama: chosen.nama,
       tenggat_review: tenggatReview,
     });
-    if (res.data) setPub(res.data);
+    setPub((await publicationService.getPublicationById(id)).data);
     setSelectedReviewerId('');
     setAssignRevModal(false);
   };
@@ -126,29 +125,30 @@ export default function Page() {
   const handleCompleteReview = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!completeRevModal) return;
-    const res = await publicationService.completeReview(completeRevModal.id, {
+    await publicationService.completeReview(completeRevModal.id, {
       rekomendasi,
       catatan: catatanReview,
     });
-    if (res.data) setPub(res.data);
+    setPub((await publicationService.getPublicationById(id)).data);
     setCompleteRevModal(null);
     setCatatanReview('');
   };
 
   const handleVerifySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await publicationService.verifyPublication(pub.id, {
+    await publicationService.verifyPublication(pub.id, {
       status: verifyDecision,
-      catatan: verifyCatatan.trim() || undefined,
+      catatan: verifyCatatan.trim(),
+      verifikator_nama: user.nama_lengkap,
     });
-    if (res.data) setPub(res.data);
+    setPub((await publicationService.getPublicationById(id)).data);
     setVerifyModal(false);
     setVerifyCatatan('');
   };
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex items-center gap-2">
         <Link
           href="/dashboard/publikasi"
           className="text-xs text-slate-500 hover:text-slate-800 inline-flex items-center gap-1 font-medium"
@@ -159,158 +159,138 @@ export default function Page() {
 
       <PageHeader
         title={pub.judul}
+        description={`Katalog karya ilmiah prodi — ID: ${pub.id} • Pencatat: ${publisherType}`}
         badge={<StatusBadge status={pub.status} size="sm" />}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
+            {isKaprodi && (
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">
+                <Eye size={13} /> Mode Pantau Kaprodi (Read-Only)
+              </span>
+            )}
+            {isPublisher && (
+              <>
+                <button
+                  onClick={() => setAssignRevModal(true)}
+                  className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"
+                >
+                  <UserPlus size={14} /> Tetapkan Reviewer Internal
+                </button>
+                <button
+                  onClick={() => {
+                    setNewTahap(pub.status === 'DRAF' ? 'DIAJUKAN' : pub.status);
+                    setStageModal(true);
+                  }}
+                  className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5"
+                >
+                  <Plus size={14} /> Perbarui Status Publikasi
+                </button>
+              </>
+            )}
             {canVerifyStudentPub && (
               <button
                 onClick={() => setVerifyModal(true)}
-                className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl px-3.5 py-2 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors shadow-sm"
+                className="bg-emerald-600 text-white rounded-xl text-xs font-semibold px-3 py-1.5 flex items-center gap-1.5 hover:bg-emerald-700 transition-colors"
               >
-                <ShieldCheck size={14} /> Verifikasi Naskah Mahasiswa
+                <ShieldCheck size={14} /> Verifikasi Publikasi Mahasiswa
               </button>
-            )}
-
-            {isKaprodi && (
-              <button
-                onClick={() => setAssignRevModal(true)}
-                className="bg-blue-600 text-white hover:bg-blue-700 rounded-xl px-3.5 py-2 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors shadow-sm"
-              >
-                <UserPlus size={14} /> Tugaskan Reviewer Internal
-              </button>
-            )}
-
-            {isPublisher ? (
-              <button
-                onClick={() => setStageModal(true)}
-                className="bg-blue-600 text-white hover:bg-blue-700 rounded-xl px-3.5 py-2 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors shadow-sm"
-              >
-                <Plus size={14} /> Perbarui Tahapan Publikasi
-              </button>
-            ) : (
-              isKaprodi && (
-                <span className="text-xs text-slate-400 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl font-medium">
-                  Mode Monitoring Kaprodi (Read-Only Status)
-                </span>
-              )
             )}
           </div>
         }
       />
 
-      {/* Detail Meta Publikasi */}
-      <div className="card space-y-4">
-        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-          Informasi Publikasi
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
-          <div>
-            <span className="text-slate-500 block">Tipe Pencatat / Pengunggah:</span>
-            <strong className="text-slate-800 text-sm">
-              {publisherType === 'MAHASISWA' ? 'Mahasiswa' : 'Dosen'}
-            </strong>
-          </div>
-          <div>
-            <span className="text-slate-500 block">Jenis Publikasi:</span>
-            <strong className="text-slate-800 text-sm">{pub.jenis}</strong>
-          </div>
-          <div>
-            <span className="text-slate-500 block">Peringkat / Akreditasi:</span>
-            <strong className="text-slate-800 text-sm">{pub.peringkat || 'NON_PERINGKAT'}</strong>
-          </div>
-          <div>
-            <span className="text-slate-500 block">Target Jurnal / Konferensi:</span>
-            <strong className="text-slate-800 text-sm">
-              {pub.nama_target || '-'}
-            </strong>
-          </div>
-          <div>
-            <span className="text-slate-500 block">Tahun Terbit:</span>
-            <strong className="text-slate-800 text-sm">{pub.tahun || '-'}</strong>
-          </div>
-          <div>
-            <span className="text-slate-500 block">Status Validasi Dosen:</span>
-            <div className="mt-1 flex items-center gap-2">
-              <strong className="text-slate-800 font-bold">{pub.status_verifikasi || 'TIDAK_PERLU'}</strong>
-              {pub.diverifikasi_at && (
-                <span className="text-[11px] text-slate-400">
-                  ({formatDateShort(pub.diverifikasi_at)})
-                </span>
+      {/* Info Karya Ilmiah & Verifikasi Pembimbing */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <MotionCard index={0} interactive={false} className="card md:col-span-2 space-y-4">
+          <WordRevealHeading as="h3" text="Informasi Manuskrip & Target" className="text-sm font-bold text-slate-800 uppercase tracking-wider" />
+          <div className="grid grid-cols-2 gap-4 text-xs">
+            <div>
+              <span className="text-slate-400 block mb-0.5">Jenis Publikasi:</span>
+              <span className="font-semibold text-slate-800">{pub.jenis}</span>
+            </div>
+            <div>
+              <span className="text-slate-400 block mb-0.5">Peringkat / Indeksasi:</span>
+              <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                {(pub.peringkat || 'NON_PERINGKAT').replace(/_/g, ' ')}
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-400 block mb-0.5">Target Publikasi:</span>
+              <span className="font-medium text-slate-800">{pub.nama_target}</span>
+            </div>
+            <div>
+              <span className="text-slate-400 block mb-0.5">Tahun Terbit / Catat:</span>
+              <span className="font-medium text-slate-800">{pub.tahun}</span>
+            </div>
+            <div className="col-span-2">
+              <span className="text-slate-400 block mb-0.5">DOI / Tautan Resmi:</span>
+              {pub.url ? (
+                <a
+                  href={pub.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-blue-600 hover:underline flex items-center gap-1 truncate"
+                >
+                  {pub.doi || pub.url} <ExternalLink size={12} />
+                </a>
+              ) : (
+                <span className="text-slate-400">-</span>
               )}
             </div>
           </div>
-          <div className="md:col-span-2 lg:col-span-3">
-            <span className="text-slate-500 block">Dosen Verifikator / Pendamping:</span>
-            <strong className="text-slate-800 text-sm">{verifikatorDisplay}</strong>
+        </MotionCard>
+
+        {/* Status Verifikasi Mahasiswa (FR-31) */}
+        <MotionCard index={1} interactive={false} className="card space-y-3">
+          <WordRevealHeading as="h3" text="Verifikasi Rekap" className="text-sm font-bold text-slate-800 uppercase tracking-wider" />
+          <div>
+            <div className="text-xs text-slate-400 mb-1">Status Verifikasi:</div>
+            <StatusBadge status={pub.status_verifikasi} size="md" />
           </div>
-          {pub.doi && (
-            <div className="md:col-span-2">
-              <span className="text-slate-500 block">Digital Object Identifier (DOI):</span>
-              <a
-                href={`https://doi.org/${pub.doi}`}
-                target="_blank"
-                rel="noreferrer"
-                className="text-blue-600 hover:underline inline-flex items-center gap-1 font-mono text-xs"
-              >
-                {pub.doi} <ExternalLink size={11} />
-              </a>
-            </div>
-          )}
-          {pub.url && (
-            <div className="md:col-span-2">
-              <span className="text-slate-500 block">Tautan Naskah / Repository:</span>
-              <a
-                href={pub.url}
-                target="_blank"
-                rel="noreferrer"
-                className="text-blue-600 hover:underline inline-flex items-center gap-1 text-xs truncate max-w-md"
-              >
-                {pub.url} <ExternalLink size={11} />
-              </a>
-            </div>
-          )}
-        </div>
+          <div className="pt-2 border-t border-slate-100 text-xs space-y-1">
+            <span className="text-slate-400 block">Dosen Pembimbing / Pendamping:</span>
+            <span className="font-medium text-slate-800 block">{verifikatorDisplay}</span>
+            {pub.catatan_verifikasi && (
+              <p className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 mt-1">
+                {pub.catatan_verifikasi}
+              </p>
+            )}
+            <p className="text-[11px] text-slate-400 pt-1">
+              Status tahapan diperbarui langsung oleh {publisherType === 'MAHASISWA' ? 'Mahasiswa' : 'Dosen'} pem-publish.
+            </p>
+          </div>
+        </MotionCard>
       </div>
 
-      {/* Review Internal Antar Dosen */}
-      <div className="card space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-            Review Internal Manuskrip
-          </h3>
-          {isKaprodi && (
-            <button
-              onClick={() => setAssignRevModal(true)}
-              className="text-xs text-blue-600 hover:underline font-semibold"
-            >
-              + Tugaskan Reviewer Lain
-            </button>
-          )}
-        </div>
-
-        {(!pub.reviews || pub.reviews.length === 0) ? (
-          <p className="text-xs text-slate-500 italic">
-            Belum ada reviewer internal yang ditugaskan untuk naskah ini.
+      {/* Review Internal Sebelum Diajukan (FR-31) */}
+      <MotionCard index={2} interactive={false} className="card space-y-3">
+        <div>
+          <WordRevealHeading as="h3" text="Review Internal Naskah" className="text-sm font-bold text-slate-800 uppercase tracking-wider" />
+          <p className="text-xs text-slate-500 mt-0.5">
+            Catatan telaah dari dosen reviewer internal (bukan penulis) sebelum naskah diajukan.
           </p>
+        </div>
+        {!pub.reviews || pub.reviews.length === 0 ? (
+          <div className="text-xs text-slate-400 bg-slate-50 border border-slate-100 rounded-xl p-4">
+            Belum ada penugasan dosen reviewer internal pada publikasi ini.
+          </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {pub.reviews.map((rev) => (
               <div
                 key={rev.id}
-                className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
               >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <strong>{rev.reviewer_nama}</strong>
+                <div className="space-y-1 text-xs">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-slate-800">
+                      {rev.reviewer_nama || rev.reviewer?.nama_lengkap || rev.reviewer_id}
+                    </span>
                     <StatusBadge status={rev.status} size="sm" />
-                    {rev.rekomendasi && (
-                      <span className="px-2 py-0.5 rounded-full font-bold text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        {rev.rekomendasi.replace(/_/g, ' ')}
-                      </span>
-                    )}
+                    {rev.rekomendasi && <StatusBadge status={rev.rekomendasi} size="sm" />}
                   </div>
                   {rev.tenggat_review && (
-                    <div className="text-[11px] text-slate-500">
+                    <div className="text-[11px] text-slate-400">
                       Tenggat Review: {formatDateShort(rev.tenggat_review)}
                     </div>
                   )}
@@ -336,13 +316,11 @@ export default function Page() {
             ))}
           </div>
         )}
-      </div>
+      </MotionCard>
 
       {/* Daftar Penulis */}
-      <div className="card">
-        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-3">
-          Susunan Penulis Karya
-        </h3>
+      <MotionCard index={3} interactive={false} className="card">
+        <WordRevealHeading as="h3" text="Susunan Penulis Karya" className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-3" />
         <div className="divide-y divide-slate-100">
           {(pub.authors || []).map((p) => (
             <div key={p.id || p.urutan} className="py-2.5 flex items-center justify-between text-xs">
@@ -359,13 +337,11 @@ export default function Page() {
             </div>
           ))}
         </div>
-      </div>
+      </MotionCard>
 
       {/* Riwayat Tahapan */}
-      <div className="card">
-        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">
-          Riwayat Tahapan Publikasi
-        </h3>
+      <MotionCard index={4} interactive={false} className="card">
+        <WordRevealHeading as="h3" text="Riwayat Tahapan Publikasi" className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4" />
         <div className="space-y-4 relative before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
           {(pub.stage_logs || []).map((t, i) => (
             <div key={t.id || i} className="flex items-start gap-4 relative">
@@ -388,7 +364,7 @@ export default function Page() {
             </div>
           ))}
         </div>
-      </div>
+      </MotionCard>
 
       <UpdateStageModal
         open={stageModal}

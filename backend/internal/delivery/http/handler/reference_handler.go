@@ -52,3 +52,11 @@ func (h *ReferenceHandler) GetPartners(c *gin.Context) {
 	response.Success(c, http.StatusOK, "Data mitra institusi berhasil diambil", partners)
 }
 
+func (h *ReferenceHandler) Lecturers(c *gin.Context) {
+	rows, err := h.repo.Lecturers()
+	if err != nil {
+		response.InternalServerError(c, "Direktori dosen tidak tersedia")
+		return
+	}
+	response.Success(c, 200, "Direktori dosen", rows)
+}

@@ -26,6 +26,17 @@ func (h *RpsHandler) GetSubmissions(c *gin.Context) {
 		response.InternalServerError(c, "Gagal mengambil daftar pengajuan RPS: "+err.Error())
 		return
 	}
+	if middleware.ActiveRole(c) == model.RoleDosen {
+		uid := c.GetString(middleware.CtxUserID)
+		visible := make([]*model.RpsSubmission, 0)
+		for _, row := range subs {
+			detail, err := h.usecase.GetSubmissionByID(row.ID)
+			if err == nil && (detail.DosenPenyusunID == uid || detail.Reviewer(uid)) {
+				visible = append(visible, row)
+			}
+		}
+		subs = visible
+	}
 	response.Success(c, http.StatusOK, "Daftar pengajuan RPS berhasil diambil", subs)
 }
 
@@ -34,6 +45,11 @@ func (h *RpsHandler) GetSubmissionByID(c *gin.Context) {
 	sub, err := h.usecase.GetSubmissionByID(id)
 	if err != nil {
 		response.NotFound(c, "Pengajuan RPS tidak ditemukan")
+		return
+	}
+	uid := c.GetString(middleware.CtxUserID)
+	if middleware.ActiveRole(c) == model.RoleDosen && sub.DosenPenyusunID != uid && !sub.Reviewer(uid) {
+		response.Forbidden(c, "Akses RPS ditolak")
 		return
 	}
 	response.Success(c, http.StatusOK, "Detail pengajuan RPS berhasil diambil", sub)
@@ -46,6 +62,12 @@ func (h *RpsHandler) CreateSubmission(c *gin.Context) {
 		response.BadRequest(c, "Format data RPS tidak valid", err.Error())
 		return
 	}
+	req.ID = ""
+	req.Status = model.RpsStatusDraft
+	req.ReviewerIDs = nil
+	req.GkmReviewerID = ""
+	req.Reviews = nil
+	req.DisahkanOleh = ""
 	created, err := h.usecase.CreateSubmission(userID, &req)
 	if err != nil {
 		response.BadRequest(c, err.Error(), nil)
@@ -55,6 +77,9 @@ func (h *RpsHandler) CreateSubmission(c *gin.Context) {
 }
 
 func (h *RpsHandler) SubmitForReview(c *gin.Context) {
+	if !h.permit(c, false) {
+		return
+	}
 	id := c.Param("id")
 	if err := h.usecase.SubmitForReview(id); err != nil {
 		response.BadRequest(c, err.Error(), nil)
@@ -90,6 +115,9 @@ func (h *RpsHandler) AssignReviewer(c *gin.Context) {
 }
 
 func (h *RpsHandler) ReviewSubmission(c *gin.Context) {
+	if !h.permit(c, true) {
+		return
+	}
 	id := c.Param("id")
 	reviewerID := c.GetString(middleware.CtxUserID)
 
@@ -113,6 +141,10 @@ func (h *RpsHandler) ReviewSubmission(c *gin.Context) {
 // PUT /rps/reviews/:reviewId/items (5 Komponen SPMI Checklist)
 func (h *RpsHandler) UpdateReviewItems(c *gin.Context) {
 	reviewID := c.Param("reviewId")
+	if !h.usecase.AssignedReview(reviewID, c.GetString(middleware.CtxUserID)) {
+		response.Forbidden(c, "Review bukan penugasan Anda")
+		return
+	}
 	var req struct {
 		Items []*model.RpsReviewItem `json:"items" binding:"required"`
 	}
@@ -130,6 +162,10 @@ func (h *RpsHandler) UpdateReviewItems(c *gin.Context) {
 // POST /rps/reviews/:reviewId/complete
 func (h *RpsHandler) CompleteReview(c *gin.Context) {
 	reviewID := c.Param("reviewId")
+	if !h.usecase.AssignedReview(reviewID, c.GetString(middleware.CtxUserID)) {
+		response.Forbidden(c, "Review bukan penugasan Anda")
+		return
+	}
 	var req struct {
 		Rekomendasi string `json:"rekomendasi" binding:"required"`
 		Komentar    string `json:"komentar"`
@@ -147,6 +183,9 @@ func (h *RpsHandler) CompleteReview(c *gin.Context) {
 
 // PUT /rps/submissions/:id/improvement-plans
 func (h *RpsHandler) UpdateImprovementPlans(c *gin.Context) {
+	if !h.permit(c, false) {
+		return
+	}
 	id := c.Param("id")
 	var req struct {
 		Plans []*model.CourseImprovementPlan `json:"plans" binding:"required"`
@@ -178,4 +217,21 @@ func (h *RpsHandler) GetRecap(c *gin.Context) {
 		return
 	}
 	response.Success(c, http.StatusOK, "Rekapitulasi RPS", recap)
+}
+
+func (h *RpsHandler) permit(c *gin.Context, review bool) bool {
+	s, err := h.usecase.GetSubmissionByID(c.Param("id"))
+	id := c.GetString(middleware.CtxUserID)
+	if err != nil {
+		response.NotFound(c, "Pengajuan RPS tidak ditemukan")
+		return false
+	}
+	ok := s.DosenPenyusunID == id
+	if review {
+		ok = s.Reviewer(id) && s.DosenPenyusunID != id
+	}
+	if !ok {
+		response.Forbidden(c, "Bukan pengampu atau reviewer yang ditugaskan")
+	}
+	return ok
 }
