@@ -3,6 +3,7 @@
 // ============================================================
 
 import type { ApiResponse, ApiErrorResponse } from '@/lib/types/api';
+import { isLocalDevPreview } from '@/lib/dev-preview';
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
 const TOKEN_KEY = 'simpro_auth_token';
@@ -30,7 +31,7 @@ export class ApiError extends Error {
  */
 export const tokenStorage = {
   getAccessToken: (): string | null => {
-    if (typeof window === 'undefined') return null;
+    if (typeof window === 'undefined' || isLocalDevPreview()) return null;
     return localStorage.getItem(TOKEN_KEY);
   },
   setAccessToken: (token: string): void => {
@@ -38,7 +39,7 @@ export const tokenStorage = {
     localStorage.setItem(TOKEN_KEY, token);
   },
   getRefreshToken: (): string | null => {
-    if (typeof window === 'undefined') return null;
+    if (typeof window === 'undefined' || isLocalDevPreview()) return null;
     return localStorage.getItem(REFRESH_TOKEN_KEY);
   },
   setRefreshToken: (token: string): void => {

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import type { Role, Notification } from '@/lib/types';
+import { CANONICAL_ROLES, type Role, type Notification } from '@/lib/types';
+import { isLocalDevPreview } from '@/lib/dev-preview';
 import { authService, tokenStorage } from '@/lib/api';
 import type { LoginPayload } from '@/lib/types/api';
 
@@ -25,6 +26,7 @@ interface AppContextType {
   mobileSidebarOpen: boolean;
   setMobileSidebarOpen: (v: boolean) => void;
   isAuthenticated: boolean;
+  isDevPreview: boolean;
   isLoadingSession: boolean;
   login: (payload: LoginPayload, options?: Pick<RequestInit, 'redirect'>) => Promise<void>;
   logout: () => Promise<void>;
@@ -52,6 +54,7 @@ export function useUser() {
 }
 
 const SIGNED_OUT_USER: AuthUser = { id: '', nama_lengkap: '', email: '', roles: [], activeRole: 'MAHASISWA' };
+const PREVIEW_ROLE_KEY = 'simpro_dev_preview_role';
 
 function sanitizeRoles(roles?: Role[]): Role[] {
   if (!roles || roles.length === 0) return ['MAHASISWA'];
@@ -62,6 +65,7 @@ function sanitizeRoles(roles?: Role[]): Role[] {
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser>(SIGNED_OUT_USER);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isDevPreview, setIsDevPreview] = useState(false);
   const [isLoadingSession, setIsLoadingSession] = useState<boolean>(true);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -102,6 +106,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let isMounted = true;
 
     async function checkInitialSession() {
+      if (isLocalDevPreview()) {
+        const savedRole = sessionStorage.getItem(PREVIEW_ROLE_KEY);
+        setUser({
+          id: 'u-kaprodi',
+          nama_lengkap: 'Kaprodi Demo',
+          email: 'kaprodi@example.test',
+          roles: [...CANONICAL_ROLES],
+          activeRole: CANONICAL_ROLES.find(role => role === savedRole) ?? 'KAPRODI',
+        });
+        setIsDevPreview(true);
+        setIsLoadingSession(false);
+        return;
+      }
       const token = tokenStorage.getAccessToken();
       if (!token) {
         if (isMounted) setIsLoadingSession(false);
@@ -143,6 +160,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    if (isDevPreview) {
+      sessionStorage.setItem(PREVIEW_ROLE_KEY, role);
+      setUser(prev => ({ ...prev, activeRole: role }));
+      return;
+    }
     if (isAuthenticated) {
       try {
         const res = await authService.switchRole(role);
@@ -161,7 +183,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
 
-  }, [isAuthenticated, user.roles]);
+  }, [isAuthenticated, isDevPreview, user.roles]);
 
   const login = useCallback(async (payload: LoginPayload, options?: Pick<RequestInit, 'redirect'>) => {
     const res = await authService.login(payload, options);
@@ -209,6 +231,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         mobileSidebarOpen,
         setMobileSidebarOpen,
         isAuthenticated,
+        isDevPreview,
         isLoadingSession,
         login,
         logout,
