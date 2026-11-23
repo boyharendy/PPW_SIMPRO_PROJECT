@@ -3,21 +3,14 @@
 // ============================================================
 
 // ----- Enums Peran (13 Aktor Utama SIMPRO) -----
+export const CANONICAL_ROLES = [
+  'KAPRODI', 'GKM', 'ADMIN_PRODI', 'DOSEN', 'DOSEN_VERIFIKATOR', 'DOSEN_WALI',
+  'DOSEN_PEMBINA', 'KETUA_KELAS', 'MAHASISWA', 'PENGURUS_HIMPUNAN',
+  'KOORDINATOR_KP_PSI_PDLK', 'PENGELOLA_ADUAN', 'MITRA',
+] as const;
+
 export type Role =
-  // 13 Aktor Resmi SIMPRO
-  | 'KAPRODI'
-  | 'GKM'
-  | 'ADMIN_PRODI'
-  | 'DOSEN'
-  | 'DOSEN_VERIFIKATOR'
-  | 'DOSEN_WALI'
-  | 'DOSEN_PEMBINA'
-  | 'KETUA_KELAS'
-  | 'MAHASISWA'
-  | 'PENGURUS_HIMPUNAN'
-  | 'KOORDINATOR_KP_PSI_PDLK'
-  | 'PENGELOLA_ADUAN'
-  | 'MITRA'
+  | (typeof CANONICAL_ROLES)[number]
   // Alias Kompatibilitas Sistem & Data Induk
   | 'KOORDINATOR_KP'
   | 'KOORDINATOR_PSI'

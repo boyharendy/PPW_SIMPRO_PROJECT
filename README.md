@@ -4,30 +4,35 @@ SIMPRO (Sistem Informasi Manajemen Program Studi) adalah aplikasi web internal u
 
 ## Menjalankan Aplikasi
 
-Login SIMPRO menggunakan API Go. Siapkan Node.js, npm, dan Go 1.25 atau lebih baru. Dari direktori proyek, jalankan persiapan lokal sekali di PowerShell.
+### Pengembangan lokal tanpa login
+
+Dari direktori proyek, siapkan frontend dengan Node.js dan npm. Perintah PowerShell berikut memakai konfigurasi contoh jika belum ada konfigurasi lokal.
 
 ```powershell
 npm install
-if (!(Test-Path backend/.env)) { Copy-Item backend/.env.example backend/.env }
-```
-
-Jalankan API di terminal pertama. Biarkan proses ini aktif selama memakai aplikasi.
-
-```sh
-npm run dev:backend
-```
-
-Jika terminal tidak menemukan `go`, isi `SIMPRO_GO_EXE` di `backend/.env` dengan path lengkap ke executable Go yang tersedia di komputer.
-
-Jalankan frontend di terminal kedua dari direktori proyek yang sama.
-
-```sh
+if (!(Test-Path frontend/.env.local)) { Copy-Item frontend/.env.example frontend/.env.local }
 npm run dev
 ```
 
-Buka [dashboard lokal](http://localhost:3000/dashboard). Akun Kaprodi untuk mode pengembangan tersedia di [panduan backend](backend/README.md#akun-demo-lokal). Untuk memeriksa apakah API berjalan, buka [status API lokal](http://localhost:8080/api/v1/health).
+Pastikan `NEXT_PUBLIC_DEV_SKIP_LOGIN=true` di `frontend/.env.local`. Buka [dashboard lokal](http://localhost:3000/dashboard). Dashboard langsung menampilkan peran Kaprodi, termasuk saat API Go mati. Anda dapat mengganti peran melalui menu dashboard. Pilihan tersimpan saat tab yang sama dimuat ulang.
 
-Untuk membuka dashboard tanpa mengisi formulir, set `NEXT_PUBLIC_DEV_AUTO_LOGIN=true` di `frontend/.env.local` dan jalankan ulang frontend. Selama sesi demo masih berlaku, dashboard mempertahankan peran yang dipilih. Saat sesi kedaluwarsa atau hilang setelah API dimulai ulang, membuka atau memuat ulang dashboard membuat sesi Kaprodi demo baru. Gunakan `false` dan jalankan ulang frontend untuk menguji formulir login. Masuk otomatis hanya tersedia dengan `next dev` dan alamat loopback pada frontend serta API.
+Mode ini berlaku saat menjalankan `next dev` melalui `localhost`, `127.0.0.1`, atau `[::1]`. Halaman dengan data contoh dapat digunakan secara lokal. Operasi yang membaca atau menyimpan data melalui endpoint terproteksi memerlukan API aktif dan sesi login. Build produksi selalu menggunakan autentikasi.
+
+### Mengaktifkan kembali login untuk pengujian
+
+1. Ubah `NEXT_PUBLIC_DEV_SKIP_LOGIN=true` menjadi `NEXT_PUBLIC_DEV_SKIP_LOGIN=false` di `frontend/.env.local`.
+2. Siapkan Go 1.25 atau lebih baru. Dari root proyek, jalankan API di terminal terpisah.
+
+   ```powershell
+   if (!(Test-Path backend/.env)) { Copy-Item backend/.env.example backend/.env }
+   npm run dev:backend
+   ```
+
+   Jika terminal tidak menemukan `go`, isi `SIMPRO_GO_EXE` di `backend/.env` dengan path lengkap ke executable Go, lalu jalankan ulang API. Periksa [status API lokal](http://localhost:8080/api/v1/health).
+
+3. Hentikan frontend dengan `Ctrl+C`, lalu jalankan kembali `npm run dev`. Buka dashboard di jendela privat baru untuk melihat formulir login dan masuk dengan [akun demo lokal](backend/README.md#akun-demo-lokal).
+
+Untuk kembali mengembangkan tampilan tanpa login, ubah nilainya menjadi `true` dan jalankan ulang frontend.
 
 ## Perintah Tersedia
 
