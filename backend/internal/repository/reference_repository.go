@@ -144,5 +144,11 @@ func (r *supabaseReferenceRepository) Lecturers() ([]model.Lecturer, error) {
 	return rows, err
 }
 func (r *memoryReferenceRepository) Lecturers() ([]model.Lecturer, error) {
-	return []model.Lecturer{{ID: "u1", Nama: "Dosen Kaprodi (lokal)"}}, nil
+	return []model.Lecturer{
+		{ID: "u1", Nama: "Dr. Eng. Dosen Kaprodi, S.T., M.Eng."},
+		{ID: "a0000000-0000-0000-0000-000000000004", Nama: "Ir. Hendra Wijaya, M.Sc."},
+		{ID: "a0000000-0000-0000-0000-000000000002", Nama: "Dr. Siti Nurhaliza, M.Kom."},
+		{ID: "u-verif-1", Nama: "Budi Hartono, M.Kom."},
+		{ID: "u-verif-2", Nama: "Dr. Rina Fitriani, M.Kom."},
+	}, nil
 }
