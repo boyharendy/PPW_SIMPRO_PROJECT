@@ -10,6 +10,8 @@ import { useUser } from '@/lib/context';
 import { publicationService } from '@/lib/api/services/publication.service';
 import type { Publication } from '@/lib/types';
 import MotionCard from '@/components/motion/MotionCard';
+import MorphingTabBar from '@/components/motion/MorphingTabBar';
+import MorphingTabContent from '@/components/motion/MorphingTabContent';
 
 const JENIS_COLORS: Record<string, string> = {
   JURNAL: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -149,21 +151,20 @@ export default function Page() {
       {/* Filter Tabs + Search */}
       <MotionCard index={0} interactive={false} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-1 overflow-x-auto">
-            {TABS.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                  activeTab === tab
-                    ? 'bg-emerald-600 text-white'
-                    : 'text-slate-500 hover:bg-slate-100'
-                }`}
-              >
-                {tab === 'Semua' ? 'Semua' : tab.replace(/_/g, ' ')}
-              </button>
-            ))}
-          </div>
+          <MorphingTabBar
+            layoutId="publikasi-status-tabs"
+            value={activeTab}
+            onChange={setActiveTab}
+            containerClassName="flex items-center gap-1 overflow-x-auto p-0.5"
+            buttonClassName="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap"
+            activePillClassName="bg-emerald-600 rounded-lg shadow-xs"
+            activeTextClassName="text-white"
+            inactiveTextClassName="text-slate-500 hover:bg-slate-100"
+            options={TABS.map((tab) => ({
+              value: tab as string,
+              label: tab === 'Semua' ? 'Semua' : tab.replace(/_/g, ' '),
+            }))}
+          />
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
@@ -179,7 +180,9 @@ export default function Page() {
 
       {/* Table */}
       <MotionCard index={1} interactive={false} className="bg-white rounded-2xl border border-slate-200 shadow-sm">
-        <DataTable columns={columns} data={filtered} emptyMessage="Tidak ada publikasi ditemukan" />
+        <MorphingTabContent activeKey={activeTab} orderedKeys={TABS}>
+          <DataTable columns={columns} data={filtered} emptyMessage="Tidak ada publikasi ditemukan" />
+        </MorphingTabContent>
       </MotionCard>
     </div>
   );

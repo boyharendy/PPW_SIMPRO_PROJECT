@@ -29,8 +29,11 @@ import {
 import type { BusinessTrip } from '@/lib/types';
 import { formatDateShort, formatRupiah } from '@/lib/utils';
 import MotionCard from '@/components/motion/MotionCard';
+import MorphingTabBar from '@/components/motion/MorphingTabBar';
+import MorphingTabContent from '@/components/motion/MorphingTabContent';
 
 type RecapFilter = 'ALL' | 'ATTENTION' | 'OVER_ESTIMATE' | 'COMPLETE';
+const RECAP_FILTER_KEYS: readonly RecapFilter[] = ['ALL', 'ATTENTION', 'OVER_ESTIMATE', 'COMPLETE'];
 
 export default function RekapPerjalananDinasPage() {
   const { trips } = useBusinessTrips();
@@ -266,26 +269,22 @@ export default function RekapPerjalananDinasPage() {
 
       {/* Filter Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 w-fit flex-wrap">
-          {[
-            { key: 'ALL' as const, label: 'Semua' },
-            { key: 'ATTENTION' as const, label: 'Belum Lengkap / Terlambat' },
-            { key: 'OVER_ESTIMATE' as const, label: 'Melebihi Estimasi' },
-            { key: 'COMPLETE' as const, label: 'Lengkap & Selesai' },
-          ].map((item) => (
-            <button
-              key={item.key}
-              onClick={() => setFilterFlag(item.key)}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                filterFlag === item.key
-                  ? 'bg-white text-slate-800 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+        <MorphingTabBar
+          layoutId="trips-rekap-filter"
+          value={filterFlag}
+          onChange={setFilterFlag}
+          containerClassName="flex items-center gap-1 bg-slate-100 rounded-xl p-1 w-fit flex-wrap"
+          buttonClassName="px-3.5 py-1.5 rounded-lg text-xs font-semibold"
+          activePillClassName="bg-white rounded-lg shadow-sm"
+          activeTextClassName="text-slate-800"
+          inactiveTextClassName="text-slate-500 hover:text-slate-700"
+          options={[
+            { value: 'ALL', label: 'Semua' },
+            { value: 'ATTENTION', label: 'Belum Lengkap / Terlambat' },
+            { value: 'OVER_ESTIMATE', label: 'Melebihi Estimasi' },
+            { value: 'COMPLETE', label: 'Lengkap & Selesai' },
+          ]}
+        />
 
         <select
           value={selectedYear}
@@ -302,11 +301,13 @@ export default function RekapPerjalananDinasPage() {
       </div>
 
       <MotionCard index={0} interactive={false} className="card">
-        <DataTable
-          columns={columns}
-          data={filteredTrips}
-          emptyMessage="Belum ada data rekap perjalanan dinas untuk filter ini."
-        />
+        <MorphingTabContent activeKey={filterFlag} orderedKeys={RECAP_FILTER_KEYS}>
+          <DataTable
+            columns={columns}
+            data={filteredTrips}
+            emptyMessage="Belum ada data rekap perjalanan dinas untuk filter ini."
+          />
+        </MorphingTabContent>
       </MotionCard>
     </div>
   );

@@ -3,6 +3,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import RoleGuard from '@/components/layout/RoleGuard';
 import SmoothScrollProvider from '@/components/motion/SmoothScrollProvider';
+import MorphingPageTransition from '@/components/motion/MorphingPageTransition';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -12,7 +13,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Header />
         <SmoothScrollProvider mode="container" className="flex-1 p-4 overflow-y-auto overflow-x-hidden custom-scrollbar">
           <RoleGuard>
-            {children}
+            <MorphingPageTransition>
+              {children}
+            </MorphingPageTransition>
           </RoleGuard>
         </SmoothScrollProvider>
       </div>

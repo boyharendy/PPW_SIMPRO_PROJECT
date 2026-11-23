@@ -6,6 +6,7 @@ import LogoImage from '@/components/Logo/Logos.png';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import SmoothScrollProvider from '@/components/motion/SmoothScrollProvider';
+import MorphingPageTransition from '@/components/motion/MorphingPageTransition';
 import WordRevealHeading from '@/components/motion/WordRevealHeading';
 
 interface PublicShellProps {
@@ -60,13 +61,15 @@ export default function PublicShell({
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 lg:p-8 animate-fade-in">
-        {title && (
-          <div className="mb-6 text-center sm:text-left">
-            <WordRevealHeading as="h1" text={title} className="text-2xl font-bold text-slate-800 tracking-tight" />
-          </div>
-        )}
-        {children}
+      <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+        <MorphingPageTransition>
+          {title && (
+            <div className="mb-6 text-center sm:text-left">
+              <WordRevealHeading as="h1" text={title} className="text-2xl font-bold text-slate-800 tracking-tight" />
+            </div>
+          )}
+          {children}
+        </MorphingPageTransition>
       </main>
 
       {/* Footer */}

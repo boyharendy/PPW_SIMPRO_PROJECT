@@ -56,6 +56,30 @@ export interface ViewportAnimationProfile {
     hover?: { y: number; scale: number };
     tap?: { scale: number };
   };
+  tabMorph: {
+    pillSpring:
+      | {
+          type: 'spring';
+          stiffness: number;
+          damping: number;
+          mass: number;
+        }
+      | {
+          duration: number;
+        };
+    contentDuration: number;
+    exitDuration: number;
+    slideOffset: number;
+    blurPx: number;
+    scaleFrom: number;
+  };
+  pageMorph: {
+    enabled: boolean;
+    duration: number;
+    yOffset: number;
+    scaleFrom: number;
+    blurPx: number;
+  };
 }
 
 function normalizePathname(pathname: string): string {
@@ -134,6 +158,21 @@ export function getViewportAnimationProfile({
         hover: undefined,
         tap: undefined,
       },
+      tabMorph: {
+        pillSpring: { duration: 0.01 },
+        contentDuration: 0.01,
+        exitDuration: 0.01,
+        slideOffset: 0,
+        blurPx: 0,
+        scaleFrom: 1,
+      },
+      pageMorph: {
+        enabled: false,
+        duration: 0.01,
+        yOffset: 0,
+        scaleFrom: 1,
+        blurPx: 0,
+      },
     };
   }
 
@@ -165,6 +204,26 @@ export function getViewportAnimationProfile({
         hover: canHover ? { y: -3, scale: 1.008 } : undefined,
         tap: { scale: 0.988 },
       },
+      tabMorph: {
+        pillSpring: {
+          type: 'spring',
+          stiffness: 420,
+          damping: 34,
+          mass: 0.9,
+        },
+        contentDuration: 0.26,
+        exitDuration: 0.13,
+        slideOffset: 22,
+        blurPx: 3,
+        scaleFrom: 0.992,
+      },
+      pageMorph: {
+        enabled: true,
+        duration: 0.28,
+        yOffset: 10,
+        scaleFrom: 0.992,
+        blurPx: 3,
+      },
     };
   }
 
@@ -195,6 +254,26 @@ export function getViewportAnimationProfile({
       hover: canHover ? { y: -2, scale: 1.005 } : undefined,
       tap: { scale: 0.988 },
     },
+    tabMorph: {
+      pillSpring: {
+        type: 'spring',
+        stiffness: 460,
+        damping: 36,
+        mass: 0.85,
+      },
+      contentDuration: 0.2,
+      exitDuration: 0.1,
+      slideOffset: 14,
+      blurPx: 2,
+      scaleFrom: 0.995,
+    },
+    pageMorph: {
+      enabled: true,
+      duration: 0.22,
+      yOffset: 7,
+      scaleFrom: 0.995,
+      blurPx: 2,
+    },
   };
 }
 
@@ -203,4 +282,19 @@ export function getViewportAnimationProfile({
  */
 export function getStaggerDelay(index: number, step: number, maxDelay: number): number {
   return Math.min(Math.max(0, index) * step, maxDelay);
+}
+
+/**
+ * Menentukan arah geser perpindahan tab/filter berdasarkan urutan opsi.
+ */
+export function getTabSwitchDirection<T>(
+  orderedKeys: readonly T[],
+  prevKey: T,
+  nextKey: T
+): -1 | 0 | 1 {
+  if (prevKey === nextKey) return 0;
+  const prevIdx = orderedKeys.indexOf(prevKey);
+  const nextIdx = orderedKeys.indexOf(nextKey);
+  if (prevIdx === -1 || nextIdx === -1) return 0;
+  return nextIdx > prevIdx ? 1 : -1;
 }

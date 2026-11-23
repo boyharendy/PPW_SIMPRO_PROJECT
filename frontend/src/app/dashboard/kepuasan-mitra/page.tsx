@@ -11,6 +11,8 @@ import { formatDateShort } from '@/lib/utils';
 import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
 import MotionCard from '@/components/motion/MotionCard';
 import WordRevealHeading from '@/components/motion/WordRevealHeading';
+import MorphingTabBar from '@/components/motion/MorphingTabBar';
+import MorphingTabContent from '@/components/motion/MorphingTabContent';
 import { mockSurveyResponses, mockSurveyInvitations, mockSurveyTemplates } from '@/lib/mock-data';
 import type {
   PartnerSurveyResponse,
@@ -31,6 +33,8 @@ interface ResponseViewItem {
   catatan?: string;
   sumber: string;
 }
+
+const PROGRAM_KEYS = ['ALL', 'KP', 'PSI', 'PDLK'] as const;
 
 export default function Page() {
   const [responses, setResponses] = useState<PartnerSurveyResponse[]>([]);
@@ -267,28 +271,25 @@ export default function Page() {
             </p>
           </div>
 
-          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 self-start sm:self-auto">
-            {(['ALL', 'KP', 'PSI', 'PDLK'] as const).map((prog) => (
-              <button
-                key={prog}
-                onClick={() => setSelectedProgram(prog)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                  selectedProgram === prog
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                {prog === 'ALL' ? 'Semua Program' : prog}
-              </button>
-            ))}
-          </div>
+          <MorphingTabBar
+            layoutId="kepuasan-mitra-program"
+            value={selectedProgram}
+            onChange={setSelectedProgram}
+            containerClassName="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 self-start sm:self-auto"
+            options={PROGRAM_KEYS.map((prog) => ({
+              value: prog,
+              label: prog === 'ALL' ? 'Semua Program' : prog,
+            }))}
+          />
         </div>
 
-        <DataTable
-          columns={columns}
-          data={filteredResponses}
-          emptyMessage="Belum ada data evaluasi untuk program ini"
-        />
+        <MorphingTabContent activeKey={selectedProgram} orderedKeys={PROGRAM_KEYS}>
+          <DataTable
+            columns={columns}
+            data={filteredResponses}
+            emptyMessage="Belum ada data evaluasi untuk program ini"
+          />
+        </MorphingTabContent>
       </MotionCard>
 
       {/* Modal Detail Respons */}

@@ -54,6 +54,8 @@ test('GSAP, ScrollTrigger, Motion, and Lenis packages resolve with expected APIs
   assert.doesNotThrow(() => gsap.registerPlugin(ScrollTrigger), 'gsap.registerPlugin(ScrollTrigger) should succeed');
 
   assert.ok(motionReact.motion, 'motion must be exported from motion/react');
+  assert.ok(motionReact.AnimatePresence, 'AnimatePresence must be exported from motion/react');
+  assert.ok(motionReact.LayoutGroup, 'LayoutGroup must be exported from motion/react');
   assert.equal(typeof motionReact.MotionConfig, 'function', 'MotionConfig must be exported from motion/react');
   assert.equal(typeof motionReact.useReducedMotion, 'function', 'useReducedMotion must be exported from motion/react');
 
@@ -131,7 +133,9 @@ test('splitHeadingWords tokenizes headings per word cleanly', async () => {
 });
 
 test('getViewportAnimationProfile harmonizes desktop, mobile, and reduced-motion behaviors', async () => {
-  const { getViewportAnimationProfile, getStaggerDelay } = await import('../src/lib/animation-scope.ts');
+  const { getViewportAnimationProfile, getStaggerDelay, getTabSwitchDirection } = await import(
+    '../src/lib/animation-scope.ts'
+  );
 
   const desktop = getViewportAnimationProfile({
     isDesktop: true,
@@ -158,6 +162,10 @@ test('getViewportAnimationProfile harmonizes desktop, mobile, and reduced-motion
   assert.ok(desktop.card.hover && desktop.card.hover.y < 0, 'Desktop pointer devices should get subtle hover lift');
   assert.ok(desktop.card.tap);
   assert.equal(desktop.card.viewportAmount, 'some');
+  assert.equal(desktop.pageMorph.enabled, true);
+  assert.ok(desktop.pageMorph.yOffset > 0);
+  assert.ok(desktop.tabMorph.slideOffset > 0);
+  assert.equal(desktop.tabMorph.pillSpring.type, 'spring');
 
   // Mobile profile (lighter amplitude, faster settle, no sticky hover on touch)
   assert.equal(mobile.lenis.enabled, true);
@@ -168,6 +176,11 @@ test('getViewportAnimationProfile harmonizes desktop, mobile, and reduced-motion
   assert.equal(mobile.card.hover, undefined, 'Touch mobile must disable hover lift to prevent sticky hover');
   assert.ok(mobile.card.tap);
   assert.equal(mobile.card.viewportAmount, 'some');
+  assert.equal(mobile.pageMorph.enabled, true);
+  assert.ok(mobile.pageMorph.yOffset < desktop.pageMorph.yOffset);
+  assert.ok(mobile.pageMorph.duration < desktop.pageMorph.duration);
+  assert.ok(mobile.tabMorph.slideOffset < desktop.tabMorph.slideOffset);
+  assert.ok(mobile.tabMorph.contentDuration < desktop.tabMorph.contentDuration);
 
   // Reduced motion profile
   assert.equal(reduced.lenis.enabled, false);
@@ -175,26 +188,66 @@ test('getViewportAnimationProfile harmonizes desktop, mobile, and reduced-motion
   assert.equal(reduced.card.initialY, 0);
   assert.equal(reduced.card.hover, undefined);
   assert.equal(reduced.card.tap, undefined);
+  assert.equal(reduced.pageMorph.enabled, false);
+  assert.equal(reduced.pageMorph.yOffset, 0);
+  assert.equal(reduced.tabMorph.slideOffset, 0);
+  assert.equal(reduced.tabMorph.blurPx, 0);
 
   // Stagger delay helper clamping
   assert.equal(getStaggerDelay(0, 0.045, 0.24), 0);
   assert.equal(getStaggerDelay(-2, 0.045, 0.24), 0);
   assert.equal(getStaggerDelay(10, 0.045, 0.24), 0.24);
+
+  // Directional tab switch helper
+  const programKeys = ['ALL', 'KP', 'PSI', 'PDLK'];
+  assert.equal(getTabSwitchDirection(programKeys, 'ALL', 'KP'), 1);
+  assert.equal(getTabSwitchDirection(programKeys, 'KP', 'PDLK'), 1);
+  assert.equal(getTabSwitchDirection(programKeys, 'PDLK', 'ALL'), -1);
+  assert.equal(getTabSwitchDirection(programKeys, 'PSI', 'KP'), -1);
+  assert.equal(getTabSwitchDirection(programKeys, 'KP', 'KP'), 0);
+  assert.equal(getTabSwitchDirection(programKeys, 'UNKNOWN', 'KP'), 0);
 });
 
-test('Shared layouts/headers/cards integrate SmoothScrollProvider, WordRevealHeading, MotionCard, and Modul 1-6 remain untouched', () => {
+test('Shared layouts/headers/cards integrate SmoothScrollProvider, WordRevealHeading, MotionCard, morphing switchers, and Modul 1-6 + Sidebar remain untouched', () => {
   const dashboardLayout = fs.readFileSync(path.join(appDashboardDir, 'layout.tsx'), 'utf8');
   const dashboardMain = fs.readFileSync(path.join(appDashboardDir, 'page.tsx'), 'utf8');
   const pageHeader = fs.readFileSync(path.join(frontendSrcDir, 'components/ui/PageHeader.tsx'), 'utf8');
   const statCard = fs.readFileSync(path.join(frontendSrcDir, 'components/ui/StatCard.tsx'), 'utf8');
   const publicShell = fs.readFileSync(path.join(frontendSrcDir, 'components/layout/PublicShell.tsx'), 'utf8');
+  const sidebar = fs.readFileSync(path.join(frontendSrcDir, 'components/layout/Sidebar.tsx'), 'utf8');
 
   assert.ok(dashboardLayout.includes('SmoothScrollProvider'), 'DashboardLayout must wire SmoothScrollProvider');
+  assert.ok(dashboardLayout.includes('MorphingPageTransition'), 'DashboardLayout must wire MorphingPageTransition');
   assert.ok(publicShell.includes('SmoothScrollProvider'), 'PublicShell must wire SmoothScrollProvider');
+  assert.ok(publicShell.includes('MorphingPageTransition'), 'PublicShell must wire MorphingPageTransition');
   assert.ok(pageHeader.includes('WordRevealHeading'), 'PageHeader must render title via WordRevealHeading');
   assert.ok(statCard.includes('MotionCard'), 'StatCard must wrap card with MotionCard');
   assert.ok(dashboardMain.includes('WordRevealHeading'), 'Dashboard Utama must use WordRevealHeading');
   assert.ok(dashboardMain.includes('MotionCard'), 'Dashboard Utama must use MotionCard');
+
+  for (const forbidden of ['MorphingTabBar', 'MorphingTabContent', 'MorphingPageTransition', 'motion/react']) {
+    assert.equal(sidebar.includes(forbidden), false, `Sidebar.tsx must NOT reference ${forbidden}`);
+  }
+
+  const morphingTargetFiles = [
+    'app/dashboard/kepuasan-mitra/page.tsx',
+    'app/dashboard/kepuasan-mitra/pengiriman/page.tsx',
+    'app/dashboard/publikasi/page.tsx',
+    'app/dashboard/perjalanan-dinas/page.tsx',
+    'app/dashboard/perjalanan-dinas/rekap/page.tsx',
+    'app/dashboard/rka/[tahun]/realisasi/page.tsx',
+    'app/dashboard/rka/[tahun]/serapan/page.tsx',
+    'components/rka/RkaVersionHistoryModal.tsx',
+    'app/dashboard/rps/page.tsx',
+    'app/dashboard/rps/rekap/page.tsx',
+    'app/dashboard/evaluasi-perkuliahan/page.tsx',
+  ];
+
+  for (const relFile of morphingTargetFiles) {
+    const content = fs.readFileSync(path.join(frontendSrcDir, relFile), 'utf8');
+    assert.ok(content.includes('MorphingTabBar'), `${relFile} must use MorphingTabBar`);
+    assert.ok(content.includes('MorphingTabContent'), `${relFile} must use MorphingTabContent`);
+  }
 
   const excludedModules = ['perwalian', 'beasiswa', 'pelanggaran', 'ukm', 'himpunan', 'sertifikat'];
   const forbiddenTokens = [
@@ -205,6 +258,9 @@ test('Shared layouts/headers/cards integrate SmoothScrollProvider, WordRevealHea
     'WordRevealHeading',
     'MotionCard',
     'SmoothScrollProvider',
+    'MorphingTabBar',
+    'MorphingTabContent',
+    'MorphingPageTransition',
   ];
 
   for (const modDir of excludedModules) {

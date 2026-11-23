@@ -46,6 +46,12 @@ import {
   getStatusLabel,
 } from '@/lib/utils';
 import MotionCard from '@/components/motion/MotionCard';
+import MorphingTabBar from '@/components/motion/MorphingTabBar';
+import MorphingTabContent from '@/components/motion/MorphingTabContent';
+import { getTabSwitchDirection } from '@/lib/animation-scope';
+
+const DIMENSION_KEYS: readonly SerapanViewDimension[] = ['KEGIATAN', 'POS_ANGGARAN', 'TRIWULAN'];
+const QUARTER_KEYS = ['ALL', 'TW1', 'TW2', 'TW3', 'TW4'] as const;
 
 export default function Page() {
   const { tahun } = useParams<{ tahun: string }>();
@@ -60,6 +66,16 @@ export default function Page() {
 
   const [viewDimension, setViewDimension] = useState<SerapanViewDimension>('KEGIATAN');
   const [filterTW, setFilterTW] = useState<'ALL' | RkaQuarter>('ALL');
+  const [contentDirection, setContentDirection] = useState<-1 | 0 | 1>(0);
+
+  const handleDimensionChange = (nextDim: SerapanViewDimension) => {
+    setContentDirection(getTabSwitchDirection(DIMENSION_KEYS, viewDimension, nextDim));
+    setViewDimension(nextDim);
+  };
+  const handleQuarterChange = (nextTw: 'ALL' | RkaQuarter) => {
+    setContentDirection(getTabSwitchDirection(QUARTER_KEYS, filterTW, nextTw));
+    setFilterTW(nextTw);
+  };
 
   const systemQuarter = useMemo(() => getCurrentQuarterInfo(), []);
   const [simQuarter, setSimQuarter] = useState<'AUTO' | RkaQuarter>('AUTO');
@@ -358,74 +374,51 @@ export default function Page() {
       {/* View Switcher (3 Dimensi FR-38) + Filter Triwulan + Tabel */}
       <MotionCard index={0} interactive={false} className="card space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          {/* View Switcher 3 Dimensi */}
-          <div className="inline-flex rounded-xl border border-slate-200 p-1 bg-slate-50 flex-wrap">
-            <button
-              type="button"
-              onClick={() => setViewDimension('KEGIATAN')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg inline-flex items-center gap-1.5 transition-colors ${
-                viewDimension === 'KEGIATAN'
-                  ? 'bg-white text-blue-700 shadow-xs border border-slate-200/70'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <ListChecks size={13} /> Per Kegiatan
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewDimension('POS_ANGGARAN')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg inline-flex items-center gap-1.5 transition-colors ${
-                viewDimension === 'POS_ANGGARAN'
-                  ? 'bg-white text-blue-700 shadow-xs border border-slate-200/70'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Layers size={13} /> Per Pos Anggaran
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewDimension('TRIWULAN')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg inline-flex items-center gap-1.5 transition-colors ${
-                viewDimension === 'TRIWULAN'
-                  ? 'bg-white text-blue-700 shadow-xs border border-slate-200/70'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <CalendarClock size={13} /> Per Triwulan
-            </button>
-          </div>
+          <MorphingTabBar
+            layoutId="rka-serapan-dimension"
+            value={viewDimension}
+            onChange={handleDimensionChange}
+            containerClassName="inline-flex rounded-xl border border-slate-200 p-1 bg-slate-50 flex-wrap"
+            buttonClassName="px-3 py-1.5 text-xs font-semibold rounded-lg"
+            activePillClassName="bg-white shadow-xs border border-slate-200/70 rounded-lg"
+            activeTextClassName="text-blue-700"
+            options={[
+              { value: 'KEGIATAN', label: <><ListChecks size={13} /> Per Kegiatan</> },
+              { value: 'POS_ANGGARAN', label: <><Layers size={13} /> Per Pos Anggaran</> },
+              { value: 'TRIWULAN', label: <><CalendarClock size={13} /> Per Triwulan</> },
+            ]}
+          />
 
-          {/* Filter Triwulan (untuk Per Kegiatan & Per Pos Anggaran) */}
           {viewDimension !== 'TRIWULAN' && (
-            <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 self-start lg:self-auto">
-              {(['ALL', 'TW1', 'TW2', 'TW3', 'TW4'] as const).map((tw) => (
-                <button
-                  key={tw}
-                  type="button"
-                  onClick={() => setFilterTW(tw)}
-                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
-                    filterTW === tw
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  {tw === 'ALL' ? 'Semua Triwulan' : tw}
-                </button>
-              ))}
-            </div>
+            <MorphingTabBar
+              layoutId="rka-serapan-quarter"
+              value={filterTW}
+              onChange={handleQuarterChange}
+              containerClassName="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 self-start lg:self-auto"
+              buttonClassName="px-3 py-1 text-xs font-semibold rounded-md"
+              options={QUARTER_KEYS.map((tw) => ({
+                value: tw,
+                label: tw === 'ALL' ? 'Semua Triwulan' : tw,
+              }))}
+            />
           )}
         </div>
 
-        <RkaSerapanTable
-          isLoading={isLoading}
-          viewDimension={viewDimension}
-          filteredActivities={filteredActivities}
-          byCategory={byCategory}
-          byQuarter={byQuarter}
-          rkaYear={doc?.tahun_anggaran || Number(tahun || 2025)}
-          referenceYear={effectiveReference.year}
-          referenceQuarter={effectiveReference.quarter}
-        />
+        <MorphingTabContent
+          activeKey={`${viewDimension}:${viewDimension === 'TRIWULAN' ? 'ALL' : filterTW}`}
+          direction={contentDirection}
+        >
+          <RkaSerapanTable
+            isLoading={isLoading}
+            viewDimension={viewDimension}
+            filteredActivities={filteredActivities}
+            byCategory={byCategory}
+            byQuarter={byQuarter}
+            rkaYear={doc?.tahun_anggaran || Number(tahun || 2025)}
+            referenceYear={effectiveReference.year}
+            referenceQuarter={effectiveReference.quarter}
+          />
+        </MorphingTabContent>
       </MotionCard>
     </div>
   );

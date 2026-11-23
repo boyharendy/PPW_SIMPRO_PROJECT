@@ -26,8 +26,11 @@ import type {
 } from '@/lib/types';
 import { formatRupiah, getStatusLabel } from '@/lib/utils';
 import MotionCard from '@/components/motion/MotionCard';
+import MorphingTabBar from '@/components/motion/MorphingTabBar';
+import MorphingTabContent from '@/components/motion/MorphingTabContent';
 
 type RealizationTab = 'ALL' | 'MANUAL' | 'PERJALANAN_DINAS';
+const REALIZATION_TABS: readonly RealizationTab[] = ['ALL', 'MANUAL', 'PERJALANAN_DINAS'];
 
 export default function Page() {
   const { tahun } = useParams<{ tahun: string }>();
@@ -340,84 +343,72 @@ export default function Page() {
       {/* Tabs & Table */}
       <MotionCard index={0} interactive={false} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="inline-flex rounded-xl border border-slate-200 p-1 bg-slate-50 flex-wrap">
-            <button
-              type="button"
-              onClick={() => setActiveTab('ALL')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                activeTab === 'ALL'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Semua Realisasi ({realizations.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('MANUAL')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                activeTab === 'MANUAL'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Input Manual ({manualList.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('PERJALANAN_DINAS')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors inline-flex items-center gap-1.5 ${
-                activeTab === 'PERJALANAN_DINAS'
-                  ? 'bg-purple-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Plane size={13} /> Realisasi Tertaut dari Perjalanan Dinas ({tripLinkedList.length})
-            </button>
-          </div>
+          <MorphingTabBar
+            layoutId="rka-realisasi-tabs"
+            value={activeTab}
+            onChange={setActiveTab}
+            containerClassName="inline-flex rounded-xl border border-slate-200 p-1 bg-slate-50 flex-wrap"
+            buttonClassName="px-3 py-1.5 text-xs font-semibold rounded-lg"
+            activePillClassName="bg-blue-600 shadow-xs rounded-lg"
+            options={[
+              { value: 'ALL', label: `Semua Realisasi (${realizations.length})` },
+              { value: 'MANUAL', label: `Input Manual (${manualList.length})` },
+              {
+                value: 'PERJALANAN_DINAS',
+                label: (
+                  <>
+                    <Plane size={13} /> Realisasi Tertaut dari Perjalanan Dinas ({tripLinkedList.length})
+                  </>
+                ),
+                activePillClassName: 'bg-purple-600 shadow-xs rounded-lg',
+              },
+            ]}
+          />
         </div>
 
-        {activeTab === 'PERJALANAN_DINAS' && (
-          <div className="rounded-xl bg-purple-50/70 border border-purple-200 p-3.5 text-xs text-purple-900 space-y-2">
-            <p className="leading-relaxed">
-              <strong>Integrasi Otomatis Perjalanan Dinas:</strong> Setiap pengajuan Perjalanan Dinas
-              yang memakai sumber dana <strong>RKA Prodi</strong> dan telah berstatus <strong>Selesai</strong> (laporan
-              &amp; bukti diverifikasi lengkap) otomatis tertarik menambah Realisasi Berjalan pada pos RKA terkait tanpa input ganda.
-            </p>
-            {pendingLinkedTrips.length > 0 && (
-              <div className="pt-2 border-t border-purple-200/70">
-                <span className="font-semibold block mb-1">
-                  Perjalanan Dinas Tertaut yang Menunggu Penyelesaian Laporan ({pendingLinkedTrips.length}):
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {pendingLinkedTrips.map((t) => (
-                    <Link
-                      key={t.id}
-                      href={`/dashboard/perjalanan-dinas/${t.id}`}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-purple-200 text-purple-800 hover:bg-purple-100/50 text-[11px]"
-                    >
-                      <span>{t.tujuan} ({getTripLeadName(t)})</span>
-                      <span className="font-mono font-bold">
-                        {formatRupiah(getTripTotalRealisasi(t) || 0)}
-                      </span>
-                      <StatusBadge status={t.status} size="sm" />
-                    </Link>
-                  ))}
-                </div>
+        <MorphingTabContent activeKey={activeTab} orderedKeys={REALIZATION_TABS}>
+          <div className="space-y-4">
+            {activeTab === 'PERJALANAN_DINAS' && (
+              <div className="rounded-xl bg-purple-50/70 border border-purple-200 p-3.5 text-xs text-purple-900 space-y-2">
+                <p className="leading-relaxed">
+                  <strong>Integrasi Otomatis Perjalanan Dinas:</strong> Setiap pengajuan Perjalanan Dinas
+                  yang memakai sumber dana <strong>RKA Prodi</strong> dan telah berstatus <strong>Selesai</strong> (laporan
+                  &amp; bukti diverifikasi lengkap) otomatis tertarik menambah Realisasi Berjalan pada pos RKA terkait tanpa input ganda.
+                </p>
+                {pendingLinkedTrips.length > 0 && (
+                  <div className="pt-2 border-t border-purple-200/70">
+                    <span className="font-semibold block mb-1">
+                      Perjalanan Dinas Tertaut yang Menunggu Penyelesaian Laporan ({pendingLinkedTrips.length}):
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {pendingLinkedTrips.map((t) => (
+                        <Link
+                          key={t.id}
+                          href={`/dashboard/perjalanan-dinas/${t.id}`}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-purple-200 text-purple-800 hover:bg-purple-100/50 text-[11px]"
+                        >
+                          <span>{t.tujuan} ({getTripLeadName(t)})</span>
+                          <span className="font-mono font-bold">{formatRupiah(getTripTotalRealisasi(t) || 0)}</span>
+                          <StatusBadge status={t.status} size="sm" />
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
 
-        {isLoading ? (
-          <div className="p-8 text-center text-sm text-slate-400">Memuat data realisasi...</div>
-        ) : (
-          <DataTable
-            columns={columns}
-            data={filteredList}
-            emptyMessage="Belum ada transaksi realisasi pada kategori ini."
-          />
-        )}
+            {isLoading ? (
+              <div className="p-8 text-center text-sm text-slate-400">Memuat data realisasi...</div>
+            ) : (
+              <DataTable
+                columns={columns}
+                data={filteredList}
+                emptyMessage="Belum ada transaksi realisasi pada kategori ini."
+              />
+            )}
+          </div>
+        </MorphingTabContent>
       </MotionCard>
 
       <RkaRealizationModal
