@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "npm --prefix frontend run dev",
     "dev:frontend": "npm --prefix frontend run dev",
-    "dev:backend": "cd backend && go run cmd/api/main.go",
+    "dev:backend": "node backend/dev.mjs",
     "build": "npm --prefix frontend run build",
     "build:frontend": "npm --prefix frontend run build",
     "test": "npm --prefix frontend test",

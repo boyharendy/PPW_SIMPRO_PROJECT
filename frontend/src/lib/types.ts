@@ -264,6 +264,7 @@ export interface BusinessTrip {
   pengaju?: Profile;
   participants: BusinessTripParticipant[];
   costs: BusinessTripCost[];
+  proofs?: { id: string; kategori: string; file_name: string; file_url?: string }[];
   budget_item?: RkaBudgetItem;
   // Flags otomatis
   is_terlambat_lapor?: boolean;

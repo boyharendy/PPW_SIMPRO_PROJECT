@@ -1,6 +1,9 @@
 package model
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type ComplaintStatus string
 
@@ -52,8 +55,8 @@ type ComplaintDisposition struct {
 type Complaint struct {
 	ID                        string                  `json:"id"`
 	NomorAduan                string                  `json:"nomor_aduan,omitempty"`
-	KodeTiket                 string                  `json:"kode_tiket"`
-	KodeTiketHash             string                  `json:"kode_tiket_hash,omitempty"`
+	KodeTiket                 string                  `json:"kode_tiket,omitempty"`
+	KodeTiketHash             string                  `json:"-"`
 	Kategori                  ComplaintCategory       `json:"kategori"`
 	Judul                     string                  `json:"judul"`
 	IsiAduan                  string                  `json:"isi_aduan"`
@@ -117,4 +120,29 @@ type ComplaintRecap struct {
 	RataRataKepuasanPelapor       float64        `json:"rata_rata_kepuasan_pelapor"`
 	StatusDistribusi              map[string]int `json:"status_distribusi"`
 	KategoriDist                  map[string]int `json:"kategori_distribusi"`
+}
+
+// PostgreSQL stores the disposition deadline as a calendar date.
+func (d *ComplaintDisposition) UnmarshalJSON(data []byte) error {
+	type fields ComplaintDisposition
+	var value struct {
+		*fields
+		Deadline *string `json:"deadline_tindak_lanjut"`
+	}
+	value.fields = (*fields)(d)
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	if value.Deadline == nil {
+		return nil
+	}
+	date, err := time.Parse("2006-01-02", *value.Deadline)
+	if err != nil {
+		date, err = time.Parse(time.RFC3339, *value.Deadline)
+	}
+	if err != nil {
+		return err
+	}
+	d.DeadlineTindakLanjut = &date
+	return nil
 }

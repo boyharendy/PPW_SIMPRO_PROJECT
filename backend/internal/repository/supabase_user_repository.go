@@ -12,14 +12,14 @@ import (
 )
 
 type dbProfile struct {
-	ID          string     `json:"id"`
-	NomorInduk  string     `json:"nomor_induk"`
-	NamaLengkap string     `json:"nama_lengkap"`
-	Email       string     `json:"email"`
-	Tipe        string     `json:"tipe_pengguna"`
-	IsActive    bool       `json:"is_active"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	ID          string    `json:"id"`
+	NomorInduk  string    `json:"nomor_induk"`
+	NamaLengkap string    `json:"nama_lengkap"`
+	Email       string    `json:"email"`
+	Tipe        string    `json:"tipe_pengguna"`
+	IsActive    bool      `json:"is_active"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 type dbUserRole struct {
@@ -29,11 +29,11 @@ type dbUserRole struct {
 }
 
 type supabaseUserRepository struct {
-	client *database.SupabaseClient
+	client database.Store
 }
 
 // NewSupabaseUserRepository creates a UserRepository powered by Supabase REST API
-func NewSupabaseUserRepository(client *database.SupabaseClient) UserRepository {
+func NewSupabaseUserRepository(client database.Store) UserRepository {
 	return &supabaseUserRepository{client: client}
 }
 
@@ -56,9 +56,8 @@ func (r *supabaseUserRepository) FindAll(search string, page, limit int) ([]*mod
 	countParams := map[string]string{}
 
 	if strings.TrimSpace(search) != "" {
-		filter := fmt.Sprintf("or=(nama_lengkap.ilike.*%s*,email.ilike.*%s*)", search, search)
-		queryParams[filter] = ""
-		countParams[filter] = ""
+		queryParams["search"] = search
+		countParams["search"] = search
 	}
 
 	var profiles []dbProfile
@@ -240,4 +239,3 @@ func (r *supabaseUserRepository) fetchRolesForUser(userID string) ([]model.Role,
 	}
 	return roles, nil
 }
-

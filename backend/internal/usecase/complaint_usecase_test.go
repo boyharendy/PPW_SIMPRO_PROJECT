@@ -1,6 +1,9 @@
 package usecase_test
 
 import (
+	"context"
+	"errors"
+	"simpro-backend/pkg/permit"
 	"testing"
 
 	"simpro-backend/internal/model"
@@ -13,7 +16,7 @@ func TestComplaintUsecase(t *testing.T) {
 	uc := usecase.NewComplaintUsecase(repo)
 
 	// 1. Issue Permit (FR-48)
-	token, exp, err := uc.IssuePermit("mhs-12345")
+	token, exp, err := uc.IssuePermit(context.Background(), "mhs-12345")
 	if err != nil {
 		t.Fatalf("IssuePermit failed: %v", err)
 	}
@@ -58,7 +61,7 @@ func TestComplaintUsecase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetComplaintByID failed: %v", err)
 	}
-	if kaprodiView.IsiAduan != "[KONTEN DIRAHASIAKAN / KHUSUS SATGAS & PETUGAS KEKERASAN]" {
+	if kaprodiView.IsiAduan != "" || kaprodiView.Judul != "" || kaprodiView.KodeTiket != "" {
 		t.Errorf("expected masked content for Kaprodi on sensitive complaints, got %s", kaprodiView.IsiAduan)
 	}
 
@@ -114,5 +117,43 @@ func TestComplaintUsecase(t *testing.T) {
 	recap, err := uc.GetRecap()
 	if err != nil || recap.TotalSensitif != 1 {
 		t.Fatalf("GetRecap failed: %v", err)
+	}
+}
+
+func TestPermitQuotaAndConcurrentConsumption(t *testing.T) {
+	uc := usecase.NewComplaintUsecase(repository.NewMemoryComplaintRepository())
+	ctx := context.Background()
+	var token string
+	for range 3 {
+		var err error
+		token, _, err = uc.IssuePermit(ctx, "fixture")
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, _, err := uc.IssuePermit(ctx, "fixture"); !errors.Is(err, permit.ErrQuota) {
+		t.Fatal("expected quota limit")
+	}
+	if _, _, err := uc.IssuePermit(ctx, "second-fixture"); err != nil {
+		t.Fatal(err)
+	}
+	start := make(chan struct{})
+	results := make(chan bool, 8)
+	for range 8 {
+		go func() {
+			<-start
+			_, err := uc.CreatePublicComplaint(&model.PublicComplaintRequest{PermitToken: token, Kategori: model.ComplaintCatAkademik, Judul: "Fixture", IsiAduan: "Fixture"})
+			results <- err == nil
+		}()
+	}
+	close(start)
+	accepted := 0
+	for range 8 {
+		if <-results {
+			accepted++
+		}
+	}
+	if accepted != 1 {
+		t.Fatalf("expected one successful submission, got %d", accepted)
 	}
 }

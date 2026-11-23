@@ -13,12 +13,12 @@ import {
   ShieldCheck,
   UserPlus,
 } from 'lucide-react';
+import { useLecturers } from '@/lib/hooks/useLecturers';
 import PageHeader from '@/components/ui/PageHeader';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { formatDateShort } from '@/lib/utils';
 import { useUser } from '@/lib/context';
 import { publicationService } from '@/lib/api/services/publication.service';
-import { mockPublications } from '@/lib/mock-data';
 import type { Publication, PublicationReview } from '@/lib/types';
 import {
   AssignReviewerModal,
@@ -27,20 +27,15 @@ import {
   VerifyStudentPubModal,
 } from './PublicationActionModals';
 
-const DOSEN_LIST = [
-  { id: 'u-dosen1', nama: 'Dr. Eng. Hendra Wijaya, M.Sc.' },
-  { id: 'u-dosen2', nama: 'Dewi Lestari, M.T.' },
-  { id: 'u-gkm', nama: 'Siti Rahmawati, M.Kom.' },
-  { id: 'u-koordinator', nama: 'Ir. Agus Pratama, M.Kom.' },
-];
+
 
 export default function Page() {
   const { id } = useParams<{ id: string }>();
   const { user, currentRole } = useUser();
+  const lecturers = useLecturers();
 
-  const [pub, setPub] = useState<Publication>(
-    () => mockPublications.find((p) => p.id === id) || mockPublications[0]
-  );
+  const [pub, setPub] = useState<Publication | null>(null);
+  const [loadError,setLoadError]=useState(false);
   const [stageModal, setStageModal] = useState(false);
   const [newTahap, setNewTahap] = useState<string>('DIAJUKAN');
   const [newBukti, setNewBukti] = useState('');
@@ -65,11 +60,13 @@ export default function Page() {
       if (active && res.data) {
         setPub(res.data);
       }
-    });
+    }).catch(() => { if(active) {setPub(null);setLoadError(true);} });
     return () => {
       active = false;
     };
   }, [id]);
+
+  if (!pub || pub.id!==id) return <p role="status">{loadError ? "Publikasi tidak tersedia." : "Memuat publikasi?"}</p>;
 
   const isKaprodi = currentRole === 'KAPRODI';
   const publisherType =
@@ -80,12 +77,12 @@ export default function Page() {
   const canVerifyStudentPub =
     !isKaprodi &&
     (currentRole === 'DOSEN' || currentRole === 'DOSEN_VERIFIKATOR') &&
-    pub.status_verifikasi === 'MENUNGGU';
+    pub.status_verifikasi === 'MENUNGGU' && pub.verifikator_id === user.id;
   const canReviewInternal = !isKaprodi && currentRole === 'DOSEN';
 
   const authorIds = new Set(pub.authors?.map((a) => a.user_id).filter(Boolean));
   const authorNames = new Set(pub.authors?.map((a) => a.nama_penulis.toLowerCase()));
-  const eligibleReviewers = DOSEN_LIST.filter(
+  const eligibleReviewers = lecturers.filter(
     (d) => !authorIds.has(d.id) && !authorNames.has(d.nama.toLowerCase())
   );
 
@@ -98,12 +95,12 @@ export default function Page() {
 
   const handleUpdateStage = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await publicationService.updateStatus(pub.id, {
+    await publicationService.updateStatus(pub.id, {
       status: newTahap,
       bukti: newBukti.trim() || undefined,
       catatan: newCatatan.trim() || undefined,
     });
-    if (res.data) setPub(res.data);
+    setPub((await publicationService.getPublicationById(id)).data);
     setNewBukti('');
     setNewCatatan('');
     setStageModal(false);
@@ -113,12 +110,12 @@ export default function Page() {
     e.preventDefault();
     const chosen = eligibleReviewers.find((d) => d.id === selectedReviewerId);
     if (!chosen) return;
-    const res = await publicationService.assignReviewer(pub.id, {
+    await publicationService.assignReviewer(pub.id, {
       reviewer_id: chosen.id,
       reviewer_nama: chosen.nama,
       tenggat_review: tenggatReview,
     });
-    if (res.data) setPub(res.data);
+    setPub((await publicationService.getPublicationById(id)).data);
     setSelectedReviewerId('');
     setAssignRevModal(false);
   };
@@ -126,23 +123,23 @@ export default function Page() {
   const handleCompleteReview = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!completeRevModal) return;
-    const res = await publicationService.completeReview(completeRevModal.id, {
+    await publicationService.completeReview(completeRevModal.id, {
       rekomendasi,
       catatan: catatanReview,
     });
-    if (res.data) setPub(res.data);
+    setPub((await publicationService.getPublicationById(id)).data);
     setCompleteRevModal(null);
     setCatatanReview('');
   };
 
   const handleVerifySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await publicationService.verifyPublication(pub.id, {
+    await publicationService.verifyPublication(pub.id, {
       status: verifyDecision,
       catatan: verifyCatatan.trim(),
       verifikator_nama: user.nama_lengkap,
     });
-    if (res.data) setPub(res.data);
+    setPub((await publicationService.getPublicationById(id)).data);
     setVerifyModal(false);
     setVerifyCatatan('');
   };

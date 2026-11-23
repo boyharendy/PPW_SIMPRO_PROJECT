@@ -7,6 +7,7 @@ import (
 )
 
 type ReferenceRepository interface {
+	Lecturers() ([]model.Lecturer, error)
 	GetAcademicPeriods() ([]*model.AcademicPeriod, error)
 	GetCourses() ([]*model.Course, error)
 	GetCourseClasses() ([]*model.CourseClass, error)
@@ -18,10 +19,10 @@ type ReferenceRepository interface {
 // ------------------------------------------------------------
 
 type supabaseReferenceRepository struct {
-	client *database.SupabaseClient
+	client database.Store
 }
 
-func NewSupabaseReferenceRepository(client *database.SupabaseClient) ReferenceRepository {
+func NewSupabaseReferenceRepository(client database.Store) ReferenceRepository {
 	return &supabaseReferenceRepository{client: client}
 }
 
@@ -82,12 +83,12 @@ func NewMemoryReferenceRepository() ReferenceRepository {
 func (r *memoryReferenceRepository) GetAcademicPeriods() ([]*model.AcademicPeriod, error) {
 	return []*model.AcademicPeriod{
 		{
-			ID:            "b0000000-0000-0000-0000-000000000001",
-			TahunAkademik: "2024/2025",
-			Semester:      "GANJIL",
-			TanggalMulai:  "2024-09-01",
+			ID:             "b0000000-0000-0000-0000-000000000001",
+			TahunAkademik:  "2024/2025",
+			Semester:       "GANJIL",
+			TanggalMulai:   "2024-09-01",
 			TanggalSelesai: "2025-01-31",
-			IsActive:      true,
+			IsActive:       true,
 		},
 	}, nil
 }
@@ -137,3 +138,11 @@ func (r *memoryReferenceRepository) GetPartners() ([]*model.PartnerInstitution, 
 	}, nil
 }
 
+func (r *supabaseReferenceRepository) Lecturers() ([]model.Lecturer, error) {
+	var rows []model.Lecturer
+	err := r.client.Select("simpro_lecturers", map[string]string{"order": "nama_lengkap.asc"}, &rows)
+	return rows, err
+}
+func (r *memoryReferenceRepository) Lecturers() ([]model.Lecturer, error) {
+	return []model.Lecturer{{ID: "u1", Nama: "Dosen Kaprodi (lokal)"}}, nil
+}

@@ -167,11 +167,15 @@ func TestRouter_Auth_LoginAndProtectedRoutes(t *testing.T) {
 	}
 
 	// 8. Test Public Complaint Submission & Tracking
+	student := jsonRequest(t, r, "/api/v1/auth/register", "", map[string]any{"nama_lengkap": "Mahasiswa Uji", "email": "student@example.test", "password": "student-password"}, 201)
+	studentAccess := student["data"].(map[string]any)["tokens"].(map[string]any)["access_token"].(string)
+	grant := jsonRequest(t, r, "/api/v1/aduan/permit", studentAccess, nil, 200)
+	permit := grant["data"].(map[string]any)["permit_token"].(string)
 	complaintBody, _ := json.Marshal(map[string]interface{}{
 		"kategori":    "FASILITAS",
 		"judul":       "Lampu Ruang 301 Mati",
 		"isi_aduan":   "Lampu di depan proyektor tidak menyala saat perkuliahan",
-		"is_sensitif": false,
+		"is_sensitif": false, "permit_token": permit,
 	})
 	req, _ = http.NewRequest(http.MethodPost, "/api/v1/public/complaints", bytes.NewBuffer(complaintBody))
 	req.Header.Set("Content-Type", "application/json")
@@ -193,7 +197,9 @@ func TestRouter_Auth_LoginAndProtectedRoutes(t *testing.T) {
 	}
 
 	// Public Track Complaint
-	req, _ = http.NewRequest(http.MethodGet, "/api/v1/public/complaints/"+ticket, nil)
+	trackBody, _ := json.Marshal(map[string]string{"ticket": ticket})
+	req, _ = http.NewRequest(http.MethodPost, "/api/v1/public/complaints/track", bytes.NewReader(trackBody))
+	req.Header.Set("Content-Type", "application/json")
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
@@ -389,7 +395,7 @@ func TestRouter_Publication_RBAC_And_StatusUpdate(t *testing.T) {
 		}
 	}
 
-	// Kaprodi cannot mutate status, verify, assign verifier, or create publication
+	// Kaprodi cannot mutate status, verify its contents, or create a publication
 	kaprodiForbidden := []struct {
 		method string
 		url    string
@@ -398,8 +404,6 @@ func TestRouter_Publication_RBAC_And_StatusUpdate(t *testing.T) {
 		{http.MethodPatch, "/api/v1/publications/pub-1/status"},
 		{http.MethodPost, "/api/v1/publications/pub-1/stages"},
 		{http.MethodPost, "/api/v1/publications/pub-1/verify"},
-		{http.MethodPut, "/api/v1/publications/pub-1/verifier"},
-		{http.MethodPost, "/api/v1/publications/pub-1/reviews"},
 	}
 	for _, ep := range kaprodiForbidden {
 		req, _ = http.NewRequest(ep.method, ep.url, nil)
@@ -432,10 +436,10 @@ func TestRouter_Publication_RBAC_And_StatusUpdate(t *testing.T) {
 	mhsToken := regResp.Data.Tokens.AccessToken
 
 	createBody, _ := json.Marshal(map[string]interface{}{
-		"judul":        "Implementasi Audit Sistem",
-		"tipe":         "JURNAL",
+		"judul":         "Implementasi Audit Sistem",
+		"tipe":          "JURNAL",
 		"tipe_pencatat": "MAHASISWA",
-		"tahun_terbit": 2025,
+		"tahun_terbit":  2025,
 	})
 	req, _ = http.NewRequest(http.MethodPost, "/api/v1/publications", bytes.NewBuffer(createBody))
 	req.Header.Set("Content-Type", "application/json")
@@ -452,14 +456,15 @@ func TestRouter_Publication_RBAC_And_StatusUpdate(t *testing.T) {
 	}
 	_ = json.Unmarshal(w.Body.Bytes(), &pubResp)
 
-	// Mahasiswa assigns internal reviewer -> moves to REVIEW_INTERNAL
+	// Only the designated academic role assigns an independent internal reviewer.
 	revBody, _ := json.Marshal(map[string]string{
 		"reviewer_id":   "dosen-rev-1",
 		"reviewer_nama": "Dr. Reviewer",
 	})
+	jsonRequest(t, r, "/api/v1/publications/"+pubResp.Data.ID+"/reviews", mhsToken, map[string]string{"reviewer_id": "dosen-rev-1"}, 403)
 	req, _ = http.NewRequest(http.MethodPost, "/api/v1/publications/"+pubResp.Data.ID+"/reviews", bytes.NewBuffer(revBody))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+mhsToken)
+	req.Header.Set("Authorization", "Bearer "+kaprodiToken)
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusCreated {
@@ -489,4 +494,27 @@ func TestRouter_Publication_RBAC_And_StatusUpdate(t *testing.T) {
 	if w.Code != http.StatusForbidden {
 		t.Errorf("expected 403 Forbidden when mahasiswa verifies publication, got %d", w.Code)
 	}
+}
+
+func jsonRequest(t *testing.T, r http.Handler, path, token string, data any, want int) map[string]any {
+	t.Helper()
+	body, err := json.Marshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, path, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != want {
+		t.Fatalf("%s status %d, expected %d", path, w.Code, want)
+	}
+	var result map[string]any
+	if err = json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	return result
 }

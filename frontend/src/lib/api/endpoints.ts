@@ -35,8 +35,8 @@ export const API_ENDPOINTS = {
   // Public Endpoints (Tanpa Auth)
   PUBLIC: {
     COMPLAINT_CREATE: '/public/complaints',
-    COMPLAINT_DETAIL: (ticket: string) => `/public/complaints/${ticket}`,
-    COMPLAINT_MESSAGE: (ticket: string) => `/public/complaints/${ticket}/messages`,
+    COMPLAINT_DETAIL: '/public/complaints/track',
+    COMPLAINT_MESSAGE: '/public/complaints/track/messages',
     SURVEY_DETAIL: (token: string) => `/public/surveys/${token}`,
     SURVEY_SUBMIT: (token: string) => `/public/surveys/${token}/submit`,
   },

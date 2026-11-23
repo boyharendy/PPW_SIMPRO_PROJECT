@@ -13,8 +13,8 @@ import {
   Upload,
 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
-import CurrencyInput from '@/components/ui/CurrencyInput';
 import { tripService } from '@/lib/api';
+import { apiClient } from '@/lib/api/client';
 import { useBusinessTrips } from '@/lib/use-business-trips';
 import type { BusinessTripCost, TripCostComponent } from '@/lib/types';
 import { formatDateShort, formatRupiah, getStatusLabel } from '@/lib/utils';
@@ -29,10 +29,12 @@ const DEFAULT_COMPONENTS: TripCostComponent[] = [
 export default function LaporanPerjalananDinasPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { trips, isLoading } = useBusinessTrips();
+  const { trips, isLoading } = useBusinessTrips(id);
 
   const trip = useMemo(() => trips.find((t) => t.id === id), [trips, id]);
 
+  const [uploads,setUploads]=useState<Record<string,File>>({});
+  const [photo,setPhoto]=useState<File | null>(null);
   const [costRows, setCostRows] = useState<BusinessTripCost[]>([]);
   const [laporanHasil, setLaporanHasil] = useState('');
   const [initializedId, setInitializedId] = useState<string | null>(null);
@@ -46,7 +48,7 @@ export default function LaporanPerjalananDinasPage() {
       trip.costs && trip.costs.length > 0
         ? trip.costs.map((c) => ({
             ...c,
-            realisasi_biaya: c.realisasi_biaya ?? c.estimasi_biaya ?? 0,
+            realisasi_biaya: c.realisasi_biaya,
             nama_berkas_bukti: c.nama_berkas_bukti || '',
           }))
         : DEFAULT_COMPONENTS.map((comp, idx) => ({
@@ -54,7 +56,7 @@ export default function LaporanPerjalananDinasPage() {
             trip_id: trip.id,
             komponen: comp,
             estimasi_biaya: 0,
-            realisasi_biaya: 0,
+            realisasi_biaya: undefined,
             nama_berkas_bukti: '',
           }));
 
@@ -96,9 +98,9 @@ export default function LaporanPerjalananDinasPage() {
     );
   }
 
-  const updateRowRealisasi = (rowId: string, val: number) => {
+  const updateRowRealisasi = (rowId: string, val: number | undefined) => {
     setCostRows((prev) =>
-      prev.map((row) => (row.id === rowId ? { ...row, realisasi_biaya: Math.max(0, val) } : row))
+      prev.map((row) => (row.id === rowId ? { ...row, realisasi_biaya: val } : row))
     );
   };
 
@@ -117,8 +119,23 @@ export default function LaporanPerjalananDinasPage() {
       return;
     }
 
+    if (costRows.some(c => c.realisasi_biaya === undefined || c.realisasi_biaya < 0)) {
+      setErrorMsg('Isi realisasi setiap komponen. Masukkan 0 bila tidak ada biaya.');
+      return;
+    }
     setIsSubmitting(true);
     try {
+      const sendProof = async (file:File,kategori:string) => {
+        const data=new FormData();data.set('file',file);data.set('kategori',kategori);
+        await apiClient.upload('/trips/'+trip.id+'/proofs',data);
+      };
+      for (const row of costRows) {
+        if(uploads[row.id]) {
+          await sendProof(uploads[row.id],row.komponen==='TRANSPORTASI'?'TIKET':row.komponen==='AKOMODASI'?'BUKTI_PENGINAPAN':'KUITANSI');
+          setUploads(prev=>{const next={...prev};delete next[row.id];return next;});
+        }
+      }
+      if(photo){await sendProof(photo,'FOTO_KEGIATAN');setPhoto(null);}
       await tripService.submitReport(trip.id, {
         ringkasan_hasil: laporanHasil.trim(),
         biaya_realisasi: totalRealisasi,
@@ -198,9 +215,9 @@ export default function LaporanPerjalananDinasPage() {
                   <label className="text-[10px] font-semibold uppercase text-slate-400 block mb-1">
                     Realisasi Riil
                   </label>
-                  <CurrencyInput
-                    value={row.realisasi_biaya ?? 0}
-                    onChange={(val) => updateRowRealisasi(row.id, val)}
+                  <input type="number" min="0" step="0.01" required className="input-field"
+                    aria-label={'Realisasi ' + getStatusLabel(row.komponen)} value={row.realisasi_biaya ?? ''} placeholder="Rp"
+                    onChange={e => updateRowRealisasi(row.id, e.target.value === '' ? undefined : e.target.valueAsNumber)}
                   />
                 </div>
 
@@ -217,7 +234,7 @@ export default function LaporanPerjalananDinasPage() {
                         className="hidden"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
-                          if (file) updateRowProof(row.id, file.name);
+                          if (file) {updateRowProof(row.id,file.name);setUploads(prev=>({...prev,[row.id]:file}));}
                         }}
                       />
                     </label>
@@ -253,6 +270,7 @@ export default function LaporanPerjalananDinasPage() {
         </div>
 
         {/* Action Buttons */}
+        <label className="block text-sm">Foto kegiatan<input type="file" accept=".png,.jpg,.jpeg" className="input-field" onChange={e=>setPhoto(e.target.files?.[0] || null)} /></label>
         <div className="flex items-center justify-end gap-3 pt-2">
           <button
             type="button"

@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"errors"
+	"strconv"
 	"strings"
 
 	"simpro-backend/internal/model"
@@ -44,6 +45,12 @@ func (u *adminUsecase) UpdateSetting(key, value string) error {
 	if strings.TrimSpace(key) == "" {
 		return errors.New("key konfigurasi tidak boleh kosong")
 	}
+	if key == "max_upload_mb" {
+		mb, err := strconv.Atoi(value)
+		if err != nil || mb < 1 || mb > 256 {
+			return errors.New("batas unggahan harus 1 sampai 256 MB")
+		}
+	}
 	return u.repo.UpdateSetting(key, value)
 }
 
@@ -79,4 +86,3 @@ func (u *adminUsecase) RunSchedulerJobs() map[string]int {
 	}
 	return make(map[string]int)
 }
-

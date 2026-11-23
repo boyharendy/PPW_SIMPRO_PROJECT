@@ -37,6 +37,7 @@ type User struct {
 	Roles               []Role    `json:"roles"`
 	ActiveRole          Role      `json:"active_role"`
 	PenangananKekerasan bool      `json:"penanganan_kekerasan,omitempty"`
+	AcademicStatus      string    `json:"status_akademik,omitempty"`
 	AvatarURL           string    `json:"avatar_url,omitempty"`
 	IsActive            bool      `json:"is_active"`
 	CreatedAt           time.Time `json:"created_at"`

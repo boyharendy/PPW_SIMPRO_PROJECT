@@ -19,6 +19,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import TripApprovalModal, { type TripDecision } from '@/components/perjalanan-dinas/TripApprovalModal';
 import TripCompletenessModal from '@/components/perjalanan-dinas/TripCompletenessModal';
 import { useUser } from '@/lib/context';
+import TripProofList from '@/components/perjalanan-dinas/TripProofList';
 import { useBusinessTrips } from '@/lib/use-business-trips';
 import {
   getTripBudgetItem,
@@ -34,7 +35,7 @@ import { formatDateShort, formatDateTime, formatRupiah, getStatusLabel } from '@
 export default function DetailPerjalananDinasPage() {
   const { id } = useParams<{ id: string }>();
   const { user, currentRole } = useUser();
-  const { trips, rkaDocs, isLoading, reload } = useBusinessTrips();
+  const { trips, rkaDocs, isLoading, reload } = useBusinessTrips(id);
 
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [showCompletenessModal, setShowCompletenessModal] = useState(false);
@@ -322,7 +323,9 @@ export default function DetailPerjalananDinasPage() {
         </div>
       </div>
 
-      {/* Komparasi Estimasi vs Realisasi Biaya */}
+      <TripProofList proofs={trip.proofs} />
+
+        {/* Komparasi Estimasi vs Realisasi Biaya */}
       <div className="card">
         <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-3">
           Rincian Estimasi vs Realisasi Biaya

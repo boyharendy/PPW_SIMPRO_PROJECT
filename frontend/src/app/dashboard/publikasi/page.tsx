@@ -8,7 +8,6 @@ import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useUser } from '@/lib/context';
 import { publicationService } from '@/lib/api/services/publication.service';
-import { mockPublications } from '@/lib/mock-data';
 import type { Publication } from '@/lib/types';
 
 const JENIS_COLORS: Record<string, string> = {
@@ -33,7 +32,7 @@ export default function Page() {
   const { currentRole } = useUser();
   const isKaprodi = currentRole === 'KAPRODI';
 
-  const [publications, setPublications] = useState<Publication[]>(mockPublications);
+  const [publications, setPublications] = useState<Publication[]>([]);
   const [activeTab, setActiveTab] = useState<string>('Semua');
   const [search, setSearch] = useState('');
 
@@ -43,7 +42,7 @@ export default function Page() {
       if (active && res.data && Array.isArray(res.data)) {
         setPublications(res.data);
       }
-    });
+    }).catch(() => { if(active) setPublications([]); });
     return () => {
       active = false;
     };

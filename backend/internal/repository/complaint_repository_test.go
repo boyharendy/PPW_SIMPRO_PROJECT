@@ -12,11 +12,11 @@ func TestMemoryComplaintRepository(t *testing.T) {
 
 	// 1. Create complaint
 	c := &model.Complaint{
-		KodeTiket:  "TKT-2024-001",
-		Kategori:   model.ComplaintCatFasilitas,
-		Judul:      "AC Laboratorium Komputer 2 Rusak",
-		IsiAduan:   "Suhu ruangan panas sehingga komputer sering overheat",
-		IsSensitif: false,
+		KodeTiketHash: "TKT-2024-001",
+		Kategori:      model.ComplaintCatFasilitas,
+		Judul:         "AC Laboratorium Komputer 2 Rusak",
+		IsiAduan:      "Suhu ruangan panas sehingga komputer sering overheat",
+		IsSensitif:    false,
 	}
 	created, err := repo.Create(c)
 	if err != nil {

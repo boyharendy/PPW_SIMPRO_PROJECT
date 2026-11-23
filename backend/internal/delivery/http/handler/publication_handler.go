@@ -27,7 +27,7 @@ func (h *PublicationHandler) GetPublications(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 
-	pubs, total, err := h.usecase.GetPublications(status, tipe, tahun, page, limit)
+	pubs, total, err := h.usecase.GetPublications(status, tipe, tahun, page, limit, publicationViewer(c))
 	if err != nil {
 		response.InternalServerError(c, "Gagal mengambil daftar publikasi: "+err.Error())
 		return
@@ -53,6 +53,10 @@ func (h *PublicationHandler) GetPublicationByID(c *gin.Context) {
 		response.NotFound(c, "Publikasi tidak ditemukan")
 		return
 	}
+	if !pub.Visible(c.GetString(middleware.CtxUserID), middleware.ActiveRole(c)) {
+		response.Forbidden(c, "Akses publikasi ditolak")
+		return
+	}
 	response.Success(c, http.StatusOK, "Detail publikasi berhasil diambil", pub)
 }
 
@@ -64,6 +68,20 @@ func (h *PublicationHandler) CreatePublication(c *gin.Context) {
 		return
 	}
 
+	req.ID = ""
+	req.Status = model.PubStatusDraf
+	req.CreatedBy = userID
+	req.TipePencatat = string(middleware.ActiveRole(c))
+	req.StatusVerifikasi = "TIDAK_PERLU"
+	if middleware.ActiveRole(c) == model.RoleMahasiswa {
+		req.StatusVerifikasi = "MENUNGGU"
+	}
+	req.CatatanVerifikasi = ""
+	req.DiverifikasiAt = nil
+	req.ForwardedToKinerjaAt = nil
+	req.IsForwardedToKinerja = false
+	req.Reviews = nil
+	req.StageLogs = nil
 	created, err := h.usecase.CreatePublication(userID, &req)
 	if err != nil {
 		response.BadRequest(c, err.Error(), nil)
@@ -73,6 +91,9 @@ func (h *PublicationHandler) CreatePublication(c *gin.Context) {
 }
 
 func (h *PublicationHandler) UpdatePublication(c *gin.Context) {
+	if !h.permit(c, "edit") {
+		return
+	}
 	id := c.Param("id")
 	var req model.Publication
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -80,6 +101,7 @@ func (h *PublicationHandler) UpdatePublication(c *gin.Context) {
 		return
 	}
 
+	req = model.Publication{Judul: req.Judul, Tipe: req.Tipe, Jenis: req.Jenis, NamaJurnalKonferensi: req.NamaJurnalKonferensi, NamaTarget: req.NamaTarget, TahunTerbit: req.TahunTerbit, Tahun: req.Tahun, Peringkat: req.Peringkat, DOI: req.DOI, URLPublikasi: req.URLPublikasi}
 	updated, err := h.usecase.UpdatePublication(id, &req)
 	if err != nil {
 		response.BadRequest(c, err.Error(), nil)
@@ -89,6 +111,9 @@ func (h *PublicationHandler) UpdatePublication(c *gin.Context) {
 }
 
 func (h *PublicationHandler) UpdatePublicationStatus(c *gin.Context) {
+	if !h.permit(c, "edit") {
+		return
+	}
 	id := c.Param("id")
 	userID := c.GetString(middleware.CtxUserID)
 	var req struct {
@@ -110,6 +135,9 @@ func (h *PublicationHandler) UpdatePublicationStatus(c *gin.Context) {
 }
 
 func (h *PublicationHandler) DeletePublication(c *gin.Context) {
+	if !h.permit(c, "delete") {
+		return
+	}
 	id := c.Param("id")
 	if err := h.usecase.DeletePublication(id); err != nil {
 		response.BadRequest(c, err.Error(), nil)
@@ -119,6 +147,9 @@ func (h *PublicationHandler) DeletePublication(c *gin.Context) {
 }
 
 func (h *PublicationHandler) SubmitPublication(c *gin.Context) {
+	if !h.permit(c, "edit") {
+		return
+	}
 	id := c.Param("id")
 	if err := h.usecase.SubmitPublication(id); err != nil {
 		response.BadRequest(c, err.Error(), nil)
@@ -128,6 +159,9 @@ func (h *PublicationHandler) SubmitPublication(c *gin.Context) {
 }
 
 func (h *PublicationHandler) AddStageLog(c *gin.Context) {
+	if !h.permit(c, "edit") {
+		return
+	}
 	id := c.Param("id")
 	userID := c.GetString(middleware.CtxUserID)
 	var req model.PublicationStageLog
@@ -143,6 +177,9 @@ func (h *PublicationHandler) AddStageLog(c *gin.Context) {
 }
 
 func (h *PublicationHandler) VerifyPublication(c *gin.Context) {
+	if !h.permit(c, "verify") {
+		return
+	}
 	id := c.Param("id")
 	userID := c.GetString(middleware.CtxUserID)
 
@@ -179,12 +216,14 @@ func (h *PublicationHandler) AddReview(c *gin.Context) {
 	}
 
 	if req.ReviewerID != "" {
+		if !h.permit(c, "assignReview") {
+			return
+		}
 		review := &model.PublicationReview{
 			ReviewerID:    req.ReviewerID,
 			ReviewerNama:  req.ReviewerNama,
 			TenggatReview: req.TenggatReview,
-			Catatan:       req.Catatan,
-			Rekomendasi:   req.Rekomendasi,
+			Status:        "DITUGASKAN",
 		}
 		if err := h.usecase.AssignReviewer(id, userID, review); err != nil {
 			response.BadRequest(c, err.Error(), nil)
@@ -199,6 +238,9 @@ func (h *PublicationHandler) AddReview(c *gin.Context) {
 		return
 	}
 
+	if !h.permit(c, "review") {
+		return
+	}
 	if req.Catatan == "" || req.Rekomendasi == "" {
 		response.BadRequest(c, "Catatan dan rekomendasi wajib diisi", nil)
 		return
@@ -214,6 +256,9 @@ func (h *PublicationHandler) AddReview(c *gin.Context) {
 // GetReviews handles GET /api/v1/publications/reviews
 func (h *PublicationHandler) GetReviews(c *gin.Context) {
 	reviewerID := c.Query("reviewer_id")
+	if middleware.ActiveRole(c) != model.RoleKaprodi {
+		reviewerID = c.GetString(middleware.CtxUserID)
+	}
 	reviews, err := h.usecase.GetReviews(reviewerID)
 	if err != nil {
 		response.InternalServerError(c, "Gagal mengambil daftar review internal: "+err.Error())
@@ -224,6 +269,9 @@ func (h *PublicationHandler) GetReviews(c *gin.Context) {
 
 // UpdateAuthors handles PUT /api/v1/publications/:id/authors
 func (h *PublicationHandler) UpdateAuthors(c *gin.Context) {
+	if !h.permit(c, "edit") {
+		return
+	}
 	id := c.Param("id")
 	var req struct {
 		Authors []*model.PublicationAuthor `json:"authors" binding:"required"`
@@ -242,10 +290,7 @@ func (h *PublicationHandler) UpdateAuthors(c *gin.Context) {
 
 // GetVerificationQueue handles GET /api/v1/publications/verification-queue
 func (h *PublicationHandler) GetVerificationQueue(c *gin.Context) {
-	verifierID := c.Query("verifier_id")
-	if verifierID == "" {
-		verifierID = c.GetString(middleware.CtxUserID)
-	}
+	verifierID := c.GetString(middleware.CtxUserID)
 	queue, err := h.usecase.GetVerificationQueue(verifierID)
 	if err != nil {
 		response.InternalServerError(c, "Gagal mengambil antrean verifikasi: "+err.Error())
@@ -256,6 +301,9 @@ func (h *PublicationHandler) GetVerificationQueue(c *gin.Context) {
 
 // AssignVerifier handles PUT /api/v1/publications/:id/verifier
 func (h *PublicationHandler) AssignVerifier(c *gin.Context) {
+	if !h.permit(c, "assignVerifier") {
+		return
+	}
 	id := c.Param("id")
 	var req struct {
 		VerifierID string `json:"verifier_id" binding:"required"`
@@ -264,11 +312,11 @@ func (h *PublicationHandler) AssignVerifier(c *gin.Context) {
 		response.BadRequest(c, "verifier_id wajib diisi", err.Error())
 		return
 	}
-	if err := h.usecase.AssignVerifier(id, req.VerifierID); err != nil {
+	if err := h.usecase.AssignVerifier(id, req.VerifierID, middleware.ActiveRole(c) == model.RoleKaprodi); err != nil {
 		response.BadRequest(c, err.Error(), nil)
 		return
 	}
-	response.Success(c, http.StatusOK, "Dosen verifikator independen berhasil ditetapkan", nil)
+	response.Success(c, http.StatusOK, "Dosen verifikator berhasil ditetapkan", nil)
 }
 
 // VerifyStage handles POST /api/v1/publications/stages/:stageId/verify
@@ -301,6 +349,17 @@ func (h *PublicationHandler) CompleteReview(c *gin.Context) {
 		response.BadRequest(c, "Rekomendasi review wajib diisi", err.Error())
 		return
 	}
+	reviews, err := h.usecase.GetReviews(c.GetString(middleware.CtxUserID))
+	assigned := false
+	for _, r := range reviews {
+		if r.ID == reviewID && r.Status == "DITUGASKAN" {
+			assigned = true
+		}
+	}
+	if err != nil || !assigned {
+		response.Forbidden(c, "Review bukan penugasan Anda")
+		return
+	}
 	if err := h.usecase.CompleteReview(reviewID, req.Rekomendasi, req.Catatan); err != nil {
 		response.BadRequest(c, err.Error(), nil)
 		return
@@ -322,4 +381,40 @@ func (h *PublicationHandler) GetRecap(c *gin.Context) {
 		return
 	}
 	response.Success(c, http.StatusOK, "Rekapitulasi publikasi ilmiah", recap)
+}
+
+func publicationViewer(c *gin.Context) string {
+	if middleware.ActiveRole(c) == model.RoleKaprodi {
+		return ""
+	}
+	return c.GetString(middleware.CtxUserID)
+}
+func (h *PublicationHandler) permit(c *gin.Context, action string) bool {
+	p, err := h.usecase.GetPublicationByID(c.Param("id"))
+	if err != nil {
+		response.NotFound(c, "Publikasi tidak ditemukan")
+		return false
+	}
+	id := c.GetString(middleware.CtxUserID)
+	ok := false
+	switch action {
+	case "view":
+		ok = p.Visible(id, middleware.ActiveRole(c))
+	case "edit":
+		ok = p.Author(id) && p.StatusVerifikasi != "TERVERIFIKASI"
+	case "delete":
+		ok = p.CreatedBy == id && (p.Status == model.PubStatusDraft || p.Status == model.PubStatusDraf)
+	case "review":
+		ok = p.Reviewer(id)
+	case "verify":
+		ok = p.VerifikatorID == id && p.CreatedBy != id
+	case "assignReview":
+		ok = middleware.ActiveRole(c) == model.RoleKaprodi || (p.Author(id) && middleware.ActiveRole(c) == model.RoleDosen)
+	case "assignVerifier":
+		ok = (p.CreatedBy == id || middleware.ActiveRole(c) == model.RoleKaprodi) && p.StatusVerifikasi != "TERVERIFIKASI"
+	}
+	if !ok {
+		response.Forbidden(c, "Akses publikasi ditolak")
+	}
+	return ok
 }

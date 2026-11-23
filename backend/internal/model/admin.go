@@ -1,6 +1,9 @@
 package model
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type AppSetting struct {
 	Key       string    `json:"key"`
@@ -33,3 +36,19 @@ type UserRoleAssignment struct {
 	CreatedAt           time.Time `json:"created_at"`
 }
 
+func (s *AppSetting) UnmarshalJSON(data []byte) error {
+	type fields AppSetting
+	var wire struct {
+		*fields
+		Value json.RawMessage `json:"value"`
+	}
+	wire.fields = (*fields)(s)
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	if len(wire.Value) > 0 && wire.Value[0] == '"' {
+		return json.Unmarshal(wire.Value, &s.Value)
+	}
+	s.Value = string(wire.Value)
+	return nil
+}

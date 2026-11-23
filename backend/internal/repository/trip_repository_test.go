@@ -42,7 +42,7 @@ func TestMemoryTripRepository(t *testing.T) {
 	}
 
 	// 3. Update Status (Kaprodi approval)
-	err = repo.UpdateStatus(created.ID, model.TripStatusDisetujuiKaprodi, "kaprodi-01")
+	err = repo.UpdateStatus(created.ID, model.TripStatusDisetujuiKaprodi, "kaprodi-01", nil)
 	if err != nil {
 		t.Fatalf("UpdateStatus failed: %v", err)
 	}

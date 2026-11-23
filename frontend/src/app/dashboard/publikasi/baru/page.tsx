@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Save, Send, Plus, Trash2, Eye, ClipboardCheck } from 'lucide-react';
+import { useLecturers } from '@/lib/hooks/useLecturers';
 import PageHeader from '@/components/ui/PageHeader';
 import { useUser } from '@/lib/context';
 import { publicationService } from '@/lib/api/services/publication.service';
@@ -16,12 +17,7 @@ type Penulis = {
   urutan: number;
 };
 
-const DOSEN_LIST = [
-  { id: 'u-dosen1', nama: 'Dr. Eng. Hendra Wijaya, M.Sc.' },
-  { id: 'u-dosen2', nama: 'Dewi Lestari, M.T.' },
-  { id: 'u-gkm', nama: 'Siti Rahmawati, M.Kom.' },
-  { id: 'u-koordinator', nama: 'Ir. Agus Pratama, M.Kom.' },
-];
+
 
 const PERINGKAT_OPTIONS: Record<string, { value: PublicationRank; label: string }[]> = {
   JURNAL: [
@@ -65,6 +61,7 @@ const TIPE_LABELS: Record<AuthorType, string> = {
 export default function Page() {
   const router = useRouter();
   const { user, currentRole } = useUser();
+  const lecturers = useLecturers();
   const isKaprodi = currentRole === 'KAPRODI';
   const isMahasiswaRole = currentRole === 'MAHASISWA';
 
@@ -72,7 +69,7 @@ export default function Page() {
   const [jenis, setJenis] = useState<PublicationType>('JURNAL');
   const [namaTarget, setNamaTarget] = useState('');
   const [peringkat, setPeringkat] = useState<PublicationRank>('SINTA_2');
-  const [tahun, setTahun] = useState('2025');
+  const [tahun, setTahun] = useState(String(new Date().getFullYear()));
   const [penulisList, setPenulisList] = useState<Penulis[]>([
     {
       user_id: user.id,
@@ -84,13 +81,15 @@ export default function Page() {
   ]);
   const [verifikator, setVerifikator] = useState('');
   const [reviewerId, setReviewerId] = useState('');
-  const [tenggatReview, setTenggatReview] = useState('2025-11-30');
+  const [tenggatReview, setTenggatReview] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   const hasMahasiswa = isMahasiswaRole || penulisList.some((p) => p.tipe === 'MAHASISWA');
   const authorNames = new Set(penulisList.map((p) => p.nama.trim().toLowerCase()).filter(Boolean));
-  const eligibleReviewers = DOSEN_LIST.filter((d) => !authorNames.has(d.nama.toLowerCase()));
+  const eligibleReviewers = lecturers.filter(d => d.id !== user.id && !authorNames.has(d.nama.toLowerCase()));
+  const supervisorNames = new Set(penulisList.filter(p => p.tipe === 'DOSEN' && (p.peran === 'ANGGOTA' || p.peran === 'PEMBIMBING')).map(p => p.nama.trim().toLowerCase()));
+  const eligibleVerifiers = lecturers.filter(d => d.id !== user.id && supervisorNames.has(d.nama.toLowerCase()));
 
   const handleAddPenulis = () => {
     setPenulisList((prev) => [
@@ -119,69 +118,39 @@ export default function Page() {
       setErrorMsg('Pilih Dosen Reviewer Internal terlebih dahulu sebelum mengajukan Review Internal.');
       return;
     }
-    if (hasMahasiswa && targetStatus !== 'DRAF' && !verifikator) {
+    if (hasMahasiswa && targetStatus !== 'DRAF' && !eligibleVerifiers.some(d => d.id === verifikator)) {
       setErrorMsg('Pilih Dosen Verifikator (Dosen Pembimbing / Penulis Pendamping) terlebih dahulu.');
       return;
     }
 
     setIsSaving(true);
     try {
-      const selectedVerif = DOSEN_LIST.find((d) => d.id === verifikator);
-      const selectedRev = DOSEN_LIST.find((d) => d.id === reviewerId);
-      const pubId = `pub-${Date.now()}`;
-      const nowIso = new Date().toISOString();
-
-      await publicationService.createPublication({
-        id: pubId,
-        judul: judul.trim(),
-        jenis,
-        nama_target: namaTarget.trim() || 'Target Publikasi',
-        peringkat: peringkat || 'NON_PERINGKAT',
-        status: targetStatus,
-        tipe_pencatat: isMahasiswaRole ? 'MAHASISWA' : 'DOSEN',
-        status_verifikasi: isMahasiswaRole || verifikator ? 'MENUNGGU' : 'TIDAK_PERLU',
-        verifikator_id: selectedVerif?.id,
-        verifikator_nama: selectedVerif ? `${selectedVerif.nama} (Pembimbing / Pendamping)` : undefined,
-        tahun: Number(tahun) || new Date().getFullYear(),
-        dicatat_oleh: user.id,
-        authors: penulisList.map((p, idx) => ({
-          id: `pa-${Date.now()}-${idx}`,
-          user_id: p.user_id,
-          nama_penulis: p.nama.trim() || user.nama_lengkap,
-          tipe_penulis: p.tipe,
-          peran: p.peran,
-          urutan: p.urutan,
+      const selectedVerif = eligibleVerifiers.find(d => d.id === verifikator);
+      const selectedRev = lecturers.find((d) => d.id === reviewerId);
+      const created = await publicationService.createPublication({
+        judul: judul.trim(), jenis, nama_target: namaTarget.trim() || 'Target Publikasi',
+        peringkat: peringkat || 'NON_PERINGKAT', tahun: Number(tahun), verifikator_id: selectedVerif?.id,
+        authors: penulisList.map(p => ({
+          id: '', user_id: p.user_id || (p.tipe === 'DOSEN' ? lecturers.find(d => d.nama === p.nama.trim())?.id : undefined),
+          nama_penulis: p.nama.trim() || user.nama_lengkap, tipe_penulis: p.tipe, peran: p.peran, urutan: p.urutan,
         })),
-        reviews: selectedRev
-          ? [
-            {
-              id: `rev-${Date.now()}`,
-              publication_id: pubId,
-              reviewer_id: selectedRev.id,
-              reviewer_nama: selectedRev.nama,
-              ditetapkan_oleh: user.id,
-              status: 'DITUGASKAN',
-              tenggat_review: tenggatReview,
-              ditugaskan_at: nowIso,
-            },
-          ]
-          : [],
-        stage_logs: [
-          {
-            id: `psl-${Date.now()}`,
-            publication_id: pubId,
-            tahap: targetStatus,
-            tanggal_tahap: nowIso.split('T')[0],
-            catatan: `Pencatatan publikasi awal pada status ${targetStatus.replace(/_/g, ' ')}`,
-            dicatat_oleh: user.id,
-            status_verifikasi: isMahasiswaRole || verifikator ? 'MENUNGGU' : 'TIDAK_PERLU',
-            created_at: nowIso,
-          },
-        ],
       });
+      if (targetStatus !== 'DRAF') {
+        try {
+          if (selectedRev && !isMahasiswaRole) {
+            await publicationService.assignReviewer(created.data.id, { reviewer_id: selectedRev.id, tenggat_review: tenggatReview || undefined });
+          } else {
+            await publicationService.submitPublication(created.data.id);
+          }
+        } catch {
+          window.alert('Draf sudah tersimpan. Pengajuan atau penugasan reviewer belum berhasil. Buka draf untuk melanjutkan.');
+          router.push('/dashboard/publikasi/' + created.data.id);
+          return;
+        }
+      }
 
       router.push('/dashboard/publikasi');
-    } finally {
+    } catch (e) { window.alert(e instanceof Error ? e.message : 'Publikasi gagal disimpan.'); } finally {
       setIsSaving(false);
     }
   };
@@ -327,7 +296,7 @@ export default function Page() {
       </div>
 
       {/* Review Internal Opsional (FR-31) */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
+      {!isMahasiswaRole && <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
         <h2 className="text-lg font-semibold text-slate-800">Dosen Reviewer Internal (Opsional — FR-31)</h2>
         <p className="text-xs text-slate-500">
           Tetapkan dosen reviewer internal (bukan penulis naskah) untuk memberi catatan sebelum naskah diajukan ke penerbit.
@@ -341,7 +310,7 @@ export default function Page() {
           </select>
           <input type="date" value={tenggatReview} onChange={(e) => setTenggatReview(e.target.value)} className={inputCls} />
         </div>
-      </div>
+      </div>}
 
       {/* Verifikator Mahasiswa (FR-31) */}
       {hasMahasiswa && (
@@ -350,11 +319,11 @@ export default function Page() {
             Dosen Verifikator (Dosen Pembimbing / Penulis Pendamping — FR-31)
           </h2>
           <p className="text-xs text-slate-500">
-            Publikasi mahasiswa wajib diverifikasi oleh dosen pembimbing atau dosen penulis pendamping sebelum masuk rekap program studi.
+            Tambahkan dosen pendamping atau pembimbing dalam daftar penulis untuk memilihnya sebagai verifikator. Kaprodi dapat menunjuk pembimbing melalui penugasan resmi.
           </p>
           <select value={verifikator} onChange={(e) => setVerifikator(e.target.value)} className={inputCls}>
             <option value="">— Pilih Dosen Pembimbing / Penulis Pendamping —</option>
-            {DOSEN_LIST.map((d) => (
+            {eligibleVerifiers.map((d) => (
               <option key={d.id} value={d.id}>{d.nama}</option>
             ))}
           </select>
@@ -371,7 +340,7 @@ export default function Page() {
         >
           <Save size={14} /> Simpan Draf
         </button>
-        <button className="bg-blue-600 text-white rounded-xl px-4 py-2 text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2">
+        <button type="button" disabled={isSaving} onClick={() => handleSubmit(reviewerId ? 'REVIEW_INTERNAL' : 'DIAJUKAN')} className="bg-blue-600 text-white rounded-xl px-4 py-2 text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2">
           <Send size={14} /> Ajukan
         </button>
       </div>

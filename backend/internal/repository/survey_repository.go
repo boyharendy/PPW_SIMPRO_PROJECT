@@ -36,10 +36,10 @@ type SurveyRepository interface {
 // ============================================================
 
 type supabaseSurveyRepository struct {
-	client *database.SupabaseClient
+	client database.Store
 }
 
-func NewSupabaseSurveyRepository(client *database.SupabaseClient) SurveyRepository {
+func NewSupabaseSurveyRepository(client database.Store) SurveyRepository {
 	return &supabaseSurveyRepository{client: client}
 }
 

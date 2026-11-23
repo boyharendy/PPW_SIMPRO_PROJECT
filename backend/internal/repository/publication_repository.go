@@ -13,7 +13,7 @@ import (
 )
 
 type PublicationRepository interface {
-	FindAll(status string, tipe string, tahun int, limit, offset int) ([]*model.Publication, int, error)
+	FindAll(status string, tipe string, tahun int, limit, offset int, viewer ...string) ([]*model.Publication, int, error)
 	FindByID(id string) (*model.Publication, error)
 	Create(pub *model.Publication) (*model.Publication, error)
 	Update(id string, pub *model.Publication) (*model.Publication, error)
@@ -36,14 +36,14 @@ type PublicationRepository interface {
 // ============================================================
 
 type supabasePublicationRepository struct {
-	client *database.SupabaseClient
+	client database.Store
 }
 
-func NewSupabasePublicationRepository(client *database.SupabaseClient) PublicationRepository {
+func NewSupabasePublicationRepository(client database.Store) PublicationRepository {
 	return &supabasePublicationRepository{client: client}
 }
 
-func (r *supabasePublicationRepository) FindAll(status string, tipe string, tahun int, limit, offset int) ([]*model.Publication, int, error) {
+func (r *supabasePublicationRepository) FindAll(status string, tipe string, tahun int, limit, offset int, viewer ...string) ([]*model.Publication, int, error) {
 	if limit <= 0 {
 		limit = 20
 	}
@@ -177,19 +177,22 @@ func (r *supabasePublicationRepository) Create(pub *model.Publication) (*model.P
 			a.Peran = "PENULIS_UTAMA"
 		}
 		aPayload := map[string]interface{}{
-			"id":               a.ID,
-			"publication_id":   pub.ID,
-			"nama_penulis":     a.NamaPenulis,
-			"tipe_penulis":     a.TipePenulis,
-			"peran":            a.Peran,
-			"afiliasi":         a.Afiliasi,
-			"urutan":           a.Urutan,
-			"is_corresponding": a.IsCorresponding,
+			"id":                    a.ID,
+			"publication_id":        pub.ID,
+			"nama_penulis":          a.NamaPenulis,
+			"tipe_penulis":          a.TipePenulis,
+			"peran":                 a.Peran,
+			"afiliasi":              a.Afiliasi,
+			"urutan":                a.Urutan,
+			"is_corresponding":      a.IsCorresponding,
+			"persentase_kontribusi": a.PersentaseKontribusi,
 		}
 		if a.UserID != "" {
 			aPayload["user_id"] = a.UserID
 		}
-		_ = r.client.Insert("publication_authors", aPayload, nil)
+		if err := r.client.Insert("publication_authors", aPayload, nil); err != nil {
+			return nil, err
+		}
 	}
 
 	for _, log := range pub.StageLogs {
@@ -325,9 +328,9 @@ func (r *supabasePublicationRepository) GetReviews(reviewerID string) ([]*model.
 }
 
 func (r *supabasePublicationRepository) UpdateAuthors(id string, authors []*model.PublicationAuthor) error {
-	_ = r.client.Delete("publication_authors", map[string]string{
-		"publication_id": fmt.Sprintf("eq.%s", id),
-	})
+	if err := r.client.Delete("publication_authors", map[string]string{"publication_id": fmt.Sprintf("eq.%s", id)}); err != nil {
+		return err
+	}
 	for _, a := range authors {
 		if a.ID == "" {
 			a.ID = uuid.New().String()
@@ -480,12 +483,22 @@ func NewMemoryPublicationRepository() PublicationRepository {
 	}
 }
 
-func (r *memoryPublicationRepository) FindAll(status string, tipe string, tahun int, limit, offset int) ([]*model.Publication, int, error) {
+func (r *memoryPublicationRepository) FindAll(status string, tipe string, tahun int, limit, offset int, viewer ...string) ([]*model.Publication, int, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	var filtered []*model.Publication
 	for _, p := range r.publications {
+		if len(viewer) > 0 && viewer[0] != "" {
+			row := *p
+			row.Reviews = r.reviews[p.ID]
+			if len(r.authors[p.ID]) > 0 {
+				row.Authors = r.authors[p.ID]
+			}
+			if !row.Visible(viewer[0], "") {
+				continue
+			}
+		}
 		if status != "" && string(p.Status) != status {
 			continue
 		}
@@ -751,6 +764,10 @@ func (r *memoryPublicationRepository) VerifyStage(stageID string, verifierID str
 	for _, logs := range r.stageLogs {
 		for _, l := range logs {
 			if l.ID == stageID {
+				p := r.publications[l.PublicationID]
+				if p == nil || p.VerifikatorID != verifierID || p.CreatedBy == verifierID {
+					return errors.New("verifikator tidak ditugaskan")
+				}
 				l.StatusVerifikasi = status
 				l.Catatan = catatan
 				if pub, ok := r.publications[l.PublicationID]; ok {

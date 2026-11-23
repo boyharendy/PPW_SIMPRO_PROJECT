@@ -1,8 +1,12 @@
 package handler
 
 import (
+	"errors"
+	"github.com/google/uuid"
 	"net/http"
+	"simpro-backend/pkg/permit"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,17 +17,32 @@ import (
 )
 
 type ComplaintHandler struct {
-	usecase usecase.ComplaintUsecase
+	usecase     usecase.ComplaintUsecase
+	attachments usecase.AttachmentUsecase
 }
 
-func NewComplaintHandler(uc usecase.ComplaintUsecase) *ComplaintHandler {
-	return &ComplaintHandler{usecase: uc}
+func NewComplaintHandler(uc usecase.ComplaintUsecase, attachments ...usecase.AttachmentUsecase) *ComplaintHandler {
+	h := &ComplaintHandler{usecase: uc}
+	if len(attachments) > 0 {
+		h.attachments = attachments[0]
+	}
+	return h
 }
 
 // IssuePermit handles POST /api/v1/aduan/permit (FR-48)
 func (h *ComplaintHandler) IssuePermit(c *gin.Context) {
 	userID := c.GetString(middleware.CtxUserID)
-	token, exp, err := h.usecase.IssuePermit(userID)
+	v, _ := c.Get("principal")
+	u, _ := v.(*model.User)
+	if u == nil || (u.AcademicStatus != "AKTIF" && u.AcademicStatus != "CUTI") {
+		response.Forbidden(c, "Permit memerlukan status akademik aktif atau cuti")
+		return
+	}
+	token, exp, err := h.usecase.IssuePermit(c.Request.Context(), userID)
+	if errors.Is(err, permit.ErrQuota) {
+		response.Error(c, 429, err.Error(), "RATE_LIMITED", nil)
+		return
+	}
 	if err != nil {
 		response.BadRequest(c, err.Error(), nil)
 		return
@@ -42,14 +61,17 @@ func (h *ComplaintHandler) GetComplaints(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 
 	activeRole := middleware.ActiveRole(c)
-	isViolenceHandler := c.GetBool("is_violence_handler") || activeRole == model.RolePetugasKekerasan
+	isViolenceHandler := (activeRole == model.RolePengelolaAduan && c.GetBool("is_violence_handler")) || activeRole == model.RolePetugasKekerasan
 
-	complaints, total, err := h.usecase.GetComplaints(activeRole, isViolenceHandler, kategori, status, page, limit)
+	complaints, total, err := h.usecase.GetComplaints(activeRole, isViolenceHandler, kategori, status, page, limit, c.Query("is_sensitif") == "true")
 	if err != nil {
 		response.InternalServerError(c, "Gagal mengambil daftar aduan: "+err.Error())
 		return
 	}
 
+	if limit < 1 {
+		limit = 20
+	}
 	totalPages := (total + limit - 1) / limit
 	meta := &response.PaginationMeta{
 		Page:         page,
@@ -66,8 +88,11 @@ func (h *ComplaintHandler) GetComplaints(c *gin.Context) {
 func (h *ComplaintHandler) GetComplaintByID(c *gin.Context) {
 	id := c.Param("id")
 	activeRole := middleware.ActiveRole(c)
-	isViolenceHandler := c.GetBool("is_violence_handler") || activeRole == model.RolePetugasKekerasan
+	isViolenceHandler := (activeRole == model.RolePengelolaAduan && c.GetBool("is_violence_handler")) || activeRole == model.RolePetugasKekerasan
 
+	if activeRole != model.RoleKaprodi && activeRole != model.RolePengelolaAduan && activeRole != model.RolePetugasKekerasan && !h.permitted(c, true) {
+		return
+	}
 	complaint, err := h.usecase.GetComplaintByID(id, activeRole, isViolenceHandler)
 	if err != nil {
 		response.NotFound(c, "Aduan tidak ditemukan")
@@ -79,72 +104,168 @@ func (h *ComplaintHandler) GetComplaintByID(c *gin.Context) {
 
 func (h *ComplaintHandler) CreatePublicComplaint(c *gin.Context) {
 	var req model.PublicComplaintRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "Data aduan tidak lengkap atau tidak valid", err.Error())
+	var file *usecase.PreparedFile
+	if c.ContentType() == "multipart/form-data" {
+		var ok bool
+		file, ok = prepareMultipart(c, h.attachments, true)
+		if !ok {
+			return
+		}
+		req = model.PublicComplaintRequest{Judul: c.PostForm("judul"), IsiAduan: c.PostForm("isi_aduan"), Kategori: model.ComplaintCategory(c.PostForm("kategori")), PermitToken: c.PostForm("permit_token"), IsSensitif: c.PostForm("is_sensitif") == "true"}
+	} else if c.ShouldBindJSON(&req) != nil {
+		response.BadRequest(c, "Data aduan tidak valid", nil)
 		return
 	}
-
-	// Dukung X-Permit-Token dari header jika diisi di header
 	if req.PermitToken == "" {
 		req.PermitToken = c.GetHeader("X-Permit-Token")
 	}
-
+	req.LampiranURL = ""
+	req.KontakSukarela = ""
+	if file != nil {
+		req.LampiranURL = file.ID()
+	}
 	created, err := h.usecase.CreatePublicComplaint(&req)
 	if err != nil {
-		response.BadRequest(c, err.Error(), nil)
+		response.BadRequest(c, "Data atau permit aduan tidak valid", nil)
 		return
 	}
 
-	response.Success(c, http.StatusCreated, "Aduan berhasil dikirim. Simpan kode tiket untuk melacak status aduan Anda.", created)
+	if file != nil {
+		if _, err = h.attachments.Save(file, model.AttachmentEntityComplaint, created.ID, nil); err != nil {
+			response.InternalServerError(c, "Gagal menyimpan lampiran")
+			return
+		}
+	}
+	response.Success(c, 201, "Simpan kode tiket untuk melacak aduan", gin.H{"kode_tiket": created.KodeTiket, "nomor_aduan": created.NomorAduan})
 }
 
 func (h *ComplaintHandler) GetPublicComplaint(c *gin.Context) {
-	ticket := c.Param("ticket")
-	complaint, err := h.usecase.GetPublicComplaint(ticket)
+	var req struct {
+		Ticket string `json:"ticket" binding:"required"`
+	}
+	if c.ShouldBindJSON(&req) != nil {
+		response.BadRequest(c, "Kode tiket diperlukan", nil)
+		return
+	}
+	row, err := h.usecase.GetPublicComplaint(req.Ticket)
 	if err != nil {
-		response.NotFound(c, "Aduan dengan kode tiket tersebut tidak ditemukan")
+		response.NotFound(c, "Tiket tidak ditemukan")
 		return
 	}
-
-	response.Success(c, http.StatusOK, "Status tiket aduan", complaint)
+	messages := make([]gin.H, 0)
+	for _, m := range row.Messages {
+		if !m.IsCatatanInternal {
+			messages = append(messages, gin.H{"pengirim": m.SenderType, "isi": m.Pesan, "tanggal": m.CreatedAt.Format("2006-01-02"), "lampiran_id": attachmentID(m.LampiranURL)})
+		}
+	}
+	response.Success(c, 200, "Status tiket", gin.H{"nomor_aduan": row.NomorAduan, "kategori": row.Kategori, "status": row.Status, "tanggal_diterima": row.TanggalPengaduan, "rating_kepuasan": row.RatingKepuasan, "messages": messages, "lampiran_id": attachmentID(row.LampiranURL)})
 }
-
+func attachmentID(value string) string {
+	if uuid.Validate(value) == nil {
+		return value
+	}
+	return ""
+}
 func (h *ComplaintHandler) AddPublicMessage(c *gin.Context) {
-	ticket := c.Param("ticket")
 	var req struct {
-		Pesan string `json:"pesan" binding:"required"`
+		Ticket string `json:"ticket"`
+		Pesan  string `json:"pesan"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "Pesan tidak boleh kosong", err.Error())
+	var file *usecase.PreparedFile
+	if c.ContentType() == "multipart/form-data" {
+		var ok bool
+		file, ok = prepareMultipart(c, h.attachments, true)
+		if !ok {
+			return
+		}
+		req.Ticket = c.PostForm("ticket")
+		req.Pesan = c.PostForm("pesan")
+	} else if c.ShouldBindJSON(&req) != nil {
+		response.BadRequest(c, "Data pesan tidak valid", nil)
 		return
 	}
-
-	if err := h.usecase.AddPublicMessage(ticket, req.Pesan); err != nil {
-		response.BadRequest(c, err.Error(), nil)
+	if req.Ticket == "" || strings.TrimSpace(req.Pesan) == "" {
+		response.BadRequest(c, "Tiket dan pesan wajib diisi", nil)
 		return
 	}
-
-	response.Success(c, http.StatusOK, "Pesan berhasil ditambahkan ke tiket aduan", nil)
+	attachment := ""
+	if file != nil {
+		attachment = file.ID()
+	}
+	id, err := h.usecase.AddPublicMessage(req.Ticket, req.Pesan, attachment)
+	if err != nil {
+		response.BadRequest(c, "Pesan gagal disimpan", nil)
+		return
+	}
+	if file != nil {
+		if _, err = h.attachments.Save(file, model.AttachmentEntityComplaintMessage, id, nil); err != nil {
+			response.InternalServerError(c, "Lampiran gagal disimpan")
+			return
+		}
+	}
+	response.Success(c, 200, "Pesan disimpan", nil)
 }
-
-func (h *ComplaintHandler) SubmitPublicRating(c *gin.Context) {
-	ticket := c.Param("ticket")
+func (h *ComplaintHandler) PublicAttachment(c *gin.Context) {
 	var req struct {
-		Rating   int    `json:"rating" binding:"required"`
+		Ticket string `json:"ticket" binding:"required"`
+		ID     string `json:"id" binding:"required,uuid"`
+	}
+	if c.ShouldBindJSON(&req) != nil || h.attachments == nil {
+		response.BadRequest(c, "Tiket dan ID lampiran diperlukan", nil)
+		return
+	}
+	row, err := h.usecase.GetPublicComplaint(req.Ticket)
+	if err != nil {
+		response.NotFound(c, "Lampiran tidak ditemukan")
+		return
+	}
+	a, err := h.attachments.GetAttachmentByID(req.ID)
+	if err != nil {
+		response.NotFound(c, "Lampiran tidak ditemukan")
+		return
+	}
+	allowed := row.LampiranURL == a.ID && a.EntityType == model.AttachmentEntityComplaint && a.EntityID == row.ID
+	for _, m := range row.Messages {
+		if !m.IsCatatanInternal && m.LampiranURL == a.ID && a.EntityType == model.AttachmentEntityComplaintMessage && a.EntityID == m.ID {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
+		response.NotFound(c, "Lampiran tidak ditemukan")
+		return
+	}
+	signedAttachment(c, h.attachments, req.ID)
+}
+func (h *ComplaintHandler) SubmitPublicRating(c *gin.Context) {
+	var req struct {
+		Ticket   string `json:"ticket" binding:"required"`
+		Rating   int    `json:"rating" binding:"min=1,max=5"`
 		Komentar string `json:"komentar"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "Rating kepuasan wajib diisi (1-5)", err.Error())
+	if c.ShouldBindJSON(&req) != nil {
+		response.BadRequest(c, "Tiket dan penilaian 1-5 diperlukan", nil)
 		return
 	}
-	if err := h.usecase.SubmitPublicRating(ticket, req.Rating, req.Komentar); err != nil {
-		response.BadRequest(c, err.Error(), nil)
+	if err := h.usecase.SubmitPublicRating(req.Ticket, req.Rating, req.Komentar); err != nil {
+		response.BadRequest(c, "Penilaian gagal disimpan", nil)
 		return
 	}
-	response.Success(c, http.StatusOK, "Terima kasih atas penilaian kepuasan penanganan aduan Anda", nil)
+	response.Success(c, 200, "Penilaian disimpan", nil)
 }
-
+func (h *ComplaintHandler) permitted(c *gin.Context, assignee bool) bool {
+	v, _ := c.Get("principal")
+	actor, _ := v.(*model.User)
+	if !h.usecase.CanHandle(c.Param("id"), actor, assignee) {
+		response.Forbidden(c, "Bukan petugas yang menangani aduan")
+		return false
+	}
+	return true
+}
 func (h *ComplaintHandler) UpdateStatus(c *gin.Context) {
+	if !h.permitted(c, false) {
+		return
+	}
 	id := c.Param("id")
 	userID := c.GetString(middleware.CtxUserID)
 
@@ -166,6 +287,9 @@ func (h *ComplaintHandler) UpdateStatus(c *gin.Context) {
 
 // Verify handles POST /api/v1/aduan/:id/verify
 func (h *ComplaintHandler) Verify(c *gin.Context) {
+	if !h.permitted(c, false) {
+		return
+	}
 	id := c.Param("id")
 	userID := c.GetString(middleware.CtxUserID)
 
@@ -179,6 +303,9 @@ func (h *ComplaintHandler) Verify(c *gin.Context) {
 
 // Resolve handles POST /api/v1/aduan/:id/resolve
 func (h *ComplaintHandler) Resolve(c *gin.Context) {
+	if !h.permitted(c, true) {
+		return
+	}
 	id := c.Param("id")
 	userID := c.GetString(middleware.CtxUserID)
 
@@ -200,6 +327,9 @@ func (h *ComplaintHandler) Resolve(c *gin.Context) {
 
 // Close handles POST /api/v1/aduan/:id/close
 func (h *ComplaintHandler) Close(c *gin.Context) {
+	if !h.permitted(c, false) {
+		return
+	}
 	id := c.Param("id")
 	userID := c.GetString(middleware.CtxUserID)
 
@@ -243,19 +373,23 @@ func (h *ComplaintHandler) GetMyDispositions(c *gin.Context) {
 }
 
 func (h *ComplaintHandler) AddInternalMessage(c *gin.Context) {
+	if !h.permitted(c, true) {
+		return
+	}
 	id := c.Param("id")
 	userID := c.GetString(middleware.CtxUserID)
 	activeRole := middleware.ActiveRole(c)
 
 	var req struct {
-		Pesan string `json:"pesan" binding:"required"`
+		Internal *bool  `json:"is_catatan_internal"`
+		Pesan    string `json:"pesan" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "Pesan tanggapan tidak boleh kosong", err.Error())
 		return
 	}
 
-	if err := h.usecase.AddInternalMessage(id, userID, activeRole, req.Pesan); err != nil {
+	if err := h.usecase.AddInternalMessage(id, userID, activeRole, req.Pesan, req.Internal == nil || *req.Internal); err != nil {
 		response.BadRequest(c, err.Error(), nil)
 		return
 	}
@@ -264,6 +398,9 @@ func (h *ComplaintHandler) AddInternalMessage(c *gin.Context) {
 }
 
 func (h *ComplaintHandler) AddDisposition(c *gin.Context) {
+	if !h.permitted(c, false) {
+		return
+	}
 	id := c.Param("id")
 	userID := c.GetString(middleware.CtxUserID)
 
@@ -294,6 +431,9 @@ func (h *ComplaintHandler) AddDisposition(c *gin.Context) {
 }
 
 func (h *ComplaintHandler) ForwardToSatgas(c *gin.Context) {
+	if !h.permitted(c, false) {
+		return
+	}
 	id := c.Param("id")
 	var req struct {
 		Tanggal        string `json:"tanggal"`

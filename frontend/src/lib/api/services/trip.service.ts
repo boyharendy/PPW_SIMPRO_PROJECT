@@ -1,294 +1,90 @@
-import { apiRequest } from '../client';
+import { apiClient } from '../client';
 import { API_ENDPOINTS } from '../endpoints';
-import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
-import { mockBusinessTrips, mockRkaRealizations } from '@/lib/mock-data';
-import type { ApiResponse, TripRecap } from '@/lib/types/api';
-import type { BusinessTrip, BusinessTripCost, RkaRealization } from '@/lib/types';
+import type { BusinessTrip, BusinessTripCost, TripStatus } from '@/lib/types';
+import type { TripRecap } from '@/lib/types/api';
 
-export const tripService = {
-  // Ambil daftar perjalanan dinas
-  getTrips: async (params?: Record<string, unknown>): Promise<ApiResponse<BusinessTrip[]>> => {
-    try {
-      const res = await apiRequest<BusinessTrip[]>(API_ENDPOINTS.TRIPS.LIST, { params });
-      if (res.data && Array.isArray(res.data) && res.data.length > 0) {
-        storageSync.set(STORAGE_KEYS.TRIPS, res.data);
-        return res;
-      }
-    } catch {
-      // Fallback
-    }
-    const local = storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips);
-    return { success: true, message: 'OK', data: local };
-  },
-
-  // Detail perjalanan dinas
-  getTripById: async (id: string): Promise<ApiResponse<BusinessTrip>> => {
-    try {
-      const res = await apiRequest<BusinessTrip>(API_ENDPOINTS.TRIPS.DETAIL(id));
-      if (res.data) return res;
-    } catch {
-      // Fallback
-    }
-    const list = storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips);
-    const found = list.find((t) => t.id === id) || mockBusinessTrips[0];
-    return { success: true, message: 'OK', data: found };
-  },
-
-  // Buat permohonan dinas baru (persisten)
-  createTrip: async (data: Partial<BusinessTrip>): Promise<ApiResponse<BusinessTrip>> => {
-    const nowIso = new Date().toISOString();
-    const newTrip: BusinessTrip = {
-      id: data.id || `trip-${Date.now()}`,
-      nomor_surat_tugas: data.nomor_surat_tugas,
-      diajukan_oleh: data.diajukan_oleh || 'u-dosen1',
-      tujuan: data.tujuan || 'Kota Tujuan',
-      maksud_kegiatan: data.maksud_kegiatan || 'Maksud Kegiatan Dinas',
-      tanggal_berangkat: data.tanggal_berangkat || nowIso.split('T')[0],
-      tanggal_kembali: data.tanggal_kembali || nowIso.split('T')[0],
-      sumber_dana: data.sumber_dana || 'RKA_PRODI',
-      rka_budget_item_id: data.rka_budget_item_id,
-      status: data.status || 'DIAJUKAN',
-      created_at: nowIso,
-      updated_at: nowIso,
-      participants: data.participants || [],
-      costs: data.costs || [],
-      ...data,
-    };
-
-    storageSync.prepend(STORAGE_KEYS.TRIPS, newTrip, mockBusinessTrips);
-
-    try {
-      const res = await apiRequest<BusinessTrip>(API_ENDPOINTS.TRIPS.CREATE, {
-        method: 'POST',
-        body: newTrip,
-      });
-      if (res.data) return res;
-    } catch {
-      // Offline fallback
-    }
-
-    return { success: true, message: 'Permohonan perjalanan dinas berhasil disimpan', data: newTrip };
-  },
-
-  // Perbarui permohonan dinas
-  updateTrip: async (id: string, data: Partial<BusinessTrip>): Promise<ApiResponse<BusinessTrip>> => {
-    storageSync.update(STORAGE_KEYS.TRIPS, id, data, mockBusinessTrips);
-    try {
-      return await apiRequest<BusinessTrip>(API_ENDPOINTS.TRIPS.UPDATE(id), {
-        method: 'PUT',
-        body: data,
-      });
-    } catch {
-      const list = storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips);
-      const updated = list.find((t) => t.id === id) || mockBusinessTrips[0];
-      return { success: true, message: 'Diperbarui', data: updated };
-    }
-  },
-
-  // Hapus permohonan dinas draf
-  deleteTrip: async (id: string): Promise<ApiResponse<void>> => {
-    storageSync.remove(STORAGE_KEYS.TRIPS, id, mockBusinessTrips);
-    try {
-      return await apiRequest<void>(API_ENDPOINTS.TRIPS.DELETE(id), {
-        method: 'DELETE',
-      });
-    } catch {
-      return { success: true, message: 'Dihapus', data: undefined };
-    }
-  },
-
-  // Ajukan usulan dinas ke Kaprodi
-  submitTrip: async (id: string): Promise<ApiResponse<BusinessTrip>> => {
-    storageSync.update(STORAGE_KEYS.TRIPS, id, { status: 'DIAJUKAN' }, mockBusinessTrips);
-    try {
-      return await apiRequest<BusinessTrip>(API_ENDPOINTS.TRIPS.SUBMIT(id), {
-        method: 'POST',
-      });
-    } catch {
-      const list = storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips);
-      const updated = list.find((t) => t.id === id) || mockBusinessTrips[0];
-      return { success: true, message: 'Diajukan', data: updated };
-    }
-  },
-
-  // Keputusan persetujuan dinas oleh Kaprodi
-  approveTrip: async (
-    id: string,
-    data: { status?: BusinessTrip['status']; nomor_surat_tugas?: string; catatan?: string; disetujui_oleh?: string }
-  ): Promise<ApiResponse<BusinessTrip>> => {
-    const nextStatus: BusinessTrip['status'] = data.status || 'DISETUJUI';
-    const nowIso = new Date().toISOString();
-    const patch: Partial<BusinessTrip> = {
-      status: nextStatus,
-      catatan_keputusan: data.catatan,
-      updated_at: nowIso,
-    };
-
-    if (data.disetujui_oleh) {
-      patch.disetujui_oleh = data.disetujui_oleh;
-    }
-    if (nextStatus === 'DISETUJUI') {
-      patch.disetujui_at = nowIso;
-    }
-    if (data.nomor_surat_tugas?.trim()) {
-      patch.nomor_surat_tugas = data.nomor_surat_tugas.trim();
-    }
-
-    storageSync.update(STORAGE_KEYS.TRIPS, id, patch, mockBusinessTrips);
-
-    try {
-      return await apiRequest<BusinessTrip>(API_ENDPOINTS.TRIPS.APPROVE(id), {
-        method: 'POST',
-        body: { status: nextStatus, ...data },
-      });
-    } catch {
-      const list = storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips);
-      const updated = list.find((t) => t.id === id) || mockBusinessTrips[0];
-      return { success: true, message: 'Keputusan disimpan', data: updated };
-    }
-  },
-
-  // Tolak permohonan dinas
-  rejectTrip: async (id: string, catatan?: string): Promise<ApiResponse<BusinessTrip>> => {
-    storageSync.update(STORAGE_KEYS.TRIPS, id, { status: 'DITOLAK', catatan_keputusan: catatan }, mockBusinessTrips);
-    try {
-      return await apiRequest<BusinessTrip>(API_ENDPOINTS.TRIPS.APPROVE(id), {
-        method: 'POST',
-        body: { status: 'DITOLAK', catatan },
-      });
-    } catch {
-      const list = storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips);
-      const updated = list.find((t) => t.id === id) || mockBusinessTrips[0];
-      return { success: true, message: 'Ditolak', data: updated };
-    }
-  },
-
-  // Laporkan hasil riil dan bukti pengeluaran (FR-34)
-  submitReport: async (
-    id: string,
-    data: {
-      ringkasan?: string;
-      ringkasan_hasil?: string;
-      file_url?: string;
-      biaya_realisasi?: number;
-      realisasi_biaya?: number;
-      costs?: BusinessTripCost[];
-      catatan?: string;
-    }
-  ): Promise<ApiResponse<BusinessTrip>> => {
-    const nowIso = new Date().toISOString();
-    const summary = data.ringkasan_hasil || data.ringkasan || '';
-    const patch: Partial<BusinessTrip> = {
-      status: 'DILAPORKAN',
-      laporan_hasil: summary,
-      laporan_dikirim_at: nowIso,
-      is_belum_lengkap: false,
-      updated_at: nowIso,
-    };
-    if (data.costs) {
-      patch.costs = data.costs;
-    }
-
-    storageSync.update(STORAGE_KEYS.TRIPS, id, patch, mockBusinessTrips);
-    try {
-      return await apiRequest<BusinessTrip>(API_ENDPOINTS.TRIPS.REPORT(id), {
-        method: 'POST',
-        body: data,
-      });
-    } catch {
-      const list = storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips);
-      const updated = list.find((t) => t.id === id) || mockBusinessTrips[0];
-      return { success: true, message: 'Laporan disimpan', data: updated };
-    }
-  },
-
-  // Konfirmasi kelengkapan bukti & laporan perjalanan oleh Admin Prodi (FR-34, FR-37)
-  confirmCompleteness: async (
-    id: string,
-    data: { lengkap: boolean; catatan?: string; dikonfirmasi_oleh?: string }
-  ): Promise<ApiResponse<BusinessTrip>> => {
-    const nowIso = new Date().toISOString();
-    const list = storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips);
-    const current = list.find((t) => t.id === id);
-
-    const patch: Partial<BusinessTrip> = data.lengkap
-      ? {
-          status: 'SELESAI',
-          dikonfirmasi_oleh: data.dikonfirmasi_oleh || 'u-admin',
-          dikonfirmasi_at: nowIso,
-          catatan_kelengkapan: data.catatan || 'Seluruh bukti dan laporan telah diverifikasi lengkap.',
-          is_belum_lengkap: false,
-          updated_at: nowIso,
-        }
-      : {
-          status: 'DILAPORKAN',
-          dikonfirmasi_oleh: data.dikonfirmasi_oleh || 'u-admin',
-          catatan_kelengkapan: data.catatan,
-          is_belum_lengkap: true,
-          updated_at: nowIso,
-        };
-
-    storageSync.update(STORAGE_KEYS.TRIPS, id, patch, mockBusinessTrips);
-
-    // Catat realisasi RKA otomatis jika sumber dana RKA_PRODI dan dinyatakan lengkap (FR-37)
-    if (data.lengkap && current && current.sumber_dana === 'RKA_PRODI' && current.rka_budget_item_id) {
-      const existingReals = storageSync.get<RkaRealization[]>(
-        STORAGE_KEYS.RKA_REALIZATIONS,
-        mockRkaRealizations
-      );
-      const alreadyRecorded = existingReals.some((r) => r.business_trip_id === current.id);
-      if (!alreadyRecorded) {
-        const totalRealisasi = (current.costs || []).reduce(
-          (sum, c) => sum + (c.realisasi_biaya ?? c.estimasi_biaya ?? 0),
-          0
-        );
-        const newRealization: RkaRealization = {
-          id: `real-${Date.now()}`,
-          rka_budget_item_id: current.rka_budget_item_id,
-          tanggal_realisasi: nowIso.split('T')[0],
-          nominal_realisasi: totalRealisasi,
-          uraian: `Realisasi Perjalanan Dinas ke ${current.tujuan}`,
-          sumber_pencatatan: 'PERJALANAN_DINAS',
-          business_trip_id: current.id,
-          status: 'AKTIF',
-          dicatat_oleh: data.dikonfirmasi_oleh || 'u-admin',
-          created_at: nowIso,
-        };
-        storageSync.prepend(STORAGE_KEYS.RKA_REALIZATIONS, newRealization, mockRkaRealizations);
-      }
-    }
-
-    const updatedList = storageSync.get<BusinessTrip[]>(STORAGE_KEYS.TRIPS, mockBusinessTrips);
-    const updated = updatedList.find((t) => t.id === id) || mockBusinessTrips[0];
-    return {
-      success: true,
-      message: data.lengkap ? 'Kelengkapan berkas dikonfirmasi selesai' : 'Ditandai belum lengkap',
-      data: updated,
-    };
-  },
-
-  // Rekapitulasi perjalanan dinas & serapan anggaran
-  getRecap: async (): Promise<ApiResponse<TripRecap>> => {
-    try {
-      return await apiRequest<TripRecap>(API_ENDPOINTS.TRIPS.RECAP);
-    } catch {
-      return {
-        success: true,
-        message: 'OK',
-        data: {
-          total_perjalanan: 10,
-          total_estimasi: 45000000,
-          total_realisasi: 42300000,
-          total_efisiensi: 2700000,
-          status_distribusi: {
-            DISETUJUI: 4,
-            LAPORAN_TERVERIFIKASI: 4,
-            DIAJUKAN: 2,
-          },
-        },
-      };
-    }
-  },
+const paths = API_ENDPOINTS.TRIPS;
+type ServerCost = BusinessTripCost & { nominal_estimasi: number; nominal_realisasi: number; realisasi_diisi?: boolean };
+type ServerTrip = Omit<BusinessTrip, 'status' | 'costs'> & {
+  status: TripStatus | 'DRAFT' | 'DISETUJUI_KAPRODI' | 'LAPORAN_TERVERIFIKASI';
+  costs?: ServerCost[];
+  keperluan: string;
+  members?: (BusinessTrip['participants'][number] & { peran_tugas: string })[];
+  report?: { ringkasan_hasil?: string; submitted_at?: string };
 };
-
+function normalize(t: ServerTrip): BusinessTrip {
+  const status = t.status === 'DRAFT' ? 'DRAF' : t.status === 'DISETUJUI_KAPRODI' ? 'DISETUJUI' :
+    t.status === 'LAPORAN_TERVERIFIKASI' ? 'SELESAI' : t.status;
+  const proofs = t.proofs ?? [];
+  return {
+    ...t, status, maksud_kegiatan: t.keperluan ?? t.maksud_kegiatan, proofs,
+    laporan_hasil: t.report?.ringkasan_hasil, laporan_dikirim_at: t.report?.submitted_at,
+    is_belum_lengkap: status === 'DISETUJUI' && Boolean(t.catatan_kelengkapan),
+    participants: (t.members ?? []).map(m => ({ ...m, peran: m.peran_tugas === 'KETUA_ROMBONGAN' ? 'KETUA_ROMBONGAN' : 'ANGGOTA' })),
+    costs: (t.costs ?? []).map(c => {
+      const category = c.komponen === 'TRANSPORTASI' ? 'TIKET' : c.komponen === 'AKOMODASI' ? 'BUKTI_PENGINAPAN' : 'KUITANSI';
+      return {
+        ...c, estimasi_biaya: c.nominal_estimasi, realisasi_biaya: c.realisasi_diisi ? c.nominal_realisasi : undefined,
+        nama_berkas_bukti: proofs.find(p => p.kategori === category)?.file_name,
+      };
+    }),
+  };
+}
+async function detail(id: string) {
+  const res = await apiClient.get<ServerTrip>(paths.DETAIL(id));
+  return { ...res, data: normalize(res.data) };
+}
+function payload(data: Partial<BusinessTrip>) {
+  return {
+    tujuan: data.tujuan, tanggal_berangkat: data.tanggal_berangkat, tanggal_kembali: data.tanggal_kembali,
+    sumber_dana: data.sumber_dana, rka_budget_item_id: data.rka_budget_item_id, keperluan: data.maksud_kegiatan,
+    members: data.participants?.map(m => ({ user_id: m.user_id, peran_tugas: m.peran })),
+    costs: data.costs?.map(c => ({ komponen: c.komponen, nominal_estimasi: c.estimasi_biaya, keterangan: c.keterangan })),
+  };
+}
+export const tripService = {
+  async getTrips(params?: Record<string, unknown>) {
+    const res = await apiClient.get<ServerTrip[]>(paths.LIST, { params });
+    return { ...res, data: (res.data ?? []).map(normalize) };
+  },
+  getTripById: detail,
+  async createTrip(data: Partial<BusinessTrip>) {
+    const res = await apiClient.post<ServerTrip>(paths.CREATE, payload(data));
+    if (data.status === 'DIAJUKAN') await apiClient.post(paths.SUBMIT(res.data.id));
+    return detail(res.data.id);
+  },
+  async updateTrip(id: string, data: Partial<BusinessTrip>) {
+    await apiClient.put(paths.UPDATE(id), payload(data));
+    if (data.status === 'DIAJUKAN') await apiClient.post(paths.SUBMIT(id));
+    return detail(id);
+  },
+  deleteTrip: (id: string) => apiClient.delete<void>(paths.DELETE(id)),
+  async submitTrip(id: string) {
+    await apiClient.post(paths.SUBMIT(id));
+    return detail(id);
+  },
+  async approveTrip(id: string, data: { status?: TripStatus; nomor_surat_tugas?: string; catatan?: string; disetujui_oleh?: string }) {
+    await apiClient.post(paths.APPROVE(id), { status: data.status ?? 'DISETUJUI', nomor_surat_tugas: data.nomor_surat_tugas, catatan: data.catatan });
+    return detail(id);
+  },
+  async rejectTrip(id: string, catatan?: string) {
+    await apiClient.post(paths.APPROVE(id), { status: 'DITOLAK', catatan });
+    return detail(id);
+  },
+  async submitReport(id: string, data: {
+    ringkasan?: string; ringkasan_hasil?: string; file_url?: string; biaya_realisasi?: number;
+    realisasi_biaya?: number; costs?: BusinessTripCost[]; catatan?: string;
+  }) {
+    await apiClient.post(paths.REPORT(id), {
+      ringkasan_hasil: data.ringkasan_hasil || data.ringkasan, file_laporan_url: data.file_url,
+      costs: data.costs?.map(c => ({ komponen: c.komponen, nominal_realisasi: c.realisasi_biaya, keterangan: c.keterangan })),
+    });
+    return detail(id);
+  },
+  async confirmCompleteness(id: string, data: { lengkap: boolean; catatan?: string; dikonfirmasi_oleh?: string }) {
+    await apiClient.post(paths.DETAIL(id) + '/confirm', { lengkap: data.lengkap, catatan: data.catatan });
+    return detail(id);
+  },
+  getRecap: () => apiClient.get<TripRecap>(paths.RECAP),
+};
 export default tripService;
