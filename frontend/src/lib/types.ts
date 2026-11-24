@@ -2,11 +2,10 @@
 // SIMPRO — Core Type Definitions (sesuai PRD Modul 7–13 & SKPL)
 // ============================================================
 
-// ----- Enums Peran (13 Aktor Utama SIMPRO) -----
+// ----- Enums Peran (SIMPRO Modul 1–6) -----
 export type Role =
-  // 13 Aktor Resmi SIMPRO
+  // 3 Tipe Akun Utama & Sub-Peran Resmi Modul 1–6
   | 'KAPRODI'
-  | 'GKM'
   | 'ADMIN_PRODI'
   | 'DOSEN'
   | 'DOSEN_VERIFIKATOR'
@@ -15,20 +14,11 @@ export type Role =
   | 'KETUA_KELAS'
   | 'MAHASISWA'
   | 'PENGURUS_HIMPUNAN'
-  | 'KOORDINATOR_KP_PSI_PDLK'
-  | 'PENGELOLA_ADUAN'
-  | 'MITRA'
-  // Alias Kompatibilitas Sistem & Data Induk
-  | 'KOORDINATOR_KP'
-  | 'KOORDINATOR_PSI'
-  | 'KOORDINATOR_PDLK'
-  | 'PETUGAS_KEKERASAN'
-  | 'MAHASISWA'
-  | 'HIMPUNAN'
-  | 'KOORD_KP'
-  | 'KOORD_TA'
-  | 'KOORD_MAGANG'
-  | 'MITRA_EKSTERNAL'
+  // Sub-peran spesifik penugasan
+  | 'DOSEN_PENCATAT_PELANGGARAN'
+  | 'DOSEN_PEMBINA_UKM'
+  | 'DOSEN_PEMBINA_HIMPUNAN'
+  // Alias kompatibilitas
   | 'HIMPUNAN';
 
 export type Semester = 'GANJIL' | 'GENAP';

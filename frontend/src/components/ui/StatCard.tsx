@@ -22,6 +22,7 @@ interface StatCardProps {
   trend?: { value: number; label: string };
   gradient?: string;
   color?: 'blue' | 'emerald' | 'amber' | 'rose' | 'slate';
+  badgeTone?: string;
 }
 
 export function StatCard({

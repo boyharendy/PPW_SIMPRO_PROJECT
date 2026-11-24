@@ -49,13 +49,28 @@ export function useUser() {
   };
 }
 
+export const ROLE_TO_MOCK_PROFILE: Record<Role, { id: string; nama_lengkap: string; email: string }> = {
+  KAPRODI: { id: 'u-kaprodi', nama_lengkap: 'Dr. Ahmad Fauzi, M.T.', email: 'kaprodi@univ.ac.id' },
+  ADMIN_PRODI: { id: 'u-admin', nama_lengkap: 'Bambang Sudarsono, S.Kom.', email: 'admin.prodi@univ.ac.id' },
+  DOSEN: { id: 'u-dosen2', nama_lengkap: 'Dewi Lestari, M.T.', email: 'dewi.lestari@univ.ac.id' },
+  DOSEN_WALI: { id: 'u-dosen1', nama_lengkap: 'Dr. Eng. Hendra Wijaya, M.Sc.', email: 'hendra.wijaya@univ.ac.id' },
+  DOSEN_VERIFIKATOR: { id: 'u-dosen1', nama_lengkap: 'Dr. Eng. Hendra Wijaya, M.Sc.', email: 'hendra.wijaya@univ.ac.id' },
+  DOSEN_PEMBINA: { id: 'u-dosen1', nama_lengkap: 'Dr. Eng. Hendra Wijaya, M.Sc.', email: 'hendra.wijaya@univ.ac.id' },
+  DOSEN_PENCATAT_PELANGGARAN: { id: 'u-dosen1', nama_lengkap: 'Dr. Eng. Hendra Wijaya, M.Sc.', email: 'hendra.wijaya@univ.ac.id' },
+  DOSEN_PEMBINA_UKM: { id: 'u-dosen1', nama_lengkap: 'Dr. Eng. Hendra Wijaya, M.Sc.', email: 'hendra.wijaya@univ.ac.id' },
+  DOSEN_PEMBINA_HIMPUNAN: { id: 'u-dosen1', nama_lengkap: 'Dr. Eng. Hendra Wijaya, M.Sc.', email: 'hendra.wijaya@univ.ac.id' },
+  KETUA_KELAS: { id: 'u-mhs1', nama_lengkap: 'Muhammad Rizky Pratama', email: 'rizky.mhs@student.univ.ac.id' },
+  MAHASISWA: { id: 'u-mhs1', nama_lengkap: 'Muhammad Rizky Pratama', email: 'rizky.mhs@student.univ.ac.id' },
+  PENGURUS_HIMPUNAN: { id: 'u-mhs1', nama_lengkap: 'Muhammad Rizky Pratama', email: 'rizky.mhs@student.univ.ac.id' },
+  HIMPUNAN: { id: 'u-mhs1', nama_lengkap: 'Muhammad Rizky Pratama', email: 'rizky.mhs@student.univ.ac.id' },
+};
+
 const DEFAULT_FALLBACK_USER: AuthUser = {
   id: 'u-kaprodi',
-  nama_lengkap: mockProfiles[0]?.nama_lengkap || 'Dr. Ahmad Fauzi, M.T. (Kaprodi)',
-  email: mockProfiles[0]?.email || 'kaprodi@univ.ac.id',
+  nama_lengkap: 'Dr. Ahmad Fauzi, M.T.',
+  email: 'kaprodi@univ.ac.id',
   roles: [
     'KAPRODI',
-    'GKM',
     'ADMIN_PRODI',
     'DOSEN',
     'DOSEN_VERIFIKATOR',
@@ -64,14 +79,6 @@ const DEFAULT_FALLBACK_USER: AuthUser = {
     'KETUA_KELAS',
     'MAHASISWA',
     'PENGURUS_HIMPUNAN',
-    'KOORDINATOR_KP_PSI_PDLK',
-    'PENGELOLA_ADUAN',
-    'MITRA',
-    'KOORDINATOR_KP',
-    'KOORDINATOR_PSI',
-    'KOORDINATOR_PDLK',
-    'PETUGAS_KEKERASAN',
-    'MITRA_EKSTERNAL',
     'HIMPUNAN',
   ],
   activeRole: 'KAPRODI',
@@ -159,7 +166,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setActiveRole = useCallback(async (role: Role) => {
-    setUser(prev => ({ ...prev, activeRole: role }));
+    const profile = ROLE_TO_MOCK_PROFILE[role] || {
+      id: 'u-user',
+      nama_lengkap: 'Pengguna SIMPRO',
+      email: 'user@univ.ac.id',
+    };
+    setUser(prev => ({
+      ...prev,
+      id: isAuthenticated ? prev.id : profile.id,
+      nama_lengkap: isAuthenticated ? prev.nama_lengkap : profile.nama_lengkap,
+      email: isAuthenticated ? prev.email : profile.email,
+      activeRole: role,
+    }));
     if (isAuthenticated) {
       try {
         await authService.switchRole(role);

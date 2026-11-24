@@ -8,7 +8,6 @@ import { formatDateTime } from '@/lib/utils';
 
 export const CANONICAL_ROLES: Role[] = [
   'KAPRODI',
-  'GKM',
   'ADMIN_PRODI',
   'DOSEN',
   'DOSEN_VERIFIKATOR',
@@ -17,14 +16,10 @@ export const CANONICAL_ROLES: Role[] = [
   'KETUA_KELAS',
   'MAHASISWA',
   'PENGURUS_HIMPUNAN',
-  'KOORDINATOR_KP_PSI_PDLK',
-  'PENGELOLA_ADUAN',
-  'MITRA',
 ];
 
 export const ROLE_LABELS: Record<Role, string> = {
   KAPRODI: 'Kaprodi',
-  GKM: 'GKM',
   ADMIN_PRODI: 'Admin Prodi',
   DOSEN: 'Dosen',
   DOSEN_VERIFIKATOR: 'Dosen Verifikator',
@@ -33,18 +28,10 @@ export const ROLE_LABELS: Record<Role, string> = {
   KETUA_KELAS: 'Ketua Kelas',
   MAHASISWA: 'Mahasiswa',
   PENGURUS_HIMPUNAN: 'Pengurus Himpunan',
-  KOORDINATOR_KP_PSI_PDLK: 'Koordinator KP / PSI / PDLK',
-  PENGELOLA_ADUAN: 'Pengelola Aduan',
-  MITRA: 'Mitra (eksternal)',
-  KOORDINATOR_KP: 'Koordinator KP',
-  KOORDINATOR_PSI: 'Koordinator PSI',
-  KOORDINATOR_PDLK: 'Koordinator PDLK',
-  PETUGAS_KEKERASAN: 'Petugas Kekerasan (Satgas)',
-  KOORD_KP: 'Koordinator KP',
-  KOORD_TA: 'Koordinator TA',
-  KOORD_MAGANG: 'Koordinator Magang',
-  HIMPUNAN: 'Himpunan Mahasiswa',
-  MITRA_EKSTERNAL: 'Mitra (eksternal)',
+  DOSEN_PENCATAT_PELANGGARAN: 'Dosen Pencatat Pelanggaran',
+  DOSEN_PEMBINA_UKM: 'Dosen Pembina UKM',
+  DOSEN_PEMBINA_HIMPUNAN: 'Dosen Pembina Himpunan',
+  HIMPUNAN: 'Pengurus Himpunan',
 };
 
 export default function Header() {

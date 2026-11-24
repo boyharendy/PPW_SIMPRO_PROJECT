@@ -49,12 +49,6 @@ const categoryIconMap: Record<string, React.ComponentType<{ className?: string }
   'Unit Kegiatan Mahasiswa': Compass,
   'Program Kerja Himpunan': Calendar,
   'Sertifikat Mahasiswa': FileBadge,
-  'Kepuasan Mitra': SmilePlus,
-  'Publikasi': BookOpen,
-  'Perjalanan Dinas': Plane,
-  'Anggaran & RKA': Wallet,
-  'Mutu Pembelajaran': BookCheck,
-  'Layanan Aduan': MessageSquareHeart,
   'Pengaturan': Settings,
 };
 
@@ -65,24 +59,6 @@ export default function Sidebar() {
   // Check if role is authorized (including backward compatibility aliases)
   const isRoleAuthorized = (allowedRoles: Role[], currentRole: Role): boolean => {
     if (allowedRoles.includes(currentRole)) return true;
-    if (currentRole === 'KOORDINATOR_KP_PSI_PDLK') {
-      return allowedRoles.some(r => r === 'KOORDINATOR_KP' || r === 'KOORDINATOR_PSI' || r === 'KOORDINATOR_PDLK' || r === 'KOORDINATOR_KP_PSI_PDLK');
-    }
-    if (currentRole === 'KOORDINATOR_KP' || currentRole === 'KOORDINATOR_PSI' || currentRole === 'KOORDINATOR_PDLK') {
-      return allowedRoles.includes('KOORDINATOR_KP_PSI_PDLK');
-    }
-    if (currentRole === 'MITRA') {
-      return allowedRoles.includes('MITRA_EKSTERNAL');
-    }
-    if (currentRole === 'MITRA_EKSTERNAL') {
-      return allowedRoles.includes('MITRA');
-    }
-    if (currentRole === 'PENGELOLA_ADUAN') {
-      return allowedRoles.includes('PETUGAS_KEKERASAN');
-    }
-    if (currentRole === 'PETUGAS_KEKERASAN') {
-      return allowedRoles.includes('PENGELOLA_ADUAN');
-    }
     if (currentRole === 'PENGURUS_HIMPUNAN') {
       return allowedRoles.includes('HIMPUNAN');
     }
