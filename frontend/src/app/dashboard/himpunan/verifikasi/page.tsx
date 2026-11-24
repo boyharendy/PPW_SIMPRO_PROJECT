@@ -53,7 +53,6 @@ export default function HimpunanVerifikasiPage() {
 
   // Role detection
   const isKaprodi = currentRole === 'KAPRODI';
-  const isPembina = currentRole === 'DOSEN_PEMBINA' || currentRole === 'DOSEN';
 
   // Handle Proposal Review Action
   const handleReviewProposal = (action: 'APPROVE' | 'REVISE' | 'REJECT') => {
@@ -69,11 +68,7 @@ export default function HimpunanVerifikasiPage() {
     let newStatus: HimpunanProposal['status'] = currentStatus;
 
     if (action === 'APPROVE') {
-      if (currentStatus === 'DIAJUKAN') {
-        newStatus = 'DISETUJUI_PEMBINA';
-      } else if (currentStatus === 'DISETUJUI_PEMBINA') {
-        newStatus = 'DISETUJUI';
-      }
+      newStatus = 'DISETUJUI';
     } else if (action === 'REVISE') {
       newStatus = 'PERLU_REVISI';
     } else if (action === 'REJECT') {
@@ -81,18 +76,18 @@ export default function HimpunanVerifikasiPage() {
     }
 
     const nowIso = new Date().toISOString();
-    const actorName = isKaprodi ? 'Prof. Budi Santoso (Kaprodi)' : 'Dr. Eng. Ir. Hendra (Dosen Pembina)';
-    const actorRole = isKaprodi ? 'KAPRODI' : 'DOSEN_PEMBINA';
+    const actorName = 'Dr. Ahmad Fauzi, M.T. (Kaprodi)';
+    const actorRole = 'KAPRODI';
 
     const newAuditLog: HimpunanAuditLog = {
       id: `audit-${Date.now()}`,
       waktu: nowIso,
       aktor: actorName,
       peran: actorRole,
-      aksi: action === 'APPROVE' ? 'PENGESAHAN_VERIFIKASI' : action === 'REVISE' ? 'PERMINTAAN_REVISI' : 'PENOLAKAN',
+      aksi: action === 'APPROVE' ? 'PENGESAHAN_KAPRODI' : action === 'REVISE' ? 'PERMINTAAN_REVISI' : 'PENOLAKAN',
       status_sebelum: currentStatus,
       status_sesudah: newStatus,
-      catatan: reviewNote || (action === 'APPROVE' ? 'Disetujui tanpa catatan khusus.' : '-'),
+      catatan: reviewNote || (action === 'APPROVE' ? 'Disetujui dan disahkan oleh Kaprodi.' : '-'),
     };
 
     const updated = proposals.map((p) => {
@@ -102,9 +97,8 @@ export default function HimpunanVerifikasiPage() {
           status: newStatus,
           nomor_revisi: action === 'REVISE' ? (p.nomor_revisi || 0) + 1 : p.nomor_revisi,
           audit_trail: [...(p.audit_trail || []), newAuditLog],
-          ...(currentStatus === 'DIAJUKAN'
-            ? { catatan_pembina: reviewNote || p.catatan_pembina, diverifikasi_pembina_at: nowIso }
-            : { catatan_kaprodi: reviewNote || p.catatan_kaprodi, disetujui_kaprodi_at: nowIso }),
+          catatan_kaprodi: reviewNote || p.catatan_kaprodi,
+          disetujui_kaprodi_at: nowIso,
         };
       }
       return p;
@@ -131,11 +125,7 @@ export default function HimpunanVerifikasiPage() {
     let newStatus: HimpunanLpj['status'] = currentStatus;
 
     if (action === 'APPROVE') {
-      if (currentStatus === 'DIAJUKAN') {
-        newStatus = 'DISETUJUI_PEMBINA';
-      } else if (currentStatus === 'DISETUJUI_PEMBINA') {
-        newStatus = 'DISETUJUI';
-      }
+      newStatus = 'DISETUJUI';
     } else if (action === 'REVISE') {
       newStatus = 'PERLU_REVISI';
     } else if (action === 'REJECT') {
@@ -143,18 +133,18 @@ export default function HimpunanVerifikasiPage() {
     }
 
     const nowIso = new Date().toISOString();
-    const actorName = isKaprodi ? 'Prof. Budi Santoso (Kaprodi)' : 'Dr. Eng. Ir. Hendra (Dosen Pembina)';
-    const actorRole = isKaprodi ? 'KAPRODI' : 'DOSEN_PEMBINA';
+    const actorName = 'Dr. Ahmad Fauzi, M.T. (Kaprodi)';
+    const actorRole = 'KAPRODI';
 
     const newAuditLog: HimpunanAuditLog = {
       id: `audit-${Date.now()}`,
       waktu: nowIso,
       aktor: actorName,
       peran: actorRole,
-      aksi: action === 'APPROVE' ? 'PENGESAHAN_LPJ' : action === 'REVISE' ? 'PERMINTAAN_REVISI_LPJ' : 'PENOLAKAN_LPJ',
+      aksi: action === 'APPROVE' ? 'PENGESAHAN_LPJ_KAPRODI' : action === 'REVISE' ? 'PERMINTAAN_REVISI_LPJ' : 'PENOLAKAN_LPJ',
       status_sebelum: currentStatus,
       status_sesudah: newStatus,
-      catatan: reviewNote || (action === 'APPROVE' ? 'LPJ telah diperiksa dan disetujui sah.' : '-'),
+      catatan: reviewNote || (action === 'APPROVE' ? 'LPJ telah diperiksa dan disahkan oleh Kaprodi.' : '-'),
     };
 
     const updated = lpjs.map((l) => {
@@ -164,9 +154,8 @@ export default function HimpunanVerifikasiPage() {
           status: newStatus,
           nomor_revisi: action === 'REVISE' ? (l.nomor_revisi || 0) + 1 : l.nomor_revisi,
           audit_trail: [...(l.audit_trail || []), newAuditLog],
-          ...(currentStatus === 'DIAJUKAN'
-            ? { catatan_pembina: reviewNote || l.catatan_pembina, diverifikasi_pembina_at: nowIso }
-            : { catatan_kaprodi: reviewNote || l.catatan_kaprodi, disetujui_kaprodi_at: nowIso }),
+          catatan_kaprodi: reviewNote || l.catatan_kaprodi,
+          disetujui_kaprodi_at: nowIso,
         };
       }
       return l;
@@ -214,11 +203,9 @@ export default function HimpunanVerifikasiPage() {
           <StatusBadge status={row.status} size="sm" />
           <span className="block text-[10px] text-slate-400 mt-1">
             {row.status === 'DIAJUKAN'
-              ? 'Menunggu Tahap 1 (Pembina)'
-              : row.status === 'DISETUJUI_PEMBINA'
-              ? 'Menunggu Tahap 2 (Kaprodi)'
+              ? 'Menunggu Persetujuan Kaprodi'
               : row.status === 'DISETUJUI'
-              ? 'Sah oleh Kaprodi'
+              ? 'Disahkan oleh Kaprodi'
               : 'Perlu Revisi / Ditolak'}
           </span>
         </div>
@@ -233,7 +220,7 @@ export default function HimpunanVerifikasiPage() {
           <button
             onClick={() => {
               setSelectedProposalForReview(row);
-              setReviewNote(row.status === 'DIAJUKAN' ? row.catatan_pembina || '' : row.catatan_kaprodi || '');
+              setReviewNote(row.catatan_kaprodi || row.catatan_pembina || '');
             }}
             className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors inline-flex items-center gap-1.5 shadow-xs"
           >
@@ -281,11 +268,9 @@ export default function HimpunanVerifikasiPage() {
           <StatusBadge status={row.status} size="sm" />
           <span className="block text-[10px] text-slate-400 mt-1">
             {row.status === 'DIAJUKAN'
-              ? 'Menunggu Tahap 1 (Pembina)'
-              : row.status === 'DISETUJUI_PEMBINA'
-              ? 'Menunggu Tahap 2 (Kaprodi)'
+              ? 'Menunggu Pengesahan Kaprodi'
               : row.status === 'DISETUJUI'
-              ? 'LPJ Disahkan'
+              ? 'LPJ Disahkan Kaprodi'
               : 'Perlu Revisi / Ditolak'}
           </span>
         </div>
@@ -300,7 +285,7 @@ export default function HimpunanVerifikasiPage() {
           <button
             onClick={() => {
               setSelectedLpjForReview(row);
-              setReviewNote(row.status === 'DIAJUKAN' ? row.catatan_pembina || '' : row.catatan_kaprodi || '');
+              setReviewNote(row.catatan_kaprodi || row.catatan_pembina || '');
             }}
             className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors inline-flex items-center gap-1.5 shadow-xs"
           >
@@ -315,8 +300,8 @@ export default function HimpunanVerifikasiPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Verifikasi Bertingkat Proposal &amp; LPJ"
-        description="Alur verifikasi dua tahap: Tahap 1 oleh Dosen Pembina Himpunan, dilanjutkan Tahap 2 persetujuan akhir oleh Ketua Program Studi (Kaprodi). Status verifikasi mencakup Diajukan, Disetujui Pembina, Perlu Revisi, Disetujui, dan Ditolak dengan catatan riwayat audit tersimpan."
+        title="Verifikasi &amp; Pengesahan Proposal &amp; LPJ"
+        description="Alur verifikasi dan pengesahan langsung oleh Ketua Program Studi (Kaprodi). Status mencakup Diajukan, Disetujui (Sah), Perlu Revisi, dan Ditolak dengan riwayat audit transparan."
         badge={
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 border border-slate-200">
             Peran Aktif: {currentRole.replace('_', ' ')}
@@ -339,31 +324,25 @@ export default function HimpunanVerifikasiPage() {
       {/* Two-Stage Workflow Explanation Banner */}
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
         <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3">
-          Siklus Otorisasi Bertingkat Program Kerja Himpunan:
+          Siklus Otorisasi Program Kerja Himpunan:
         </h4>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
           <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-3">
             <span className="font-bold text-slate-800 block text-xs">1. Pengurus Himpunan</span>
             <p className="text-[11px] text-slate-500 mt-1">
               Mengisi proposal terstruktur atau mengunggah LPJ &amp; kuitansi sah.
             </p>
           </div>
-          <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3">
-            <span className="font-bold text-blue-900 block text-xs">2. Dosen Pembina (Tahap 1)</span>
-            <p className="text-[11px] text-blue-700 mt-1">
-              Memvalidasi substansi, keselarasan rincian anggaran, dan kelayakan kegiatan.
-            </p>
-          </div>
           <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3">
-            <span className="font-bold text-emerald-900 block text-xs">3. Kaprodi (Tahap 2)</span>
+            <span className="font-bold text-emerald-900 block text-xs">2. Ketua Program Studi (Kaprodi)</span>
             <p className="text-[11px] text-emerald-700 mt-1">
-              Persetujuan final, alokasi pagu dana prodi, dan pengesahan LPJ resmi.
+              Verifikasi kelayakan substansi, keselarasan rincian anggaran, alokasi dana prodi, dan pengesahan sah.
             </p>
           </div>
           <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-3">
-            <span className="font-bold text-slate-800 block text-xs">4. Rekap &amp; Analisis</span>
+            <span className="font-bold text-slate-800 block text-xs">3. Rekap &amp; Analisis Deviasi</span>
             <p className="text-[11px] text-slate-500 mt-1">
-              Otomatis terhitung ke dalam evaluasi capaian IKU dan analisis deviasi prodi.
+              Otomatis terhitung ke dalam analisis deviasi biaya/jadwal proker dan evaluasi akreditasi prodi.
             </p>
           </div>
         </div>
@@ -492,10 +471,10 @@ export default function HimpunanVerifikasiPage() {
             </div>
 
             {/* Previous Notes */}
-            {selectedProposalForReview.catatan_pembina && (
+            {(selectedProposalForReview.catatan_kaprodi || selectedProposalForReview.catatan_pembina) && (
               <div className="rounded-lg bg-blue-50/60 p-3 border border-blue-200 text-xs">
-                <span className="font-semibold text-blue-900">Catatan Dosen Pembina:</span>
-                <p className="mt-1 text-blue-800 italic">&quot;{selectedProposalForReview.catatan_pembina}&quot;</p>
+                <span className="font-semibold text-blue-900">Catatan Kaprodi:</span>
+                <p className="mt-1 text-blue-800 italic">&quot;{selectedProposalForReview.catatan_kaprodi || selectedProposalForReview.catatan_pembina}&quot;</p>
               </div>
             )}
 
@@ -525,7 +504,7 @@ export default function HimpunanVerifikasiPage() {
             {/* Review Decision Form */}
             <div className="border-t border-slate-200 pt-4 space-y-3">
               <label className="block font-semibold text-slate-800">
-                Catatan Verifikasi {selectedProposalForReview.status === 'DIAJUKAN' ? 'Dosen Pembina' : 'Kaprodi'}:
+                Catatan Verifikasi Kaprodi:
               </label>
               <textarea
                 rows={3}
@@ -562,9 +541,7 @@ export default function HimpunanVerifikasiPage() {
                   onClick={() => handleReviewProposal('APPROVE')}
                   className="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700 transition-colors shadow-xs"
                 >
-                  {selectedProposalForReview.status === 'DIAJUKAN'
-                    ? 'Setujui Tahap 1 (Lanjut ke Kaprodi)'
-                    : 'Sahkan Proposal (Kaprodi Final)'}
+                  Setujui &amp; Sahkan Proposal (Kaprodi)
                 </button>
               </div>
             </div>
@@ -742,7 +719,7 @@ export default function HimpunanVerifikasiPage() {
             {/* Review Decision Form */}
             <div className="border-t border-slate-200 pt-4 space-y-3">
               <label className="block font-semibold text-slate-800">
-                Catatan Verifikasi {selectedLpjForReview.status === 'DIAJUKAN' ? 'Dosen Pembina' : 'Kaprodi'}:
+                Catatan Verifikasi Kaprodi:
               </label>
               <textarea
                 rows={3}
@@ -779,9 +756,7 @@ export default function HimpunanVerifikasiPage() {
                   onClick={() => handleReviewLpj('APPROVE')}
                   className="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700 transition-colors shadow-xs"
                 >
-                  {selectedLpjForReview.status === 'DIAJUKAN'
-                    ? 'Setujui Tahap 1 (Lanjut ke Kaprodi)'
-                    : 'Sahkan LPJ Resmi (Kaprodi Final)'}
+                  Sahkan LPJ Resmi (Kaprodi)
                 </button>
               </div>
             </div>

@@ -141,7 +141,7 @@ export default function HimpunanProposalPage() {
 
     setProposals([newProposal, ...proposals]);
     setIsSubmitModalOpen(false);
-    setIsSuccessAlert('Proposal berhasil diajukan dan diteruskan ke Dosen Pembina (Tahap 1).');
+    setIsSuccessAlert('Proposal berhasil diajukan dan diteruskan ke Kaprodi.');
     setTimeout(() => setIsSuccessAlert(null), 5000);
 
     // Reset Form
@@ -195,7 +195,7 @@ export default function HimpunanProposalPage() {
 
     setProposals(updated);
     setRevisingProposal(null);
-    setIsSuccessAlert(`Perbaikan proposal (Revisi ke-${nextRevNum}) berhasil dikirim ulang ke Dosen Pembina.`);
+    setIsSuccessAlert(`Perbaikan proposal (Revisi ke-${nextRevNum}) berhasil dikirim ulang ke Kaprodi.`);
     setTimeout(() => setIsSuccessAlert(null), 5000);
   };
 
@@ -263,11 +263,9 @@ export default function HimpunanProposalPage() {
           <StatusBadge status={row.status} size="sm" />
           <span className="block text-[10px] text-slate-400 mt-1">
             {row.status === 'DIAJUKAN'
-              ? 'Menunggu Review Pembina'
-              : row.status === 'DISETUJUI_PEMBINA'
-              ? 'Menunggu Pengesahan Kaprodi'
+              ? 'Menunggu Persetujuan Kaprodi'
               : row.status === 'DISETUJUI'
-              ? 'Sah oleh Kaprodi'
+              ? 'Disahkan oleh Kaprodi'
               : row.status === 'PERLU_REVISI'
               ? 'Menunggu Tindakan Pengurus'
               : 'Ditolak'}
@@ -317,7 +315,7 @@ export default function HimpunanProposalPage() {
     <div className="space-y-6">
       <PageHeader
         title="Pengajuan &amp; Revisi Proposal Kegiatan"
-        description="Pengurus himpunan mengajukan proposal terstruktur, menerima catatan verifikasi, dan melakukan perbaikan revisi bila diminta oleh Dosen Pembina atau Kaprodi sebelum kegiatan disahkan."
+        description="Pengurus himpunan mengajukan proposal terstruktur, menerima catatan verifikasi, dan melakukan perbaikan revisi bila diminta oleh Kaprodi sebelum kegiatan disahkan."
         actions={
           <button
             onClick={() => {
@@ -365,8 +363,7 @@ export default function HimpunanProposalPage() {
               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
             >
               <option value="ALL">Semua Status Verifikasi</option>
-              <option value="DIAJUKAN">Diajukan (Menunggu Dosen Pembina)</option>
-              <option value="DISETUJUI_PEMBINA">Disetujui Pembina (Menunggu Kaprodi)</option>
+              <option value="DIAJUKAN">Diajukan (Menunggu Persetujuan Kaprodi)</option>
               <option value="PERLU_REVISI">Perlu Revisi (Loopback Pengurus)</option>
               <option value="DISETUJUI">Disetujui Kaprodi (Sah)</option>
               <option value="DITOLAK">Ditolak</option>
@@ -695,7 +692,7 @@ export default function HimpunanProposalPage() {
                 type="submit"
                 className="rounded-lg bg-amber-600 px-5 py-2 font-semibold text-white hover:bg-amber-700 transition-colors shadow-xs"
               >
-                Kirim Ulang Revisi Proposal ke Pembina
+                Kirim Ulang Revisi Proposal ke Kaprodi
               </button>
             </div>
           </form>

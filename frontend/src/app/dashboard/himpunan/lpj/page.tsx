@@ -173,7 +173,7 @@ export default function HimpunanLpjPage() {
 
     setLpjs([newLpj, ...lpjs]);
     setIsSubmitModalOpen(false);
-    setIsSuccessAlert('LPJ berhasil diunggah dan otomatis masuk ke antrean verifikasi Dosen Pembina (Tahap 1).');
+    setIsSuccessAlert('LPJ berhasil diunggah dan otomatis masuk ke antrean verifikasi Kaprodi.');
     setTimeout(() => setIsSuccessAlert(null), 5000);
 
     // Reset Form
@@ -233,7 +233,7 @@ export default function HimpunanLpjPage() {
 
     setLpjs(updated);
     setRevisingLpj(null);
-    setIsSuccessAlert(`Perbaikan LPJ (Revisi ke-${nextRevNum}) berhasil dikirim ulang ke Dosen Pembina.`);
+    setIsSuccessAlert(`Perbaikan LPJ (Revisi ke-${nextRevNum}) berhasil dikirim ulang ke Kaprodi.`);
     setTimeout(() => setIsSuccessAlert(null), 5000);
   };
 
@@ -331,11 +331,9 @@ export default function HimpunanLpjPage() {
           <StatusBadge status={row.status} size="sm" />
           <span className="block text-[10px] text-slate-400 mt-1">
             {row.status === 'DIAJUKAN'
-              ? 'Menunggu Review Pembina'
-              : row.status === 'DISETUJUI_PEMBINA'
               ? 'Menunggu Pengesahan Kaprodi'
               : row.status === 'DISETUJUI'
-              ? 'LPJ Disahkan'
+              ? 'LPJ Disahkan Kaprodi'
               : row.status === 'PERLU_REVISI'
               ? 'Menunggu Tindakan Pengurus'
               : 'Ditolak'}
@@ -431,8 +429,7 @@ export default function HimpunanLpjPage() {
               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
             >
               <option value="ALL">Semua Status LPJ</option>
-              <option value="DIAJUKAN">Diajukan (Menunggu Review Pembina)</option>
-              <option value="DISETUJUI_PEMBINA">Disetujui Pembina (Menunggu Kaprodi)</option>
+              <option value="DIAJUKAN">Diajukan (Menunggu Pengesahan Kaprodi)</option>
               <option value="PERLU_REVISI">Perlu Revisi (Loopback Pengurus)</option>
               <option value="DISETUJUI">Disetujui Kaprodi (Sah)</option>
               <option value="DITOLAK">Ditolak</option>
@@ -639,7 +636,7 @@ export default function HimpunanLpjPage() {
               type="submit"
               className="rounded-lg bg-blue-600 px-5 py-2 font-semibold text-white hover:bg-blue-700 transition-colors shadow-xs"
             >
-              Validasi &amp; Kirim LPJ ke Pembina
+              Validasi &amp; Kirim LPJ ke Kaprodi
             </button>
           </div>
         </form>
@@ -785,7 +782,7 @@ export default function HimpunanLpjPage() {
                 type="submit"
                 className="rounded-lg bg-amber-600 px-5 py-2 font-semibold text-white hover:bg-amber-700 transition-colors shadow-xs"
               >
-                Kirim Ulang Revisi LPJ ke Pembina
+                Kirim Ulang Revisi LPJ ke Kaprodi
               </button>
             </div>
           </form>

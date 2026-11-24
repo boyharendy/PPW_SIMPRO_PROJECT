@@ -40,19 +40,18 @@ export default function HimpunanDashboardPage() {
   const prokers = mockHimpunanProkers.filter((p) => p.periode_kepengurusan === selectedPeriod);
   const totalRencana = prokers.reduce((acc, p) => acc + p.total_anggaran_rencana, 0);
   const totalRealisasi = mockHimpunanLpjs.reduce((acc, l) => acc + l.total_biaya_realisasi, 0);
-  const pendingPembina = mockHimpunanProposals.filter((p) => p.status === 'DIAJUKAN').length +
-    mockHimpunanLpjs.filter((l) => l.status === 'DIAJUKAN').length;
-  const pendingKaprodi = mockHimpunanProposals.filter((p) => p.status === 'DISETUJUI_PEMBINA').length +
-    mockHimpunanLpjs.filter((l) => l.status === 'DISETUJUI_PEMBINA').length;
+  const pendingApprovals =
+    mockHimpunanProposals.filter((p) => p.status === 'DIAJUKAN' || p.status === 'DISETUJUI_PEMBINA').length +
+    mockHimpunanLpjs.filter((l) => l.status === 'DIAJUKAN' || l.status === 'DISETUJUI_PEMBINA').length;
 
   const isPengurus = currentRole === 'PENGURUS_HIMPUNAN' || currentRole === 'HIMPUNAN' || currentRole === 'MAHASISWA';
-  const isApprover = currentRole === 'DOSEN_PEMBINA' || currentRole === 'KAPRODI' || currentRole === 'DOSEN';
+  const isApprover = currentRole === 'KAPRODI';
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Modul 5: Program Kerja Himpunan"
-        description="Pengelolaan terpadu siklus program kerja: penginputan rencana anggaran, pengajuan proposal terstruktur, pelaporan LPJ & kuitansi sah, verifikasi bertingkat Pembina–Kaprodi, serta analisis deviasi otomatis dan laporan evaluasi."
+        description="Pengelolaan terpadu siklus program kerja: penginputan rencana anggaran, pengajuan proposal terstruktur, pelaporan LPJ & kuitansi sah, verifikasi dan pengesahan Kaprodi, serta analisis deviasi otomatis dan laporan evaluasi."
         badge={
           <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 border border-blue-200">
             Himpunan Mahasiswa Sistem Informasi (HMSI)
@@ -112,8 +111,8 @@ export default function HimpunanDashboardPage() {
         />
         <StatCard
           title="Antrean Verifikasi"
-          value={pendingPembina + pendingKaprodi}
-          subtitle={`${pendingPembina} di Pembina, ${pendingKaprodi} di Kaprodi`}
+          value={pendingApprovals}
+          subtitle="Menunggu verifikasi &amp; pengesahan Kaprodi"
           icon={<Clock size={18} />}
         />
       </div>
@@ -197,9 +196,9 @@ export default function HimpunanDashboardPage() {
                 <FileCheck className="h-5 w-5" />
               </div>
               <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Persetujuan</span>
-              <h3 className="font-semibold text-slate-900 text-sm mt-1">Verifikasi Bertingkat</h3>
+              <h3 className="font-semibold text-slate-900 text-sm mt-1">Verifikasi &amp; Pengesahan</h3>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                Persetujuan dua tahap: Tahap 1 Dosen Pembina → Tahap 2 Kaprodi.
+                Persetujuan dan pengesahan langsung oleh Ketua Program Studi (Kaprodi).
               </p>
             </div>
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-emerald-600">
@@ -314,35 +313,23 @@ export default function HimpunanDashboardPage() {
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                <h3 className="text-sm font-bold text-slate-900">Alur Verifikasi Bertingkat</h3>
+                <h3 className="text-sm font-bold text-slate-900">Alur Verifikasi &amp; Pengesahan</h3>
               </div>
               <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
-                2 Tahap
+                Oleh Kaprodi
               </span>
             </div>
 
             <div className="space-y-3 text-xs">
               <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-3 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-slate-800">Tahap 1: Dosen Pembina</span>
+                  <span className="font-semibold text-slate-800">Verifikator: Ketua Program Studi (Kaprodi)</span>
                   <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-800">
-                    {pendingPembina} Menunggu
+                    {pendingApprovals} Menunggu
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-500 leading-relaxed">
-                  Memeriksa kesesuaian anggaran, substansi kegiatan, dan kesiapan berkas proposal/LPJ.
-                </p>
-              </div>
-
-              <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-3 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-slate-800">Tahap 2: Ketua Program Studi</span>
-                  <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
-                    {pendingKaprodi} Menunggu
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500 leading-relaxed">
-                  Pengesahan persetujuan akhir prodi dan rekomendasi pencairan dana anggaran.
+                  Memeriksa kelayakan kegiatan, rincian anggaran terstruktur, pagu dana prodi, dan pengesahan LPJ resmi.
                 </p>
               </div>
 

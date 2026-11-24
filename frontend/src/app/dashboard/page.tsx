@@ -352,7 +352,7 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center gap-1.5 text-xs text-emerald-700 font-medium">
             <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
-            <span>Alur Bertingkat Pembina &amp; Kaprodi</span>
+            <span>Persetujuan &amp; Pengesahan Kaprodi</span>
           </div>
         </Link>
 
@@ -576,7 +576,7 @@ export default function DashboardPage() {
             </div>
             <p className="text-xs text-slate-600 leading-relaxed">
               SIMPRO mengimplementasikan proteksi ketat tingkat baris: Admin Prodi diblokir dari Modul 3 Pelanggaran (FR-12, NF-03),
-              penghapusan data sanksi secara permanen saat status mahasiswa tidak aktif (UU PDP, NF-05), dan validasi dua tahap dosen pembina–kaprodi pada proker himpunan.
+              penghapusan data sanksi secara permanen saat status mahasiswa tidak aktif (UU PDP, NF-05), dan validasi serta pengesahan proker himpunan terpadu oleh Kaprodi.
             </p>
           </div>
         </div>

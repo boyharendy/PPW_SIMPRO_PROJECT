@@ -24,13 +24,12 @@ export const ROLE_LABELS: Record<Role, string> = {
   DOSEN: 'Dosen',
   DOSEN_VERIFIKATOR: 'Dosen Verifikator',
   DOSEN_WALI: 'Dosen Wali',
-  DOSEN_PEMBINA: 'Dosen Pembina Himpunan / UKM',
+  DOSEN_PEMBINA: 'Dosen Pembina UKM',
   KETUA_KELAS: 'Ketua Kelas',
   MAHASISWA: 'Mahasiswa',
   PENGURUS_HIMPUNAN: 'Pengurus Himpunan',
   DOSEN_PENCATAT_PELANGGARAN: 'Dosen Pencatat Pelanggaran',
   DOSEN_PEMBINA_UKM: 'Dosen Pembina UKM',
-  DOSEN_PEMBINA_HIMPUNAN: 'Dosen Pembina Himpunan',
   HIMPUNAN: 'Pengurus Himpunan',
 };
 

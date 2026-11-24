@@ -58,7 +58,6 @@ export const ROLE_TO_MOCK_PROFILE: Record<Role, { id: string; nama_lengkap: stri
   DOSEN_PEMBINA: { id: 'u-dosen1', nama_lengkap: 'Dr. Eng. Hendra Wijaya, M.Sc.', email: 'hendra.wijaya@univ.ac.id' },
   DOSEN_PENCATAT_PELANGGARAN: { id: 'u-dosen1', nama_lengkap: 'Dr. Eng. Hendra Wijaya, M.Sc.', email: 'hendra.wijaya@univ.ac.id' },
   DOSEN_PEMBINA_UKM: { id: 'u-dosen1', nama_lengkap: 'Dr. Eng. Hendra Wijaya, M.Sc.', email: 'hendra.wijaya@univ.ac.id' },
-  DOSEN_PEMBINA_HIMPUNAN: { id: 'u-dosen1', nama_lengkap: 'Dr. Eng. Hendra Wijaya, M.Sc.', email: 'hendra.wijaya@univ.ac.id' },
   KETUA_KELAS: { id: 'u-mhs1', nama_lengkap: 'Muhammad Rizky Pratama', email: 'rizky.mhs@student.univ.ac.id' },
   MAHASISWA: { id: 'u-mhs1', nama_lengkap: 'Muhammad Rizky Pratama', email: 'rizky.mhs@student.univ.ac.id' },
   PENGURUS_HIMPUNAN: { id: 'u-mhs1', nama_lengkap: 'Muhammad Rizky Pratama', email: 'rizky.mhs@student.univ.ac.id' },

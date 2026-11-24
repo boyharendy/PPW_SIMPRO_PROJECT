@@ -101,7 +101,7 @@ export default function HimpunanAnalisisPage() {
     setReports(updated);
     setIsEditing(false);
     setIsPublished(true);
-    setToastMessage('Ringkasan evaluasi kegiatan resmi berhasil disimpan dan diterbitkan oleh Dosen Pembina.');
+    setToastMessage('Ringkasan evaluasi kegiatan resmi berhasil disimpan dan diterbitkan oleh Kaprodi.');
     setTimeout(() => setToastMessage(null), 5000);
   };
 
@@ -109,7 +109,7 @@ export default function HimpunanAnalisisPage() {
   const handleSaveTenureNarrative = () => {
     setIsEditingTenure(false);
     setIsTenurePublished(true);
-    setToastMessage('Laporan Evaluasi Periode Kepengurusan resmi disahkan & diterbitkan oleh Dosen Pembina.');
+    setToastMessage('Laporan Evaluasi Periode Kepengurusan resmi disahkan & diterbitkan oleh Kaprodi.');
     setTimeout(() => setToastMessage(null), 5000);
   };
 
@@ -140,7 +140,7 @@ export default function HimpunanAnalisisPage() {
     <div className="space-y-6">
       <PageHeader
         title="Pusat Analisis Deviasi &amp; Pelaporan Mutu Himpunan"
-        description="Sistem secara otomatis mengolah Laporan per Kegiatan setelah LPJ disahkan Kaprodi, dan Laporan Periode pada akhir masa kepengurusan. Dosen Pembina dapat menyunting serta menerbitkan ringkasan naratif resmi, sementara Kaprodi memantau kepatuhan deviasi."
+        description="Sistem secara otomatis mengolah Laporan per Kegiatan setelah LPJ disahkan Kaprodi, dan Laporan Periode pada akhir masa kepengurusan. Kaprodi dapat menyunting serta menerbitkan ringkasan naratif resmi serta memantau kepatuhan deviasi proker."
         actions={
           <div className="flex items-center gap-2">
             <button
@@ -196,7 +196,7 @@ export default function HimpunanAnalisisPage() {
         <StatCard
           title="Status Laporan Resmi"
           value={viewTab === 'KEGIATAN' ? (isPublished ? 'Terbit' : 'Draf Sistem') : (isTenurePublished ? 'Terbit Sah' : 'Draf Periode')}
-          subtitle="Tinjauan Dosen Pembina"
+          subtitle="Tinjauan &amp; Pengesahan Kaprodi"
           icon={<ShieldCheck size={18} />}
         />
       </div>
@@ -519,7 +519,7 @@ export default function HimpunanAnalisisPage() {
                   </h3>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Dihasilkan otomatis oleh sistem sebagai draf, mencantumkan sumber data, dan dapat disunting oleh dosen pembina sebelum diterbitkan.
+                  Dihasilkan otomatis oleh sistem sebagai draf, mencantumkan sumber data, dan dapat disunting oleh Kaprodi sebelum diterbitkan.
                 </p>
               </div>
 
@@ -580,8 +580,8 @@ export default function HimpunanAnalisisPage() {
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-[11px] text-slate-400 italic">
                     {isPublished
-                      ? 'Ringkasan naratif telah disahkan dan disunting oleh Dosen Pembina Himpunan.'
-                      : 'Draf otomatis sistem. Dosen Pembina dapat menyunting teks sebelum penerbitan resmi.'}
+                      ? 'Ringkasan naratif telah disahkan dan disunting oleh Kaprodi.'
+                      : 'Draf otomatis sistem. Kaprodi dapat menyunting teks sebelum penerbitan resmi.'}
                   </span>
                   <button
                     onClick={() => setIsEditing(true)}
@@ -744,7 +744,7 @@ export default function HimpunanAnalisisPage() {
                   </h3>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Sistem SIMPRO menyusun draf ringkasan naratif secara otomatis. Dosen Pembina menyunting dan menerbitkan laporan resmi.
+                  Sistem SIMPRO menyusun draf ringkasan naratif secara otomatis. Kaprodi menyunting dan menerbitkan laporan resmi.
                 </p>
               </div>
 
@@ -805,8 +805,8 @@ export default function HimpunanAnalisisPage() {
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-[11px] text-slate-400 italic">
                     {isTenurePublished
-                      ? 'Laporan evaluasi periode resmi telah disahkan oleh Dosen Pembina Himpunan dan diarsipkan untuk akreditasi prodi.'
-                      : 'Draf otomatis disusun oleh sistem. Dosen Pembina dapat menyunting teks sebelum penerbitan resmi.'}
+                      ? 'Laporan evaluasi periode resmi telah disahkan oleh Kaprodi dan diarsipkan untuk akreditasi prodi.'
+                      : 'Draf otomatis disusun oleh sistem. Kaprodi dapat menyunting teks sebelum penerbitan resmi.'}
                   </span>
                   <button
                     onClick={() => setIsEditingTenure(true)}

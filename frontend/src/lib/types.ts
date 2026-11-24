@@ -17,7 +17,6 @@ export type Role =
   // Sub-peran spesifik penugasan
   | 'DOSEN_PENCATAT_PELANGGARAN'
   | 'DOSEN_PEMBINA_UKM'
-  | 'DOSEN_PEMBINA_HIMPUNAN'
   // Alias kompatibilitas
   | 'HIMPUNAN';
 
