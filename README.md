@@ -6,21 +6,22 @@ SIMPRO (Sistem Informasi Manajemen Program Studi) adalah aplikasi web internal u
 
 ### Pengembangan lokal tanpa login
 
-Dari direktori proyek, siapkan frontend dengan Node.js dan npm. Perintah PowerShell berikut memakai konfigurasi contoh jika belum ada konfigurasi lokal.
+Setelah `git pull`, jalankan perintah berikut dari direktori proyek. Jika frontend sedang berjalan, hentikan dulu dengan `Ctrl+C` agar proses baru memuat konfigurasi terbaru.
 
 ```powershell
 npm install
-if (!(Test-Path frontend/.env.local)) { Copy-Item frontend/.env.example frontend/.env.local }
 npm run dev
 ```
 
-Pastikan `NEXT_PUBLIC_DEV_SKIP_LOGIN=true` di `frontend/.env.local`. Buka [dashboard lokal](http://localhost:3000/dashboard). Dashboard langsung menampilkan peran Kaprodi, termasuk saat API Go mati. Anda dapat mengganti peran melalui menu dashboard. Pilihan tersimpan saat tab yang sama dimuat ulang.
+Buka [dashboard lokal](http://localhost:3000/dashboard). Dashboard langsung menampilkan peran Kaprodi, termasuk saat API Go mati. Anda dapat mengganti peran melalui menu dashboard. Pilihan tersimpan saat tab yang sama dimuat ulang.
+
+Konfigurasi tim tersimpan di `frontend/.env.development` dan otomatis dimuat oleh `npm run dev`. Jika login masih muncul di localhost, periksa apakah `NEXT_PUBLIC_DEV_SKIP_LOGIN=false` pernah disetel di terminal, `frontend/.env.development.local`, atau `frontend/.env.local`. Hapus pengaturan tersebut dan jalankan ulang frontend untuk memakai konfigurasi tim.
 
 Mode ini berlaku saat menjalankan `next dev` melalui `localhost`, `127.0.0.1`, atau `[::1]`. Halaman dengan data contoh dapat digunakan secara lokal. Operasi yang membaca atau menyimpan data melalui endpoint terproteksi memerlukan API aktif dan sesi login. Build produksi selalu menggunakan autentikasi.
 
 ### Mengaktifkan kembali login untuk pengujian
 
-1. Ubah `NEXT_PUBLIC_DEV_SKIP_LOGIN=true` menjadi `NEXT_PUBLIC_DEV_SKIP_LOGIN=false` di `frontend/.env.local`.
+1. Tambahkan atau ubah baris `NEXT_PUBLIC_DEV_SKIP_LOGIN=false` di `frontend/.env.local`. Buat file tersebut jika belum ada.
 2. Siapkan Go 1.25 atau lebih baru. Dari root proyek, jalankan API di terminal terpisah.
 
    ```powershell
@@ -32,7 +33,7 @@ Mode ini berlaku saat menjalankan `next dev` melalui `localhost`, `127.0.0.1`, a
 
 3. Hentikan frontend dengan `Ctrl+C`, lalu jalankan kembali `npm run dev`. Buka dashboard di jendela privat baru untuk melihat formulir login dan masuk dengan [akun demo lokal](backend/README.md#akun-demo-lokal).
 
-Untuk kembali mengembangkan tampilan tanpa login, ubah nilainya menjadi `true` dan jalankan ulang frontend.
+Untuk kembali memakai konfigurasi tim, hapus baris `NEXT_PUBLIC_DEV_SKIP_LOGIN` dari `frontend/.env.local` dan jalankan ulang frontend.
 
 ## Perintah Tersedia
 
