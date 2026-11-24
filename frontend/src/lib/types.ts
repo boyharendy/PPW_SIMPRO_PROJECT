@@ -1075,11 +1075,26 @@ export interface StudentCertificate {
   tanggal_kedaluwarsa?: string;
   is_seumur_hidup: boolean;
   berkas_url: string;
-  status: 'MENUNGGU' | 'TERVERIFIKASI' | 'DITOLAK';
+  berkas_nama?: string;
+  berkas_ukuran?: number;
+  status: 'DRAF' | 'MENUNGGU' | 'TERVERIFIKASI' | 'DITOLAK';
   alasan_penolakan?: string;
+  catatan_perbaikan?: string;
   diverifikasi_oleh?: string;
   diverifikasi_at?: string;
   is_kedaluwarsa: boolean;
   is_segera_kedaluwarsa: boolean;
+  notifikasi_kedaluwarsa_terkirim?: boolean;
   created_at: string;
+  updated_at?: string;
+}
+
+export interface CertificateBatchStat {
+  angkatan: number;
+  total_mahasiswa: number;
+  mahasiswa_memiliki_sertifikat: number;
+  total_sertifikat_terverifikasi: number;
+  sertifikat_bahasa: number;
+  sertifikat_profesi: number;
+  persentase_kepemilikan: number;
 }
