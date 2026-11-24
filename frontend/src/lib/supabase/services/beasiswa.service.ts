@@ -213,14 +213,14 @@ export const supabaseBeasiswa = {
 
     const { data, error } = await q;
     if (error) throw error;
-    const rows = data ?? [];
+    const rows = (data ?? []) as any[];
     const total = rows.length;
-    const terpenuhi = rows.filter(r => r.status === 'SELESAI').length;
-    const berisiko = rows.filter(r => r.is_berisiko).length;
-    const aktif = rows.filter(r => r.status === 'AKTIF').length;
+    const terpenuhi = rows.filter((r: any) => r.status === 'SELESAI').length;
+    const berisiko = rows.filter((r: any) => r.is_berisiko).length;
+    const aktif = rows.filter((r: any) => r.status === 'AKTIF').length;
     const avgPemenuhan = total > 0
       ? Math.round(
-          rows.reduce((acc, r) => acc + Math.min(100, Math.round((r.jam_terverifikasi / r.kewajiban_jam) * 100)), 0)
+          rows.reduce((acc: number, r: any) => acc + Math.min(100, Math.round((r.jam_terverifikasi / r.kewajiban_jam) * 100)), 0)
           / total
         )
       : 0;

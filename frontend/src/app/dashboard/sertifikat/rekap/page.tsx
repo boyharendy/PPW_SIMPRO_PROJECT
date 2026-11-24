@@ -269,28 +269,28 @@ export default function RekapSertifikatPage() {
           title="Sertifikat Terverifikasi"
           value={`${verifiedCerts.length} Berkas`}
           subtitle="Tervalidasi dosen verifikator"
-          badgeTone="blue"
+          color="blue"
           icon={<CheckCircle2 size={16} />}
         />
         <StatCard
           title="Sertifikasi Bahasa"
           value={`${bahasaCerts.length} Berkas`}
           subtitle="TOEFL, IELTS, TOEIC, JLPT"
-          badgeTone="indigo"
+          color="blue"
           icon={<FileBadge size={16} />}
         />
         <StatCard
           title="Sertifikasi Profesi"
           value={`${profesiCerts.length} Berkas`}
           subtitle="BNSP, Cloud & Industri"
-          badgeTone="emerald"
+          color="emerald"
           icon={<Award size={16} />}
         />
         <StatCard
           title="Segera Kedaluwarsa"
           value={`${expiringCount} Berkas`}
           subtitle="Perlu perpanjangan (< 30 hari)"
-          badgeTone="amber"
+          color="amber"
           icon={<Clock size={16} />}
         />
       </div>
