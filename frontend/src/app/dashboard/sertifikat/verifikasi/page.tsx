@@ -252,21 +252,21 @@ export default function VerifikasiSertifikatPage() {
           title="Menunggu Tindakan"
           value={`${pendingCount} Berkas`}
           subtitle="Perlu diverifikasi oleh dosen"
-          badgeTone="amber"
+          color="amber"
           icon={<Clock size={16} />}
         />
         <StatCard
           title="Telah Disetujui"
           value={`${verifiedCount} Berkas`}
           subtitle="Tervalidasi & masuk rekap resmi"
-          badgeTone="emerald"
+          color="emerald"
           icon={<CheckCircle2 size={16} />}
         />
         <StatCard
           title="Ditolak / Perlu Revisi"
           value={`${rejectedCount} Berkas`}
           subtitle="Dikembalikan untuk diperbaiki"
-          badgeTone="rose"
+          color="rose"
           icon={<XCircle size={16} />}
         />
       </div>
