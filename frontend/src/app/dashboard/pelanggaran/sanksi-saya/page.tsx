@@ -139,15 +139,35 @@ export default function SanksiSayaPage() {
         title="Catat Pelaksanaan Sanksi Sosial (FR-10)"
         description="Mahasiswa yang bersangkutan mencatat pelaksanaan kegiatan sanksi sosial (tanggal, durasi jam, lokasi, uraian aktivitas, dan berkas bukti penanggung jawab)."
         actions={
-          <button
-            onClick={() => setShowModal(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 shadow-xs transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Catat Kegiatan Sanksi Baru</span>
-          </button>
+          remaining <= 0 ? (
+            <div className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 border border-emerald-300 px-3.5 py-2 text-xs font-bold text-emerald-800 shadow-xs">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              <span>Sanksi Selesai (BPMN End Event)</span>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowModal(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 shadow-xs transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Catat Kegiatan Sanksi Baru</span>
+            </button>
+          )
         }
       />
+
+      {/* Completion Banner if remaining <= 0 */}
+      {remaining <= 0 && (
+        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs sm:text-sm flex items-center gap-3 shadow-xs">
+          <CheckCircle2 className="h-6 w-6 text-emerald-600 flex-shrink-0" />
+          <div>
+            <strong className="font-bold">Seluruh Jam Sanksi Sosial Telah Terpenuhi!</strong>
+            <p className="text-xs text-emerald-700 mt-0.5">
+              Sesuai alur BPMN, status sanksi Anda telah otomatis diubah menjadi <strong>SELESAI</strong>. Anda tidak perlu mencatat aktivitas kerja sosial lagi.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Overview Card */}
       <div className="rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50/50 p-6 shadow-xs">

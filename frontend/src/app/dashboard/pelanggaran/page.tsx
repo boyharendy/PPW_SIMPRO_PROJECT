@@ -30,6 +30,11 @@ export default function PelanggaranListPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedViolation, setSelectedViolation] = useState<StudentViolation | null>(null);
 
+  // Filter per FR-12 & NF-03: Mahasiswa hanya dapat melihat data pelanggaran miliknya sendiri
+  const visibleViolations = currentRole === 'MAHASISWA'
+    ? violations.filter((v) => v.mahasiswa_nim === '220101001') // Akun mahasiswa aktif (Budi Darmawan)
+    : violations;
+
   // Form states (FR-09)
   const [nim, setNim] = useState('');
   const [nama, setNama] = useState('');
@@ -41,8 +46,10 @@ export default function PelanggaranListPage() {
   const [uraian, setUraian] = useState('');
   const [dasarKeputusan, setDasarKeputusan] = useState('');
   const [jamSanksi, setJamSanksi] = useState('15');
+  const [dosenVerifikator, setDosenVerifikator] = useState('Dr. Ahmad Fauzi, M.T. (Dosen Wali)');
 
   // Strict Access Restriction Check (FR-12 & NF-03)
+  // Sesuai BPMN Terbaru: Semua dosen yang menangani kasus dapat mencatat pelanggaran langsung
   const isAuthorizedLecturer =
     currentRole === 'KAPRODI' ||
     currentRole === 'DOSEN' ||
@@ -68,12 +75,12 @@ export default function PelanggaranListPage() {
       total_jam_sanksi: totalJam,
       jam_sanksi_terpenuhi: 0,
       status_sanksi: 'BELUM_DIMULAI',
-      dosen_pencatat_id: 'u-kaprodi',
-      dosen_pencatat_nama: 'Dr. Ahmad Fauzi, M.T.',
-      dosen_wali_id: 'u-kaprodi',
+      dosen_pencatat_id: 'u-dosen',
+      dosen_pencatat_nama: 'Dosen Pencatat Kasus',
+      dosen_wali_id: 'u-wali',
       dosen_wali_nama: 'Dr. Ahmad Fauzi, M.T.',
-      dosen_verifikator_id: 'u-kaprodi',
-      dosen_verifikator_nama: 'Dr. Ahmad Fauzi, M.T.',
+      dosen_verifikator_id: 'u-verifikator',
+      dosen_verifikator_nama: dosenVerifikator.replace(/\s*\(.*\)/, ''),
       created_at: new Date().toISOString(),
     };
 
@@ -236,25 +243,25 @@ export default function PelanggaranListPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Kasus Pelanggaran"
-          value={violations.length.toString()}
-          description="Semester Ganjil 2024/2025"
+          value={visibleViolations.length.toString()}
+          description={currentRole === 'MAHASISWA' ? 'Pelanggaran saya' : 'Semester Ganjil 2024/2025'}
           icon="ShieldAlert"
         />
         <StatCard
           title="Sanksi Sedang Berjalan"
-          value={violations.filter((v) => v.status_sanksi === 'DALAM_PROSES').length.toString()}
+          value={visibleViolations.filter((v) => v.status_sanksi === 'DALAM_PROSES').length.toString()}
           description="Mahasiswa menjalankan jam sanksi"
           icon="Clock"
         />
         <StatCard
           title="Sanksi Tuntas (Selesai)"
-          value={violations.filter((v) => v.status_sanksi === 'SELESAI').length.toString()}
+          value={visibleViolations.filter((v) => v.status_sanksi === 'SELESAI').length.toString()}
           description="Seluruh jam sanksi terpenuhi"
           icon="CheckCircle2"
         />
         <StatCard
           title="Tingkat Berat / BA Resmi"
-          value={violations.filter((v) => v.tingkat === 'BERAT').length.toString()}
+          value={visibleViolations.filter((v) => v.tingkat === 'BERAT').length.toString()}
           description="Tercatat dalam SK Rektor/Dekan"
           icon="AlertTriangle"
         />
@@ -262,9 +269,18 @@ export default function PelanggaranListPage() {
 
       {/* Table */}
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
-        <h3 className="text-sm font-bold text-slate-900">Daftar Pelanggaran & Status Jam Sanksi Sosial</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-slate-900">
+            {currentRole === 'MAHASISWA' ? 'Daftar Pelanggaran Terdaftar Atas Nama Saya (FR-12)' : 'Daftar Pelanggaran & Status Jam Sanksi Sosial'}
+          </h3>
+          {currentRole === 'MAHASISWA' && (
+            <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full">
+              Privasi Terjaga: Hanya data Anda yang ditampilkan
+            </span>
+          )}
+        </div>
         <DataTable
-          data={violations}
+          data={visibleViolations}
           columns={columns}
           searchPlaceholder="Cari kasus, nomor BA, atau mahasiswa..."
           searchKey="judul_kasus"
@@ -360,6 +376,20 @@ export default function PelanggaranListPage() {
                 <option value="BERAT">Berat (Sanksi Sosial & Peringatan Tertulis)</option>
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Dosen Verifikator Sanksi (BPMN: Default Dosen Wali) *</label>
+            <select
+              value={dosenVerifikator}
+              onChange={(e) => setDosenVerifikator(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 p-2 text-xs"
+            >
+              <option value="Dr. Ahmad Fauzi, M.T. (Dosen Wali)">Dr. Ahmad Fauzi, M.T. (Dosen Wali Mahasiswa - Default)</option>
+              <option value="Dr. Hendra Wijaya, M.Kom.">Dr. Hendra Wijaya, M.Kom. (Dosen Verifikator Khusus)</option>
+              <option value="Prof. Dr. Ir. Siti Nurhaliza, M.Sc.">Prof. Dr. Ir. Siti Nurhaliza, M.Sc. (Kaprodi)</option>
+            </select>
+            <p className="text-[11px] text-slate-500 mt-1">Sistem otomatis menetapkan verifikator dan mengirimkan notifikasi penugasan verifikasi sanksi.</p>
           </div>
 
           <div>

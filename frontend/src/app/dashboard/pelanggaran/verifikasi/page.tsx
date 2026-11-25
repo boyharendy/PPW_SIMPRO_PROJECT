@@ -49,9 +49,9 @@ export default function VerifikasiSanksiPage() {
     );
 
     if (isApprove) {
-      setToastMessage(`Entri sanksi sosial ${selectedLog.durasi_jam} jam atas nama ${selectedLog.mahasiswa_nama} berhasil diverifikasi! Sisa jam sanksi otomatis berkurang.`);
+      setToastMessage(`Entri sanksi sosial (${selectedLog.durasi_jam} jam) atas nama ${selectedLog.mahasiswa_nama} berhasil diverifikasi. Sistem otomatis menghitung akumulasi jam sanksi terverifikasi & sisa jam sanksi (BPMN Service Task).`);
     } else {
-      setToastMessage(`Entri sanksi sosial ditolak dengan catatan.`);
+      setToastMessage(`Entri sanksi sosial ditolak dengan catatan. Sistem otomatis mengirimkan notifikasi ke mahasiswa dan jam tidak dihitung (BPMN End Event).`);
     }
 
     setTimeout(() => setToastMessage(null), 5000);
