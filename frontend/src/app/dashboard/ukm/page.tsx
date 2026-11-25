@@ -23,16 +23,19 @@ import {
   PieChart,
   UserCheck,
   Eye,
+  Pencil,
+  ShieldCheck,
 } from 'lucide-react';
 
 export default function UkmListPage() {
   const { currentRole } = useUser();
   const [ukms, setUkms] = useState<UkmDirectory[]>(mockUkmDirectories);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingUkm, setEditingUkm] = useState<UkmDirectory | null>(null);
   const [selectedUkm, setSelectedUkm] = useState<UkmDirectory | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
-  // Form states (FR-14)
+  // Form states (FR-14: Input atau ubah data direktori UKM)
   const [nama, setNama] = useState('');
   const [kode, setKode] = useState('');
   const [kategori, setKategori] = useState<UkmCategory>('PENALARAN');
@@ -44,40 +47,96 @@ export default function UkmListPage() {
   const [instagram, setInstagram] = useState('');
   const [jadwal, setJadwal] = useState('');
   const [deskripsi, setDeskripsi] = useState('');
+  const [statusAktif, setStatusAktif] = useState<'AKTIF' | 'NONAKTIF'>('AKTIF');
 
   const filteredUkms = ukms.filter((u) => {
     return selectedCategory === 'ALL' || u.kategori === selectedCategory;
   });
 
-  const handleAddUkm = () => {
-    if (!nama || !ketuaNama) return;
-
-    const newUkm: UkmDirectory = {
-      id: `ukm-${Date.now()}`,
-      kode_ukm: kode || `UKM-${kategori.substring(0, 3)}-${Date.now().toString().slice(-2)}`,
-      nama_ukm: nama,
-      kategori,
-      dosen_pembina_id: 'u-kaprodi',
-      dosen_pembina_nama: pembina,
-      ketua_nim: ketuaNim || '220101001',
-      ketua_nama: ketuaNama,
-      kontak_email: email || `${nama.toLowerCase().replace(/\s+/g, '')}@univ.ac.id`,
-      kontak_telepon: telepon || '081234567890',
-      kontak_instagram: instagram || `@${nama.toLowerCase().replace(/\s+/g, '')}`,
-      deskripsi: deskripsi || 'Unit kegiatan mahasiswa aktif binaan program studi.',
-      jadwal_rutin: jadwal || 'Setiap akhir pekan di kampus',
-      status_aktif: 'AKTIF',
-      jumlah_anggota_aktif: 1,
-      created_at: new Date().toISOString(),
-    };
-
-    setUkms([newUkm, ...ukms]);
-    setShowAddModal(false);
+  const handleOpenAdd = () => {
+    setEditingUkm(null);
     setNama('');
     setKode('');
+    setKategori('PENALARAN');
+    setPembina('Dr. Ahmad Fauzi, M.T.');
     setKetuaNim('');
     setKetuaNama('');
+    setEmail('');
+    setTelepon('');
+    setInstagram('');
+    setJadwal('');
     setDeskripsi('');
+    setStatusAktif('AKTIF');
+    setShowAddModal(true);
+  };
+
+  const handleOpenEdit = (ukm: UkmDirectory) => {
+    setEditingUkm(ukm);
+    setNama(ukm.nama_ukm);
+    setKode(ukm.kode_ukm);
+    setKategori(ukm.kategori);
+    setPembina(ukm.dosen_pembina_nama);
+    setKetuaNim(ukm.ketua_nim);
+    setKetuaNama(ukm.ketua_nama);
+    setEmail(ukm.kontak_email);
+    setTelepon(ukm.kontak_telepon);
+    setInstagram(ukm.kontak_instagram || '');
+    setJadwal(ukm.jadwal_rutin);
+    setDeskripsi(ukm.deskripsi);
+    setStatusAktif(ukm.status_aktif);
+    setShowAddModal(true);
+  };
+
+  const handleSaveUkm = () => {
+    if (!nama || !ketuaNama) return;
+
+    if (editingUkm) {
+      // Ubah data direktori UKM (FR-14)
+      setUkms(
+        ukms.map((u) =>
+          u.id === editingUkm.id
+            ? {
+                ...u,
+                nama_ukm: nama,
+                kode_ukm: kode || u.kode_ukm,
+                kategori,
+                dosen_pembina_nama: pembina,
+                ketua_nim: ketuaNim,
+                ketua_nama: ketuaNama,
+                kontak_email: email,
+                kontak_telepon: telepon,
+                kontak_instagram: instagram,
+                deskripsi,
+                jadwal_rutin: jadwal,
+                status_aktif: statusAktif,
+              }
+            : u
+        )
+      );
+    } else {
+      // Input data direktori UKM baru (FR-14)
+      const newUkm: UkmDirectory = {
+        id: `ukm-${Date.now()}`,
+        kode_ukm: kode || `UKM-${kategori.substring(0, 3)}-${Date.now().toString().slice(-2)}`,
+        nama_ukm: nama,
+        kategori,
+        dosen_pembina_id: 'u-kaprodi',
+        dosen_pembina_nama: pembina,
+        ketua_nim: ketuaNim || '220101001',
+        ketua_nama: ketuaNama,
+        kontak_email: email || `${nama.toLowerCase().replace(/\s+/g, '')}@univ.ac.id`,
+        kontak_telepon: telepon || '081234567890',
+        kontak_instagram: instagram || `@${nama.toLowerCase().replace(/\s+/g, '')}`,
+        deskripsi: deskripsi || 'Unit kegiatan mahasiswa aktif binaan program studi.',
+        jadwal_rutin: jadwal || 'Setiap akhir pekan di kampus',
+        status_aktif: statusAktif,
+        jumlah_anggota_aktif: 1,
+        created_at: new Date().toISOString(),
+      };
+      setUkms([newUkm, ...ukms]);
+    }
+
+    setShowAddModal(false);
   };
 
   const columns = [
@@ -135,13 +194,25 @@ export default function UkmListPage() {
       key: 'aksi',
       header: 'Aksi',
       render: (row: UkmDirectory) => (
-        <button
-          onClick={() => setSelectedUkm(row)}
-          className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1"
-        >
-          <Eye className="h-3.5 w-3.5" />
-          <span>Profil</span>
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setSelectedUkm(row)}
+            className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1"
+          >
+            <Eye className="h-3.5 w-3.5" />
+            <span>Profil</span>
+          </button>
+          {(currentRole === 'ADMIN_PRODI' || currentRole === 'DOSEN_PEMBINA' || currentRole === 'KAPRODI') && (
+            <button
+              onClick={() => handleOpenEdit(row)}
+              className="p-1.5 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 text-xs font-semibold flex items-center gap-1"
+              title="Ubah Data Direktori UKM (FR-14)"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              <span>Ubah</span>
+            </button>
+          )}
+        </div>
       ),
     },
   ];
@@ -169,7 +240,7 @@ export default function UkmListPage() {
             </Link>
             {(currentRole === 'ADMIN_PRODI' || currentRole === 'DOSEN_PEMBINA' || currentRole === 'KAPRODI') && (
               <button
-                onClick={() => setShowAddModal(true)}
+                onClick={handleOpenAdd}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 shadow-xs transition-colors"
               >
                 <Plus className="h-4 w-4" />
@@ -239,15 +310,15 @@ export default function UkmListPage() {
         />
       </div>
 
-      {/* MODAL: Tambah UKM Baru (FR-14) */}
+      {/* MODAL: Tambah / Ubah UKM (FR-14) */}
       <Modal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
-        title="Registrasi Direktori UKM Baru (FR-14)"
+        title={editingUkm ? 'Ubah Data Direktori UKM (FR-14)' : 'Registrasi Direktori UKM Baru (FR-14)'}
       >
         <div className="space-y-4 text-xs sm:text-sm">
           <p className="text-slate-600 text-xs">
-            Admin Prodi atau Dosen Pembina menambahkan entitas UKM resmi program studi beserta informasi kepengurusan dan kontaknya.
+            Admin Prodi atau Dosen Pembina menginput atau memperbarui data direktori UKM, pembina, ketua, kontak, dan status keaktifan resmi di program studi.
           </p>
 
           <div className="grid grid-cols-2 gap-3">
@@ -273,7 +344,7 @@ export default function UkmListPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Kategori UKM *</label>
               <select
@@ -296,6 +367,17 @@ export default function UkmListPage() {
                 onChange={(e) => setPembina(e.target.value)}
                 className="w-full rounded-lg border border-slate-300 p-2 text-xs"
               />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Status Keaktifan *</label>
+              <select
+                value={statusAktif}
+                onChange={(e) => setStatusAktif(e.target.value as 'AKTIF' | 'NONAKTIF')}
+                className="w-full rounded-lg border border-slate-300 p-2 text-xs"
+              >
+                <option value="AKTIF">AKTIF (Terbuka Pendaftaran)</option>
+                <option value="NONAKTIF">NONAKTIF (Tidak Menerima)</option>
+              </select>
             </div>
           </div>
 
@@ -385,10 +467,10 @@ export default function UkmListPage() {
               Batal
             </button>
             <button
-              onClick={handleAddUkm}
+              onClick={handleSaveUkm}
               className="px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700"
             >
-              Simpan UKM
+              {editingUkm ? 'Simpan Perubahan' : 'Simpan UKM Baru'}
             </button>
           </div>
         </div>
@@ -450,10 +532,19 @@ export default function UkmListPage() {
               )}
             </div>
 
-            <div className="flex justify-end pt-3 border-t border-slate-100">
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+              {selectedUkm.status_aktif === 'AKTIF' && (
+                <Link
+                  href={`/dashboard/ukm/keanggotaan?ukm_id=${selectedUkm.id}`}
+                  className="px-3.5 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 flex items-center gap-1.5 shadow-xs"
+                >
+                  <UserCheck className="h-4 w-4" />
+                  <span>Daftar Jadi Anggota (FR-15)</span>
+                </Link>
+              )}
               <button
                 onClick={() => setSelectedUkm(null)}
-                className="px-4 py-2 rounded-lg bg-slate-800 text-white text-xs font-semibold hover:bg-slate-900"
+                className="px-4 py-2 rounded-lg bg-slate-800 text-white text-xs font-semibold hover:bg-slate-900 ml-auto"
               >
                 Tutup
               </button>

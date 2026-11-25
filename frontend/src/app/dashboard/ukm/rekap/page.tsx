@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
@@ -20,9 +20,13 @@ import {
   Compass,
   Trophy,
   CheckCircle2,
+  FileText,
+  Calendar,
 } from 'lucide-react';
 
 export default function RekapUkmPage() {
+  const [exportMessage, setExportMessage] = useState<string | null>(null);
+  const [academicYear, setAcademicYear] = useState('2024/2025 - Ganjil');
   const stats = mockUkmParticipationStats;
   const ukms = mockUkmDirectories;
   const verifiedMembers = mockUkmMemberships.filter((m) => m.status === 'TERVERIFIKASI');
@@ -31,8 +35,14 @@ export default function RekapUkmPage() {
   const totalAktifAll = stats.reduce((acc, s) => acc + s.mahasiswa_aktif_ukm, 0);
   const aggregatePercent = Math.round((totalAktifAll / totalMhsAll) * 100);
 
-  const handleExport = () => {
-    alert('Rekapitulasi Partisipasi Mahasiswa pada UKM berhasil diekspor ke Excel (.xlsx)!');
+  const handleExportExcel = () => {
+    setExportMessage('Rekapitulasi Partisipasi Mahasiswa pada UKM berhasil diekspor ke format Excel (.xlsx)!');
+    setTimeout(() => setExportMessage(null), 5000);
+  };
+
+  const handleExportPdf = () => {
+    setExportMessage('Laporan Rekapitulasi Partisipasi Mahasiswa pada UKM berhasil diekspor ke format PDF (.pdf)!');
+    setTimeout(() => setExportMessage(null), 5000);
   };
 
   const columns = [
@@ -92,17 +102,58 @@ export default function RekapUkmPage() {
 
       <PageHeader
         title="Rekap Partisipasi Mahasiswa di UKM (FR-16)"
-        description="Sistem menampilkan rekapitulasi anggota terverifikasi per UKM serta rasio dan persentase keterlibatan mahasiswa prodi yang aktif di UKM per angkatan dan per tahun akademik."
+        description="Sistem menampilkan rekapitulasi anggota terverifikasi per UKM serta rasio dan persentase keterlibatan mahasiswa prodi yang aktif di UKM per angkatan dan per tahun akademik (sinkronisasi data induk SIAKAD)."
         actions={
-          <button
-            onClick={handleExport}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs"
-          >
-            <FileDown className="h-4 w-4 text-emerald-600" />
-            <span>Ekspor Rekap Excel</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExportExcel}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs transition-colors"
+              title="Ekspor ke format Spreadsheet Microsoft Excel"
+            >
+              <FileDown className="h-4 w-4 text-emerald-600" />
+              <span>Ekspor Excel</span>
+            </button>
+            <button
+              onClick={handleExportPdf}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-rose-700 shadow-xs transition-colors"
+              title="Ekspor Laporan Cetak PDF (BPMN Diagram 3)"
+            >
+              <FileText className="h-4 w-4" />
+              <span>Ekspor PDF</span>
+            </button>
+          </div>
         }
       />
+
+      {exportMessage && (
+        <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs sm:text-sm flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+            <span>{exportMessage}</span>
+          </div>
+          <button onClick={() => setExportMessage(null)} className="text-emerald-700 font-bold ml-2">×</button>
+        </div>
+      )}
+
+      {/* Filter Tahun Akademik (FR-16) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-blue-600" />
+          <span className="font-bold text-slate-700">Tahun Akademik:</span>
+          <select
+            value={academicYear}
+            onChange={(e) => setAcademicYear(e.target.value)}
+            className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold"
+          >
+            <option value="2024/2025 - Ganjil">2024/2025 - Ganjil (Aktif)</option>
+            <option value="2023/2024 - Genap">2023/2024 - Genap</option>
+            <option value="2023/2024 - Ganjil">2023/2024 - Ganjil</option>
+          </select>
+        </div>
+        <span className="text-slate-500 font-medium">
+          Data Induk Mahasiswa Terhubung dengan SIAKAD (NF-10, NF-12)
+        </span>
+      </div>
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
