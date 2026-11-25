@@ -1,10 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useApp } from '@/lib/context';
-import { animate, remove } from 'animejs';
+import { gsap } from 'gsap';
+import { animate, remove, stagger } from 'animejs';
+import { animate as motionAnimate } from 'motion';
+import Lenis from 'lenis';
 import { NAV_ITEMS, isRoleAuthorized } from '@/lib/navigation';
 import type { Role, NavItem, BusinessTrip, Complaint, RpsSubmission, Publication } from '@/lib/types';
 import { storageSync, STORAGE_KEYS } from '@/lib/storage-sync';
@@ -231,71 +234,232 @@ export default function Sidebar() {
   };
 
   const isFirstRender = useRef(true);
+  const isFirstActiveEffect = useRef(true);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const navRef = useRef<HTMLElement>(null);
+  const navContentRef = useRef<HTMLDivElement>(null);
 
-  // Synchronized Anime.js transition for core navigation features & text containers
+  const prefersReducedMotion = useCallback(() => {
+    return (
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    );
+  }, []);
+
+  const canHoverPointer = useCallback(() => {
+    return (
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(hover: hover) and (pointer: fine)').matches
+    );
+  }, []);
+
+  // Motion tactile spring interactions on hover & press
+  const handleNavHoverStart = useCallback(
+    (el: HTMLElement) => {
+      if (prefersReducedMotion() || !canHoverPointer()) return;
+      if (!isExpanded) {
+        motionAnimate(el, { scale: 1.07 }, { type: 'spring', stiffness: 460, damping: 24 });
+        return;
+      }
+      const iconEl = el.querySelector<HTMLElement>('.simpro-nav-icon');
+      if (iconEl) {
+        motionAnimate(iconEl, { x: 2, scale: 1.06 }, { type: 'spring', stiffness: 460, damping: 26 });
+      }
+    },
+    [isExpanded, prefersReducedMotion, canHoverPointer]
+  );
+
+  const handleNavHoverEnd = useCallback(
+    (el: HTMLElement) => {
+      if (prefersReducedMotion()) return;
+      motionAnimate(el, { scale: 1 }, { type: 'spring', stiffness: 460, damping: 26 });
+      const iconEl = el.querySelector<HTMLElement>('.simpro-nav-icon');
+      if (iconEl) {
+        motionAnimate(iconEl, { x: 0, scale: 1 }, { type: 'spring', stiffness: 460, damping: 26 });
+      }
+    },
+    [prefersReducedMotion]
+  );
+
+  const handleNavPress = useCallback(
+    (el: HTMLElement, pressed: boolean) => {
+      if (prefersReducedMotion()) return;
+      motionAnimate(el, { scale: pressed ? 0.94 : 1 }, { type: 'spring', stiffness: 520, damping: 28 });
+    },
+    [prefersReducedMotion]
+  );
+
+  // Isolated Lenis smooth scrolling inside sidebar navigation rail
+  useEffect(() => {
+    if (prefersReducedMotion()) return;
+    const wrapperEl = navRef.current;
+    const contentEl = navContentRef.current;
+    if (!wrapperEl || !contentEl) return;
+
+    const lenis = new Lenis({
+      wrapper: wrapperEl,
+      content: contentEl,
+      autoRaf: true,
+      smoothWheel: true,
+      lerp: 0.14,
+    });
+
+    let resizeRafId = 0;
+    const resizeObserver =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => {
+            if (resizeRafId) window.cancelAnimationFrame(resizeRafId);
+            resizeRafId = window.requestAnimationFrame(() => {
+              lenis.resize();
+            });
+          })
+        : null;
+
+    resizeObserver?.observe(contentEl);
+
+    return () => {
+      if (resizeRafId) window.cancelAnimationFrame(resizeRafId);
+      resizeObserver?.disconnect();
+      lenis.destroy();
+    };
+  }, [prefersReducedMotion]);
+
+  // Tactile spring settle when active route changes
+  useEffect(() => {
+    if (isFirstActiveEffect.current) {
+      isFirstActiveEffect.current = false;
+      return;
+    }
+    if (prefersReducedMotion() || !sidebarRef.current) return;
+    const activeEl = sidebarRef.current.querySelector<HTMLElement>('[data-nav-active="true"]');
+    if (!activeEl) return;
+    const controls = motionAnimate(
+      activeEl,
+      { scale: [0.94, 1] },
+      { type: 'spring', stiffness: 420, damping: 20 }
+    );
+    return () => {
+      controls.stop();
+    };
+  }, [activeItemHref, prefersReducedMotion]);
+
+  // GSAP choreographed timeline + Anime.js staggered icon cascade on expand/collapse
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
       return;
     }
 
-    if (isExpanded) {
-      remove('.simpro-nav-text-container');
-      remove('.simpro-nav-badge');
-      remove('.simpro-nav-public-block');
+    if (prefersReducedMotion() || !sidebarRef.current) return;
 
-      animate('.simpro-nav-text-container', {
-        maxWidth: [0, 180],
-        opacity: [0, 1],
-        translateX: [-6, 0],
-        duration: 380,
-        delay: 80,
-        ease: 'outCubic',
-      });
+    const rootEl = sidebarRef.current;
+    const iconNodes = rootEl.querySelectorAll('.simpro-nav-icon');
 
-      animate('.simpro-nav-badge', {
-        opacity: [0, 1],
-        scale: [0.7, 1],
-        duration: 250,
-        delay: 180,
-        ease: 'outBack(1.2)',
-      });
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline();
 
-      animate('.simpro-nav-public-block', {
-        maxHeight: [0, 140],
-        opacity: [0, 1],
-        duration: 350,
-        delay: 100,
-        ease: 'outCubic',
-      });
-    } else {
-      remove('.simpro-nav-text-container');
-      remove('.simpro-nav-badge');
-      remove('.simpro-nav-public-block');
+      if (isExpanded) {
+        tl.fromTo(
+          '.simpro-nav-item-shell',
+          { width: 40, marginLeft: 8, paddingRight: 0 },
+          {
+            width: '100%',
+            marginLeft: 0,
+            paddingRight: 12,
+            duration: 0.34,
+            stagger: 0.008,
+            ease: 'expo.out',
+            clearProps: 'width,marginLeft,paddingRight',
+          },
+          0
+        )
+          .fromTo(
+            '.simpro-nav-text-container',
+            { maxWidth: 0, opacity: 0, x: -6 },
+            {
+              maxWidth: 180,
+              opacity: 1,
+              x: 0,
+              duration: 0.34,
+              stagger: 0.012,
+              ease: 'power3.out',
+              clearProps: 'transform',
+            },
+            0.06
+          )
+          .fromTo(
+            '.simpro-nav-badge',
+            { scale: 0.65, opacity: 0 },
+            {
+              scale: 1,
+              opacity: 1,
+              duration: 0.26,
+              ease: 'back.out(1.6)',
+              clearProps: 'transform',
+            },
+            0.16
+          )
+          .fromTo(
+            '.simpro-nav-public-block',
+            { maxHeight: 0, opacity: 0 },
+            {
+              maxHeight: 140,
+              opacity: 1,
+              duration: 0.32,
+              ease: 'power3.out',
+            },
+            0.08
+          );
+      } else {
+        tl.to(
+          '.simpro-nav-text-container',
+          { maxWidth: 0, opacity: 0, x: -6, duration: 0.2, ease: 'power2.in' },
+          0
+        )
+          .to(
+            '.simpro-nav-badge',
+            { scale: 0.6, opacity: 0, duration: 0.15, ease: 'power2.in' },
+            0
+          )
+          .to(
+            '.simpro-nav-public-block',
+            { maxHeight: 0, opacity: 0, duration: 0.2, ease: 'power2.inOut' },
+            0
+          )
+          .fromTo(
+            '.simpro-nav-item-shell',
+            { width: 224, marginLeft: 0, paddingRight: 12 },
+            {
+              width: 40,
+              marginLeft: 8,
+              paddingRight: 0,
+              duration: 0.36,
+              stagger: 0.01,
+              ease: 'expo.out',
+              clearProps: 'width,marginLeft,paddingRight',
+            },
+            0.04
+          );
+      }
+    }, sidebarRef);
 
-      animate('.simpro-nav-text-container', {
-        maxWidth: [180, 0],
-        opacity: [1, 0],
-        translateX: [0, -6],
-        duration: 200,
-        ease: 'outQuad',
-      });
-
-      animate('.simpro-nav-badge', {
-        opacity: [1, 0],
-        scale: [1, 0.7],
-        duration: 150,
-        ease: 'outQuad',
-      });
-
-      animate('.simpro-nav-public-block', {
-        maxHeight: [140, 0],
-        opacity: [1, 0],
-        duration: 200,
-        ease: 'outQuad',
+    if (iconNodes.length > 0) {
+      remove(iconNodes);
+      animate(iconNodes, {
+        scale: [0.86, 1],
+        delay: stagger(16, { start: 40 }),
+        duration: 320,
+        ease: 'outBack(1.4)',
       });
     }
-  }, [isExpanded]);
+
+    return () => {
+      remove(iconNodes);
+      ctx.revert();
+    };
+  }, [isExpanded, prefersReducedMotion]);
 
   return (
     <>
@@ -309,6 +473,7 @@ export default function Sidebar() {
       )}
 
       <aside
+        ref={sidebarRef}
         aria-label="Navigasi Utama"
         className={`
           fixed top-0 left-0 z-50 h-dvh lg:h-screen
@@ -363,7 +528,7 @@ export default function Sidebar() {
                         setActiveRole(role);
                         setMobileRolePickerOpen(false);
                       }}
-                      className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center justify-between ${
+                      className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center justify-between cursor-pointer ${
                         user.activeRole === role
                           ? 'bg-blue-50 text-blue-700 font-semibold'
                           : 'text-slate-600 hover:bg-slate-50'
@@ -380,205 +545,243 @@ export default function Sidebar() {
             </div>
           </div>
 
-          <nav className="flex-1 overflow-y-auto px-3 space-y-1 custom-scrollbar">
-            {categories.map((cat) => {
-              const catItems = visibleItems.filter((i) => (i.category || 'Lainnya') === cat);
-              if (catItems.length === 0) return null;
+          <nav
+            ref={navRef}
+            data-lenis-prevent
+            className={`flex-1 overflow-y-auto px-3 custom-scrollbar ${
+              !isExpanded ? '[&::-webkit-scrollbar]:hidden [scrollbar-width:none]' : ''
+            }`}
+          >
+            <div ref={navContentRef} className="space-y-1 pb-2">
+              {categories.map((cat) => {
+                const catItems = visibleItems.filter((i) => (i.category || 'Lainnya') === cat);
+                if (catItems.length === 0) return null;
 
-              // 1. Dashboard Utama (Standalone direct navigation)
-              if (cat === 'Utama') {
-                const mainItem = catItems[0];
-                const isActive = mainItem.href === activeItemHref;
-                const MainIcon = iconMap[mainItem.icon] || LayoutDashboard;
+                // 1. Dashboard Utama (Standalone direct navigation)
+                if (cat === 'Utama') {
+                  const mainItem = catItems[0];
+                  const isActive = mainItem.href === activeItemHref;
+                  const MainIcon = iconMap[mainItem.icon] || LayoutDashboard;
 
-                return (
-                  <Link
-                    key={mainItem.href}
-                    href={mainItem.href}
-                    onClick={() => {
-                      if (!isDesktop) setMobileSidebarOpen(false);
-                    }}
-                    className={`
-                      group flex items-center px-3 py-2.5 rounded-lg text-sm font-semibold
-                      transition-colors duration-150 mb-1 overflow-hidden
-                      ${isActive
-                        ? 'bg-blue-600 text-white shadow-sm'
-                        : 'text-slate-700 hover:text-blue-600 hover:bg-slate-50'
-                      }
-                    `}
-                    title={!isExpanded ? mainItem.title : undefined}
-                  >
-                    <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
-                      <MainIcon
-                        className={`w-4 h-4 transition-colors ${
-                          isActive ? 'text-white' : 'text-slate-500 group-hover:text-blue-600'
-                        }`}
-                      />
-                    </div>
-                    <div
-                      className="simpro-nav-text-container flex-1 min-w-0 flex items-center justify-between ml-2.5 overflow-hidden whitespace-nowrap"
-                      style={{
-                        maxWidth: isExpanded ? '180px' : '0px',
-                        opacity: isExpanded ? 1 : 0,
+                  return (
+                    <Link
+                      key={mainItem.href}
+                      href={mainItem.href}
+                      data-nav-active={isActive ? 'true' : undefined}
+                      aria-current={isActive ? 'page' : undefined}
+                      aria-label={!isExpanded ? mainItem.title : undefined}
+                      onClick={() => {
+                        if (!isDesktop) setMobileSidebarOpen(false);
                       }}
+                      onMouseEnter={(e) => handleNavHoverStart(e.currentTarget)}
+                      onMouseLeave={(e) => handleNavHoverEnd(e.currentTarget)}
+                      onMouseDown={(e) => handleNavPress(e.currentTarget, true)}
+                      onMouseUp={(e) => handleNavPress(e.currentTarget, false)}
+                      className={`
+                        simpro-nav-item-shell group flex items-center text-sm font-semibold
+                        transition-colors duration-150 mb-1 overflow-hidden cursor-pointer rounded-xl
+                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1
+                        ${isExpanded ? 'w-full min-h-[44px] lg:min-h-0 lg:h-10 pr-3 pl-0' : 'w-10 h-10 mx-auto px-0'}
+                        ${isActive
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'text-slate-700 hover:text-blue-600 hover:bg-slate-50'
+                        }
+                      `}
+                      title={!isExpanded ? mainItem.title : undefined}
                     >
-                      <span className="truncate">{mainItem.title}</span>
-                    </div>
-                  </Link>
-                );
-              }
-
-              // 2. Dropdown Category Accordion
-              const CategoryIcon = categoryIconMap[cat] || Layers;
-              const isCatOpen = !!openCategories[cat];
-              const isChildActive = catItems.some((item) => item.href === activeItemHref);
-              const totalCategoryBadge = catItems.reduce((sum, item) => sum + getItemBadge(item), 0);
-
-              return (
-                <div key={cat} className="space-y-0.5 mb-1">
-                  {/* Category Header Button: Entire row toggles dropdown, does NOT navigate */}
-                  <button
-                    type="button"
-                    onClick={() => toggleCategory(cat)}
-                    className={`
-                      w-full flex items-center px-3 py-2.5 rounded-lg text-sm font-semibold
-                      transition-colors duration-150 text-left cursor-pointer overflow-hidden
-                      ${isChildActive
-                        ? 'text-blue-700 bg-blue-50/70 font-bold'
-                        : 'text-slate-700 hover:text-blue-600 hover:bg-slate-50'
-                      }
-                    `}
-                    title={!isExpanded ? cat : undefined}
-                    aria-expanded={isCatOpen}
-                  >
-                    <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
-                      <CategoryIcon
-                        className={`w-4 h-4 transition-colors ${
-                          isChildActive ? 'text-blue-600' : 'text-slate-500'
-                        }`}
-                      />
-                    </div>
-
-                    <div
-                      className="simpro-nav-text-container flex-1 min-w-0 flex items-center justify-between ml-2.5 overflow-hidden whitespace-nowrap"
-                      style={{
-                        maxWidth: isExpanded ? '180px' : '0px',
-                        opacity: isExpanded ? 1 : 0,
-                      }}
-                    >
-                      <span className="truncate">{cat}</span>
-                      <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
-                        {!isCatOpen && totalCategoryBadge > 0 && (
-                          <span className="simpro-nav-badge bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                            {totalCategoryBadge}
-                          </span>
-                        )}
-                        <ChevronDown
-                          size={15}
-                          className={`text-slate-400 transition-transform duration-200 ${
-                            isCatOpen ? 'rotate-180 text-blue-600' : ''
+                      <div className="simpro-nav-icon w-10 h-10 flex items-center justify-center flex-shrink-0">
+                        <MainIcon
+                          className={`w-[18px] h-[18px] transition-colors ${
+                            isActive ? 'text-white' : 'text-slate-500 group-hover:text-blue-600'
                           }`}
                         />
                       </div>
-                    </div>
-                  </button>
+                      <div
+                        className="simpro-nav-text-container flex-1 min-w-0 flex items-center justify-between overflow-hidden whitespace-nowrap"
+                        style={{
+                          maxWidth: isExpanded ? '180px' : '0px',
+                          opacity: isExpanded ? 1 : 0,
+                        }}
+                      >
+                        <span className="truncate">{mainItem.title}</span>
+                      </div>
+                    </Link>
+                  );
+                }
 
-                  {/* Dropdown Items: Direct vertical list matching Image 2 composition without truncation */}
-                  <AnimatedCollapse open={isExpanded && isCatOpen} duration={220}>
-                    <div className="mt-0.5 mb-1 space-y-0.5 pl-2 pr-0.5 py-0.5">
-                      {catItems.map((item) => {
-                        const Icon = iconMap[item.icon] || LayoutDashboard;
-                        const isExactActive = item.href === activeItemHref;
-                        const itemBadge = getItemBadge(item);
+                // 2. Dropdown Category Accordion
+                const CategoryIcon = categoryIconMap[cat] || Layers;
+                const isCatOpen = !!openCategories[cat];
+                const isChildActive = catItems.some((item) => item.href === activeItemHref);
+                const totalCategoryBadge = catItems.reduce((sum, item) => sum + getItemBadge(item), 0);
 
-                        return (
-                          <Link
-                            key={item.href}
-                            href={item.href}
-                            onClick={() => {
-                              if (!isDesktop) setMobileSidebarOpen(false);
-                            }}
-                            className={`
-                              anime-collapse-item group flex items-center px-2.5 py-2 rounded-lg text-sm font-medium
-                              transition-colors duration-150 cursor-pointer overflow-hidden
-                              ${isExactActive
-                                ? 'bg-blue-600 text-white font-semibold shadow-xs'
-                                : 'text-slate-600 hover:text-blue-600 hover:bg-slate-100/70'
-                              }
-                            `}
-                            title={item.title}
-                          >
-                            <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
-                              <Icon
-                                className={`w-4 h-4 transition-colors ${
-                                  isExactActive ? 'text-white' : 'text-slate-400 group-hover:text-blue-600'
-                                }`}
-                              />
-                            </div>
-                            <div className="flex-1 min-w-0 ml-2.5 flex items-center justify-between overflow-hidden whitespace-nowrap">
-                              <span className="leading-snug text-left truncate flex-1">
-                                {item.title}
-                              </span>
-                              {itemBadge > 0 && (
-                                <span
-                                  className={`ml-1.5 flex-shrink-0 text-xs font-bold px-2 py-0.5 rounded-full ${
-                                    isExactActive ? 'bg-white text-blue-600' : 'bg-red-600 text-white'
+                return (
+                  <div key={cat} className="space-y-0.5 mb-1">
+                    {/* Category Header Button: Entire row toggles dropdown, does NOT navigate */}
+                    <button
+                      type="button"
+                      onClick={() => toggleCategory(cat)}
+                      onMouseEnter={(e) => handleNavHoverStart(e.currentTarget)}
+                      onMouseLeave={(e) => handleNavHoverEnd(e.currentTarget)}
+                      onMouseDown={(e) => handleNavPress(e.currentTarget, true)}
+                      onMouseUp={(e) => handleNavPress(e.currentTarget, false)}
+                      className={`
+                        simpro-nav-item-shell group relative flex items-center text-sm font-semibold
+                        transition-colors duration-150 text-left cursor-pointer overflow-hidden rounded-xl
+                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1
+                        ${isExpanded ? 'w-full min-h-[44px] lg:min-h-0 lg:h-10 pr-3 pl-0' : 'w-10 h-10 mx-auto px-0'}
+                        ${isChildActive
+                          ? 'text-blue-700 bg-blue-50/70 font-bold'
+                          : 'text-slate-700 hover:text-blue-600 hover:bg-slate-50'
+                        }
+                      `}
+                      title={!isExpanded ? cat : undefined}
+                      aria-label={!isExpanded ? cat : undefined}
+                      aria-expanded={isCatOpen}
+                    >
+                      <div className="simpro-nav-icon w-10 h-10 flex items-center justify-center flex-shrink-0">
+                        <CategoryIcon
+                          className={`w-[18px] h-[18px] transition-colors ${
+                            isChildActive ? 'text-blue-600' : 'text-slate-500 group-hover:text-blue-600'
+                          }`}
+                        />
+                      </div>
+
+                      {!isExpanded && totalCategoryBadge > 0 && (
+                        <span
+                          className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white"
+                          aria-hidden="true"
+                        />
+                      )}
+
+                      <div
+                        className="simpro-nav-text-container flex-1 min-w-0 flex items-center justify-between overflow-hidden whitespace-nowrap"
+                        style={{
+                          maxWidth: isExpanded ? '180px' : '0px',
+                          opacity: isExpanded ? 1 : 0,
+                        }}
+                      >
+                        <span className="truncate">{cat}</span>
+                        <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+                          {!isCatOpen && totalCategoryBadge > 0 && (
+                            <span className="simpro-nav-badge bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                              {totalCategoryBadge}
+                            </span>
+                          )}
+                          <ChevronDown
+                            size={15}
+                            className={`text-slate-400 transition-transform duration-200 ${
+                              isCatOpen ? 'rotate-180 text-blue-600' : ''
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Dropdown Items */}
+                    <AnimatedCollapse open={isExpanded && isCatOpen} duration={220}>
+                      <div className="mt-0.5 mb-1 space-y-0.5 pl-2 pr-0.5 py-0.5">
+                        {catItems.map((item) => {
+                          const Icon = iconMap[item.icon] || LayoutDashboard;
+                          const isExactActive = item.href === activeItemHref;
+                          const itemBadge = getItemBadge(item);
+
+                          return (
+                            <Link
+                              key={item.href}
+                              href={item.href}
+                              data-nav-active={isExactActive ? 'true' : undefined}
+                              aria-current={isExactActive ? 'page' : undefined}
+                              onClick={() => {
+                                if (!isDesktop) setMobileSidebarOpen(false);
+                              }}
+                              onMouseEnter={(e) => handleNavHoverStart(e.currentTarget)}
+                              onMouseLeave={(e) => handleNavHoverEnd(e.currentTarget)}
+                              onMouseDown={(e) => handleNavPress(e.currentTarget, true)}
+                              onMouseUp={(e) => handleNavPress(e.currentTarget, false)}
+                              className={`
+                                anime-collapse-item group flex items-center px-2.5 py-2 rounded-lg text-sm font-medium
+                                transition-colors duration-150 cursor-pointer overflow-hidden
+                                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1
+                                ${isExactActive
+                                  ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                                  : 'text-slate-600 hover:text-blue-600 hover:bg-slate-100/70'
+                                }
+                              `}
+                              title={item.title}
+                            >
+                              <div className="simpro-nav-icon w-5 h-5 flex items-center justify-center flex-shrink-0">
+                                <Icon
+                                  className={`w-4 h-4 transition-colors ${
+                                    isExactActive ? 'text-white' : 'text-slate-400 group-hover:text-blue-600'
                                   }`}
-                                >
-                                  {itemBadge}
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0 ml-2.5 flex items-center justify-between overflow-hidden whitespace-nowrap">
+                                <span className="leading-snug text-left truncate flex-1">
+                                  {item.title}
                                 </span>
-                              )}
-                            </div>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </AnimatedCollapse>
-                </div>
-              );
-            })}
+                                {itemBadge > 0 && (
+                                  <span
+                                    className={`ml-1.5 flex-shrink-0 text-xs font-bold px-2 py-0.5 rounded-full ${
+                                      isExactActive ? 'bg-white text-blue-600' : 'bg-red-600 text-white'
+                                    }`}
+                                  >
+                                    {itemBadge}
+                                  </span>
+                                )}
+                              </div>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </AnimatedCollapse>
+                  </div>
+                );
+              })}
 
-            {/* Public Links Shortcut */}
-            <div
-              className="simpro-nav-public-block overflow-hidden transition-none border-t border-slate-100"
-              style={{
-                maxHeight: isExpanded ? '140px' : '0px',
-                opacity: isExpanded ? 1 : 0,
-                borderTopWidth: isExpanded ? '1px' : '0px',
-              }}
-            >
-              <div className="pt-2 space-y-1">
-                <p className="px-3.5 text-xs font-bold uppercase tracking-wider text-slate-400 mb-1 whitespace-nowrap overflow-hidden">
-                  Akses Publik (Non-Login)
-                </p>
-                <Link
-                  href="/mitra/isi/tok-telkom-2025"
-                  onClick={() => {
-                    if (!isDesktop) setMobileSidebarOpen(false);
-                  }}
-                  className="flex items-center px-3.5 py-2 text-sm text-slate-600 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-colors overflow-hidden whitespace-nowrap"
-                  target="_blank"
-                  title={!isExpanded ? 'Kuesioner Mitra (Demo)' : undefined}
-                >
-                  <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
-                    <ExternalLink className="w-4 h-4 text-slate-400" />
-                  </div>
-                  <span className="ml-2.5 truncate">Kuesioner Mitra (Demo)</span>
-                </Link>
-                <Link
-                  href="/aduan/lacak"
-                  onClick={() => {
-                    if (!isDesktop) setMobileSidebarOpen(false);
-                  }}
-                  className="flex items-center px-3.5 py-2 text-sm text-slate-600 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-colors overflow-hidden whitespace-nowrap"
-                  target="_blank"
-                  title={!isExpanded ? 'Lacak Tiket Aduan' : undefined}
-                >
-                  <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
-                    <ExternalLink className="w-4 h-4 text-slate-400" />
-                  </div>
-                  <span className="ml-2.5 truncate">Lacak Tiket Aduan</span>
-                </Link>
+              {/* Public Links Shortcut */}
+              <div
+                className="simpro-nav-public-block overflow-hidden transition-none border-t border-slate-100"
+                style={{
+                  maxHeight: isExpanded ? '140px' : '0px',
+                  opacity: isExpanded ? 1 : 0,
+                  borderTopWidth: isExpanded ? '1px' : '0px',
+                }}
+              >
+                <div className="pt-2 space-y-1">
+                  <p className="px-3.5 text-xs font-bold uppercase tracking-wider text-slate-400 mb-1 whitespace-nowrap overflow-hidden">
+                    Akses Publik (Non-Login)
+                  </p>
+                  <Link
+                    href="/mitra/isi/tok-telkom-2025"
+                    onClick={() => {
+                      if (!isDesktop) setMobileSidebarOpen(false);
+                    }}
+                    className="flex items-center px-3.5 py-2 text-sm text-slate-600 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-colors overflow-hidden whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1"
+                    target="_blank"
+                    title={!isExpanded ? 'Kuesioner Mitra (Demo)' : undefined}
+                  >
+                    <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
+                      <ExternalLink className="w-4 h-4 text-slate-400" />
+                    </div>
+                    <span className="ml-2.5 truncate">Kuesioner Mitra (Demo)</span>
+                  </Link>
+                  <Link
+                    href="/aduan/lacak"
+                    onClick={() => {
+                      if (!isDesktop) setMobileSidebarOpen(false);
+                    }}
+                    className="flex items-center px-3.5 py-2 text-sm text-slate-600 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-colors overflow-hidden whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1"
+                    target="_blank"
+                    title={!isExpanded ? 'Lacak Tiket Aduan' : undefined}
+                  >
+                    <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
+                      <ExternalLink className="w-4 h-4 text-slate-400" />
+                    </div>
+                    <span className="ml-2.5 truncate">Lacak Tiket Aduan</span>
+                  </Link>
+                </div>
               </div>
             </div>
           </nav>
@@ -587,17 +790,26 @@ export default function Sidebar() {
           <div className="p-3 border-t border-slate-100 bg-white">
             <Link
               href="/"
+              aria-label={!isExpanded ? 'Keluar Sistem' : undefined}
               onClick={() => {
                 if (!isDesktop) setMobileSidebarOpen(false);
               }}
-              className="flex items-center px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors w-full font-semibold text-sm overflow-hidden"
+              onMouseEnter={(e) => handleNavHoverStart(e.currentTarget)}
+              onMouseLeave={(e) => handleNavHoverEnd(e.currentTarget)}
+              onMouseDown={(e) => handleNavPress(e.currentTarget, true)}
+              onMouseUp={(e) => handleNavPress(e.currentTarget, false)}
+              className={`
+                simpro-nav-item-shell flex items-center text-rose-600 hover:bg-rose-50 rounded-xl transition-colors font-semibold text-sm overflow-hidden cursor-pointer
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 focus-visible:ring-offset-1
+                ${isExpanded ? 'w-full min-h-[44px] lg:min-h-0 lg:h-10 pr-3 pl-0' : 'w-10 h-10 mx-auto px-0'}
+              `}
               title={!isExpanded ? 'Keluar Sistem' : undefined}
             >
-              <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
-                <LogOut className="w-4 h-4 flex-shrink-0" />
+              <div className="simpro-nav-icon w-10 h-10 flex items-center justify-center flex-shrink-0">
+                <LogOut className="w-[18px] h-[18px] flex-shrink-0" />
               </div>
               <div
-                className="simpro-nav-text-container flex-1 min-w-0 ml-2.5 overflow-hidden whitespace-nowrap"
+                className="simpro-nav-text-container flex-1 min-w-0 overflow-hidden whitespace-nowrap"
                 style={{
                   maxWidth: isExpanded ? '180px' : '0px',
                   opacity: isExpanded ? 1 : 0,

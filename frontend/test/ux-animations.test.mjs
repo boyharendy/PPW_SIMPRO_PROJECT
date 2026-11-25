@@ -278,3 +278,23 @@ test('Shared layouts/headers/cards integrate SmoothScrollProvider, WordRevealHea
     }
   }
 });
+
+test('Sidebar keeps symmetrical collapsed active box geometry and integrates GSAP, Anime.js, Motion, and Lenis cleanly', () => {
+  const sidebar = fs.readFileSync(path.join(frontendSrcDir, 'components/layout/Sidebar.tsx'), 'utf8');
+
+  assert.ok(sidebar.includes('simpro-nav-item-shell'), 'Sidebar must use .simpro-nav-item-shell for consistent geometry');
+  assert.ok(sidebar.includes('w-10 h-10 mx-auto px-0'), 'Collapsed sidebar items must use centered 40x40 square geometry');
+  assert.equal(
+    sidebar.includes('simpro-nav-text-container flex-1 min-w-0 flex items-center justify-between ml-2.5'),
+    false,
+    'Collapsed label container must not carry ml-2.5 offset'
+  );
+
+  assert.ok(sidebar.includes('gsap.timeline'), 'Sidebar must choreograph expand/collapse with gsap.timeline');
+  assert.ok(sidebar.includes('gsap.context'), 'Sidebar must clean up GSAP timeline with gsap.context');
+  assert.ok(sidebar.includes("from 'animejs'"), 'Sidebar must use Anime.js for icon cascade');
+  assert.ok(sidebar.includes("from 'motion'"), 'Sidebar must use vanilla motion for tactile spring interactions');
+  assert.equal(sidebar.includes('[0.95, 1.02, 1]'), false, 'Motion spring animations must use at most two keyframes');
+  assert.ok(sidebar.includes('lenis.destroy()'), 'Sidebar must clean up Lenis smooth scrolling on unmount');
+  assert.equal(sidebar.includes('\u2014'), false, 'Sidebar.tsx must not contain em dash characters');
+});

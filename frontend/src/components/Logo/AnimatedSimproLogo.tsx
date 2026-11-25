@@ -120,10 +120,17 @@ export default function AnimatedSimproLogo({
         return;
       }
 
-      const morphConfig = {
-        duration: 550,
-        ease: 'outExpo',
-      };
+      const prefersReducedMotion =
+        typeof window !== 'undefined' &&
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      const morphConfig = prefersReducedMotion
+        ? { duration: 0 }
+        : {
+            duration: 550,
+            ease: 'outExpo',
+          };
 
       // 1. Morphing Path Latar Biru
       animate('.simpro-bg-box', {
